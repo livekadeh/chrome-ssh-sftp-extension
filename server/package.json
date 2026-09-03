@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "High Performance WebSocket SSH & SFTP Bridge Server for Chrome Extension",
   "main": "server.js",
+  "bin": "server.js",
   "scripts": {
     "start": "node server.js",
     "dev": "node --watch server.js"
