@@ -35,6 +35,17 @@
 
 ---
 
+## 📚 مستندات کامل پروژه (Documentation)
+
+مستندات تفصیلی و فنی پروژه در پوشه [`docs/`](docs/) قرار دارد:
+- 🏗️ **[معماری سیستم (Architecture)](docs/ARCHITECTURE.md)**: دیاگرام جریان داده و لایه‌های کلاینت و سرور
+- 📡 **[پروتکل پیام‌ها و وب‌سوکت (APIs & Protocols)](docs/API_AND_PROTOCOLS.md)**: مشخصات تمام پیام‌های JSON ترمینال و SFTP
+- ⚙️ **[راهنمای سرور و استقرار (Server Setup)](docs/SERVER_SETUP.md)**: دستورات PM2، Nginx با SSL و فایروال
+- 🧩 **[راهنمای توسعه اکستنشن (Extension Guide)](docs/EXTENSION_GUIDE.md)**: نحوه دیباگ و افزودن ویژگی‌های جدید
+- 🗺️ **[نقشه راه پروژه (Roadmap)](docs/ROADMAP.md)**: وضعیت فازها و فیچرهای بعدی
+
+---
+
 ## 📁 ساختار پروژه (Project Structure)
 
 ```text
