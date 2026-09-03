@@ -146,6 +146,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     }, 'sftp');
   });
 
+  const btnOpenWindow = document.getElementById('btnOpenWindow');
+  if (btnOpenWindow) {
+    btnOpenWindow.addEventListener('click', () => {
+      chrome.runtime.sendMessage({ action: 'openApp', asWindow: true });
+      window.close();
+    });
+  }
+
   btnOpenFull.addEventListener('click', () => {
     chrome.runtime.sendMessage({ action: 'openApp' });
   });

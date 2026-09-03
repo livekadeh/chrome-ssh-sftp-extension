@@ -30,11 +30,21 @@ chrome.runtime.onInstalled.addListener((details) => {
   });
 });
 
-// Listener to open app in full tab
+// Listener to open app in full tab or standalone window
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.action === 'openApp') {
     const url = chrome.runtime.getURL('app.html' + (message.params ? '?' + new URLSearchParams(message.params).toString() : ''));
-    chrome.tabs.create({ url });
+    if (message.asWindow) {
+      chrome.windows.create({
+        url,
+        type: 'popup',
+        width: 1280,
+        height: 820,
+        focused: true
+      });
+    } else {
+      chrome.tabs.create({ url });
+    }
     sendResponse({ success: true });
   }
   return true;

@@ -1,0 +1,17 @@
+{
+  "name": "LiveKadeh SSH & SFTP Pro",
+  "short_name": "LiveKadeh Pro",
+  "start_url": "app.html",
+  "display": "standalone",
+  "background_color": "#0a0e17",
+  "theme_color": "#00f0ff",
+  "description": "Professional browser-based SSH Terminal and SFTP File Manager",
+  "icons": [
+    {
+      "src": "icons/icon128.png",
+      "sizes": "128x128",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

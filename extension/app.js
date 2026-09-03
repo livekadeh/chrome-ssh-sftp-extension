@@ -42,6 +42,40 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
   }
 
+  // Standalone App Window Pop-out
+  function launchStandaloneWindow() {
+    if (chrome && chrome.windows) {
+      chrome.windows.create({
+        url: window.location.href,
+        type: 'popup',
+        width: Math.min(1400, Math.max(1024, window.screen.availWidth - 100)),
+        height: Math.min(900, Math.max(700, window.screen.availHeight - 100)),
+        focused: true
+      }, () => {
+        window.close();
+      });
+    }
+  }
+
+  const btnPopoutWindow = document.getElementById('btnPopoutWindow');
+  if (btnPopoutWindow) {
+    btnPopoutWindow.addEventListener('click', launchStandaloneWindow);
+  }
+
+  const btnAboutLaunchWindow = document.getElementById('btnAboutLaunchWindow');
+  if (btnAboutLaunchWindow) {
+    btnAboutLaunchWindow.addEventListener('click', launchStandaloneWindow);
+  }
+
+  // Hide popout button if already in a standalone window
+  if (chrome && chrome.windows) {
+    chrome.windows.getCurrent((win) => {
+      if (win && win.type === 'popup') {
+        if (btnPopoutWindow) btnPopoutWindow.style.display = 'none';
+      }
+    });
+  }
+
   // Terminal elements
   const terminalTabsList = document.getElementById('terminalTabsList');
   const xtermWrapper = document.getElementById('xtermWrapper');

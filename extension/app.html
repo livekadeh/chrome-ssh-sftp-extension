@@ -4,6 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>LiveKadeh SSH & SFTP Pro</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <meta name="theme-color" content="#0a0e17">
   <link rel="stylesheet" href="lib/xterm.css">
   <link rel="stylesheet" href="app.css">
 </head>
@@ -46,6 +48,15 @@
 
       <!-- Active Connection Status Pill & Actions -->
       <div class="header-right">
+        <button id="btnPopoutWindow" class="btn-popout-window" title="Open in Standalone App Window" data-i18n-title="nav_standalone_window">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+            <polyline points="15 3 21 3 21 9"></polyline>
+            <line x1="10" y1="14" x2="21" y2="3"></line>
+          </svg>
+          <span data-i18n="nav_standalone_btn">App Window ⤢</span>
+        </button>
+
         <button id="btnLangToggle" class="btn-lang-switcher" title="Switch Language / تغییر زبان">
           <span id="langCurrentText">🌐 English</span>
         </button>
@@ -497,6 +508,32 @@
 
             <!-- Dynamic Update Check Result Alert Box -->
             <div id="updateResultBox" class="update-result-box" style="display: none;"></div>
+
+            <!-- Standalone Window & Desktop App Installation Card -->
+            <div class="about-desktop-install-box">
+              <div class="desktop-box-top">
+                <div class="desktop-box-header">
+                  <span class="desktop-box-icon">🖥️</span>
+                  <div>
+                    <h3 class="desktop-box-title" data-i18n="about_desktop_title">Run as Standalone Window / Desktop App</h3>
+                    <p class="desktop-box-desc" data-i18n="about_desktop_desc">You can run this extension outside of Chrome browser tabs in a clean, dedicated desktop application window without address bar or bookmarks.</p>
+                  </div>
+                </div>
+                <button id="btnAboutLaunchWindow" class="btn btn-cyan btn-sm">
+                  <span data-i18n="nav_standalone_btn">App Window ⤢</span>
+                </button>
+              </div>
+
+              <div class="shortcut-tip-box">
+                <div class="shortcut-tip-title" data-i18n="about_desktop_how">💡 How to install as a Desktop App icon in Chrome:</div>
+                <ol class="shortcut-tip-steps" data-i18n="about_desktop_steps">
+                  <li>Click the 3 dots menu in Chrome (top-right corner).</li>
+                  <li>Go to <b>Cast, save, and share</b> (or More tools) &rarr; <b>Create shortcut...</b></li>
+                  <li>Check the box <b>"Open as window"</b> and click <b>Create</b>.</li>
+                  <li>A desktop icon and taskbar app will be created to launch directly!</li>
+                </ol>
+              </div>
+            </div>
           </div>
 
           <!-- Feature Cards Grid -->
