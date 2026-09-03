@@ -226,6 +226,51 @@ document.addEventListener('DOMContentLoaded', async () => {
   btnFontPlus.addEventListener('click', () => termManager.changeFontSize(1));
   btnFontMinus.addEventListener('click', () => termManager.changeFontSize(-1));
 
+  // Persian Terminal Input Helper
+  const terminalPersianInput = document.getElementById('terminalPersianInput');
+  const btnSendPersianInput = document.getElementById('btnSendPersianInput');
+  const commandHistory = [];
+  let historyIndex = -1;
+
+  function sendPersianCommand() {
+    if (!terminalPersianInput) return;
+    const text = terminalPersianInput.value;
+    if (!text && text !== '') return;
+
+    termManager.sendData(text + '\r');
+    if (text.trim()) {
+      commandHistory.push(text);
+      historyIndex = commandHistory.length;
+    }
+    terminalPersianInput.value = '';
+  }
+
+  if (btnSendPersianInput) {
+    btnSendPersianInput.addEventListener('click', sendPersianCommand);
+  }
+
+  if (terminalPersianInput) {
+    terminalPersianInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        sendPersianCommand();
+      } else if (e.key === 'ArrowUp') {
+        if (historyIndex > 0) {
+          historyIndex--;
+          terminalPersianInput.value = commandHistory[historyIndex];
+        }
+      } else if (e.key === 'ArrowDown') {
+        if (historyIndex < commandHistory.length - 1) {
+          historyIndex++;
+          terminalPersianInput.value = commandHistory[historyIndex];
+        } else {
+          historyIndex = commandHistory.length;
+          terminalPersianInput.value = '';
+        }
+      }
+    });
+  }
+
   // SFTP Navigation Controls
   btnSftpUp.addEventListener('click', () => {
     let p = sftpManager.currentPath.replace(/\/$/, '');

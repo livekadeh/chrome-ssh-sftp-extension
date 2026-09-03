@@ -190,13 +190,6 @@ function processBiDiTerminalText(text, termCols = 80, rightAlign = false) {
     }
 
     let result = parts.join('');
-
-    // If right alignment is requested and the line is predominantly Persian
-    if (rightAlign && lineRtlCount > 0 && lineRtlCount >= (visibleLength * 0.4) && termCols > visibleLength) {
-      const padSpaces = ' '.repeat(Math.max(0, termCols - visibleLength - 2));
-      result = padSpaces + result;
-    }
-
     return result;
   });
 

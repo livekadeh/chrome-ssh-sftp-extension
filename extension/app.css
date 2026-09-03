@@ -334,6 +334,45 @@ body {
   unicode-bidi: plaintext !important;
 }
 
+/* ================= PERSIAN TERMINAL INPUT BAR ================= */
+.terminal-persian-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: rgba(14, 21, 34, 0.95);
+  border-top: 1px solid var(--border-glass);
+  padding: 8px 16px;
+  direction: rtl;
+}
+
+.persian-bar-badge {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--accent-cyan);
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.terminal-persian-bar input {
+  flex: 1;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid var(--border-glass);
+  border-radius: var(--radius-xs);
+  color: #ffffff;
+  padding: 6px 12px;
+  font-family: 'Vazirmatn', Tahoma, sans-serif;
+  font-size: 13px;
+  outline: none;
+  transition: var(--transition);
+}
+
+.terminal-persian-bar input:focus {
+  border-color: var(--accent-cyan);
+  box-shadow: 0 0 10px rgba(0, 240, 255, 0.2);
+}
+
 /* ================= SFTP FILE MANAGER VIEW ================= */
 .sftp-workspace {
   display: flex;

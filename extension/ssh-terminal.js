@@ -367,6 +367,16 @@ class SSHTerminalManager {
     this.rtlAlignEnabled = !this.rtlAlignEnabled;
     return this.rtlAlignEnabled;
   }
+
+  sendData(data) {
+    if (!this.activeSessionId) return false;
+    const session = this.sessions.get(this.activeSessionId);
+    if (session && session.ws && session.ws.readyState === WebSocket.OPEN) {
+      session.ws.send(JSON.stringify({ type: 'ssh-input', data }));
+      return true;
+    }
+    return false;
+  }
 }
 
 window.SSHTerminalManager = SSHTerminalManager;
