@@ -252,7 +252,7 @@ const I18N_DICTIONARY = {
     // Active Sessions Drawer
     drawer_title: 'مدیریت سرورها و نشست‌های فعال',
     drawer_open_servers: 'سرورهای باز',
-    drawer_active_btn: 'سرورهای فعال',
+    drawer_active_btn: 'مدیریت سرورها',
     drawer_sftp_sessions: 'نشست‌های فعال فایل منیجر (SFTP)',
     drawer_ssh_sessions: 'نشست‌های فعال ترمینال (SSH)',
     drawer_quick_servers: 'اتصال سریع به سرورهای ذخیره‌شده',
