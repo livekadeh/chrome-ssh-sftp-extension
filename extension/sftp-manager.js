@@ -3,11 +3,13 @@
  */
 
 class SFTPManager {
-  constructor(tableBodyEl, pathInputEl, statusEl, countEl) {
+  constructor(tableBodyEl, pathInputEl, statusEl, countEl, gridContainerEl) {
     this.tableBodyEl = tableBodyEl;
     this.pathInputEl = pathInputEl;
     this.statusEl = statusEl;
     this.countEl = countEl;
+    this.gridContainerEl = gridContainerEl || document.getElementById('sftpGridView');
+    this.viewMode = 'list';
     
     this.currentPath = '/root';
     this.currentFiles = [];
@@ -20,6 +22,42 @@ class SFTPManager {
     this.pendingCallbacks = new Map();
     this.callbackSeq = 1;
     this.isUploadCancelled = false;
+
+    if (chrome && chrome.storage && chrome.storage.local) {
+      chrome.storage.local.get('sftpViewMode', (res) => {
+        if (res && res.sftpViewMode) {
+          this.viewMode = res.sftpViewMode;
+          this.applyViewMode();
+        }
+      });
+    }
+  }
+
+  setViewMode(mode) {
+    this.viewMode = mode;
+    this.applyViewMode();
+    if (chrome && chrome.storage && chrome.storage.local) {
+      chrome.storage.local.set({ sftpViewMode: mode });
+    }
+  }
+
+  applyViewMode() {
+    const sftpTable = document.getElementById('sftpTable');
+    const sftpGridView = document.getElementById('sftpGridView');
+    const btnList = document.getElementById('btnSftpViewList');
+    const btnGrid = document.getElementById('btnSftpViewGrid');
+
+    if (this.viewMode === 'grid') {
+      if (sftpTable) sftpTable.style.display = 'none';
+      if (sftpGridView) sftpGridView.style.display = 'grid';
+      if (btnList) btnList.classList.remove('active');
+      if (btnGrid) btnGrid.classList.add('active');
+    } else {
+      if (sftpTable) sftpTable.style.display = 'table';
+      if (sftpGridView) sftpGridView.style.display = 'none';
+      if (btnList) btnList.classList.add('active');
+      if (btnGrid) btnGrid.classList.remove('active');
+    }
   }
 
   connect(serverConfig, bridgeUrl, onReady) {
@@ -31,13 +69,14 @@ class SFTPManager {
       try { this.ws.close(); } catch (e) {}
     }
 
-    this.updateStatus('در حال اتصال به سرور SFTP...');
+    const isPersian = window.i18n && window.i18n.currentLang === 'fa';
+    this.updateStatus(isPersian ? 'در حال اتصال به سرور SFTP...' : 'Connecting to SFTP server...');
 
     try {
       this.ws = new WebSocket(bridgeUrl);
 
       this.ws.onopen = () => {
-        this.updateStatus('در حال احراز هویت SFTP...');
+        this.updateStatus(isPersian ? 'در حال احراز هویت SFTP...' : 'Authenticating SFTP...');
         this.ws.send(JSON.stringify({
           type: 'sftp-init',
           host: serverConfig.host,
@@ -60,18 +99,19 @@ class SFTPManager {
 
       this.ws.onclose = () => {
         this.isConnected = false;
-        this.updateStatus('اتصال SFTP قطع شد');
+        this.updateStatus(isPersian ? 'اتصال SFTP قطع شد' : 'SFTP connection closed');
         document.getElementById('sftpEmptyState').style.display = 'flex';
         document.getElementById('sftpTable').style.display = 'none';
+        if (this.gridContainerEl) this.gridContainerEl.style.display = 'none';
       };
 
       this.ws.onerror = (err) => {
         this.isConnected = false;
-        this.updateStatus('خطا در ارتباط با بریج SFTP');
+        this.updateStatus(isPersian ? 'خطا در ارتباط با بریج SFTP' : 'Error connecting to SFTP bridge');
       };
 
     } catch (e) {
-      this.updateStatus('خطای اتصال: ' + e.message);
+      this.updateStatus((isPersian ? 'خطای اتصال: ' : 'Connection error: ') + e.message);
     }
   }
 
@@ -98,12 +138,13 @@ class SFTPManager {
   }
 
   handleMessage(msg, onReady) {
+    const isPersian = window.i18n && window.i18n.currentLang === 'fa';
     if (msg.type === 'sftp-status') {
       if (msg.status === 'connected') {
         this.isConnected = true;
         document.getElementById('sftpEmptyState').style.display = 'none';
-        document.getElementById('sftpTable').style.display = 'table';
-        this.updateStatus('متصل به SFTP ✔');
+        this.applyViewMode();
+        this.updateStatus(isPersian ? 'متصل به SFTP ✔' : 'SFTP Connected ✔');
         this.listDirectory(this.currentPath);
         if (onReady) onReady();
       } else {
@@ -124,7 +165,8 @@ class SFTPManager {
   }
 
   async listDirectory(dirPath) {
-    this.updateStatus(`در حال دریافت لیست فایل‌های ${dirPath}...`);
+    const isPersian = window.i18n && window.i18n.currentLang === 'fa';
+    this.updateStatus(isPersian ? `در حال دریافت لیست فایل‌های ${dirPath}...` : `Listing files in ${dirPath}...`);
     try {
       const res = await this.sendRequest({ type: 'sftp-list', path: dirPath });
       this.currentPath = res.path || dirPath;
@@ -132,31 +174,45 @@ class SFTPManager {
       this.currentFiles = res.files || [];
       this.selectedFiles.clear();
       this.renderFiles(this.currentFiles);
-      this.updateStatus(`مسیر فعلی: ${this.currentPath}`);
+      this.updateStatus(isPersian ? `مسیر فعلی: ${this.currentPath}` : `Current directory: ${this.currentPath}`);
       this.updateSelectionUI();
     } catch (err) {
-      alert(`خطا در باز کردن پوشه: ${err.message}`);
-      this.updateStatus(`خطا: ${err.message}`);
+      alert((isPersian ? 'خطا در باز کردن پوشه: ' : 'Error opening directory: ') + err.message);
+      this.updateStatus((isPersian ? 'خطا: ' : 'Error: ') + err.message);
     }
   }
 
   renderFiles(files) {
     this.tableBodyEl.innerHTML = '';
-    this.countEl.textContent = `${files.length} آیتم`;
+    if (this.gridContainerEl) this.gridContainerEl.innerHTML = '';
+
+    const isPersian = window.i18n && window.i18n.currentLang === 'fa';
+    this.countEl.textContent = isPersian ? `${files.length} آیتم` : `${files.length} items`;
 
     files.forEach((file) => {
-      const tr = document.createElement('tr');
-      tr.className = 'sftp-row';
-      tr.dataset.name = file.filename;
-
       const isDir = file.attrs.isDirectory;
       const icon = isDir ? '📁' : this.getFileIcon(file.filename);
       const sizeStr = isDir ? '-' : this.formatBytes(file.attrs.size);
       const perms = file.attrs.permissions || '0755';
-      const mtimeStr = file.attrs.mtime ? new Date(file.attrs.mtime * 1000).toLocaleString('fa-IR') : '-';
+      const mtimeStr = file.attrs.mtime 
+        ? new Date(file.attrs.mtime * 1000).toLocaleString(isPersian ? 'fa-IR' : 'en-US', {
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: false
+          }) 
+        : '-';
+
+      // 1. Table Row (List View)
+      const tr = document.createElement('tr');
+      tr.className = 'sftp-row';
+      tr.dataset.name = file.filename;
+      if (this.selectedFiles.has(file.filename)) tr.classList.add('selected');
 
       tr.innerHTML = `
-        <td><input type="checkbox" class="file-chk" data-name="${file.filename}"></td>
+        <td><input type="checkbox" class="file-chk" data-name="${file.filename}" ${this.selectedFiles.has(file.filename) ? 'checked' : ''}></td>
         <td>
           <div class="file-name-cell">
             <span class="file-icon">${icon}</span>
@@ -167,19 +223,17 @@ class SFTPManager {
         <td class="mono-cell">${perms}</td>
         <td class="mono-cell" style="font-size: 11px;">${mtimeStr}</td>
         <td style="text-align: center;">
-          <button class="btn-action btn-quick-dl" title="دانلود">📥</button>
-          <button class="btn-action btn-quick-edit" title="ویرایش">✏️</button>
-          <button class="btn-action btn-quick-del" title="حذف" style="color: #ef4444;">🗑️</button>
+          <button class="btn-action btn-quick-dl" title="${isPersian ? 'دانلود' : 'Download'}">📥</button>
+          <button class="btn-action btn-quick-edit" title="${isPersian ? 'ویرایش' : 'Edit'}">✏️</button>
+          <button class="btn-action btn-quick-del" title="${isPersian ? 'حذف' : 'Delete'}" style="color: #ef4444;">🗑️</button>
         </td>
       `;
 
-      // Row Selection
       tr.addEventListener('click', (e) => {
         if (e.target.tagName === 'BUTTON' || e.target.tagName === 'INPUT') return;
         this.toggleSelect(file.filename, tr);
       });
 
-      // Double Click
       tr.addEventListener('dblclick', () => {
         if (isDir) {
           const next = this.currentPath.endsWith('/') ? this.currentPath + file.filename : this.currentPath + '/' + file.filename;
@@ -189,7 +243,6 @@ class SFTPManager {
         }
       });
 
-      // Row Actions
       tr.querySelector('.btn-quick-dl').addEventListener('click', (e) => {
         e.stopPropagation();
         this.downloadFile(file.filename);
@@ -205,18 +258,14 @@ class SFTPManager {
         this.deleteItem(file.filename, isDir);
       });
 
-      // Context menu on row
       tr.addEventListener('contextmenu', (e) => {
         e.preventDefault();
         e.stopPropagation();
 
         if (!this.selectedFiles.has(file.filename)) {
           this.selectedFiles.clear();
-          this.tableBodyEl.querySelectorAll('.sftp-row.selected').forEach(r => {
-            r.classList.remove('selected');
-            const c = r.querySelector('.file-chk');
-            if (c) c.checked = false;
-          });
+          document.querySelectorAll('.sftp-row, .sftp-grid-card').forEach(r => r.classList.remove('selected'));
+          document.querySelectorAll('.file-chk').forEach(c => c.checked = false);
           this.toggleSelect(file.filename, tr);
         }
 
@@ -230,21 +279,77 @@ class SFTPManager {
       });
 
       this.tableBodyEl.appendChild(tr);
+
+      // 2. Grid Card (Grid View)
+      if (this.gridContainerEl) {
+        const card = document.createElement('div');
+        card.className = 'sftp-grid-card';
+        card.dataset.name = file.filename;
+        if (this.selectedFiles.has(file.filename)) card.classList.add('selected');
+
+        card.innerHTML = `
+          <input type="checkbox" class="grid-card-chk file-chk" data-name="${file.filename}" ${this.selectedFiles.has(file.filename) ? 'checked' : ''}>
+          <div class="grid-card-icon">${icon}</div>
+          <div class="grid-card-name" title="${file.filename}" style="color: ${isDir ? '#00f0ff' : '#f8fafc'}; font-weight: ${isDir ? '700' : '400'};">${file.filename}</div>
+          <div class="grid-card-size">${sizeStr}</div>
+        `;
+
+        card.addEventListener('click', (e) => {
+          if (e.target.tagName === 'INPUT') return;
+          this.toggleSelect(file.filename, card);
+        });
+
+        card.addEventListener('dblclick', () => {
+          if (isDir) {
+            const next = this.currentPath.endsWith('/') ? this.currentPath + file.filename : this.currentPath + '/' + file.filename;
+            this.listDirectory(next);
+          } else {
+            this.editFile(file.filename);
+          }
+        });
+
+        card.addEventListener('contextmenu', (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+
+          if (!this.selectedFiles.has(file.filename)) {
+            this.selectedFiles.clear();
+            document.querySelectorAll('.sftp-row, .sftp-grid-card').forEach(r => r.classList.remove('selected'));
+            document.querySelectorAll('.file-chk').forEach(c => c.checked = false);
+            this.toggleSelect(file.filename, card);
+          }
+
+          if (window.showSftpContextMenu) {
+            window.showSftpContextMenu(e.clientX, e.clientY, {
+              filename: file.filename,
+              isDir: isDir,
+              isRow: true
+            });
+          }
+        });
+
+        this.gridContainerEl.appendChild(card);
+      }
     });
+
+    this.applyViewMode();
   }
 
-  toggleSelect(filename, rowEl) {
-    if (this.selectedFiles.has(filename)) {
-      this.selectedFiles.delete(filename);
-      rowEl.classList.remove('selected');
-      const chk = rowEl.querySelector('.file-chk');
-      if (chk) chk.checked = false;
-    } else {
+  toggleSelect(filename) {
+    const isNowSelected = !this.selectedFiles.has(filename);
+    if (isNowSelected) {
       this.selectedFiles.add(filename);
-      rowEl.classList.add('selected');
-      const chk = rowEl.querySelector('.file-chk');
-      if (chk) chk.checked = true;
+    } else {
+      this.selectedFiles.delete(filename);
     }
+
+    const matches = document.querySelectorAll(`[data-name="${CSS.escape(filename)}"]`);
+    matches.forEach(el => {
+      el.classList.toggle('selected', isNowSelected);
+      const chk = el.querySelector('.file-chk');
+      if (chk) chk.checked = isNowSelected;
+    });
+
     this.updateSelectionUI();
   }
 
@@ -266,7 +371,10 @@ class SFTPManager {
 
   updateSelectionUI() {
     const count = this.selectedFiles.size;
-    this.statusEl.textContent = count > 0 ? `${count} آیتم انتخاب شده` : 'هیچ فایلی انتخاب نشده';
+    const isPersian = window.i18n && window.i18n.currentLang === 'fa';
+    this.statusEl.textContent = count > 0 
+      ? (isPersian ? `${count} آیتم انتخاب شده` : `${count} item(s) selected`)
+      : (isPersian ? 'هیچ فایلی انتخاب نشده' : 'No files selected');
 
     const disabled = count === 0;
     document.getElementById('btnSftpDownload').disabled = disabled;
@@ -278,6 +386,54 @@ class SFTPManager {
     if (btnSftpExtract) {
       const isSingleArchive = count === 1 && this.isArchiveFile(Array.from(this.selectedFiles)[0]);
       btnSftpExtract.disabled = !isSingleArchive;
+    }
+
+    const btnSftpCompress = document.getElementById('btnSftpCompress');
+    if (btnSftpCompress) {
+      btnSftpCompress.disabled = count === 0;
+    }
+  }
+
+  async compressSelected(format = 'zip') {
+    if (this.selectedFiles.size === 0) return;
+    const isPersian = window.i18n && window.i18n.currentLang === 'fa';
+    const files = Array.from(this.selectedFiles);
+
+    const defaultName = files.length === 1 
+      ? files[0].replace(/\.[^/.]+$/, '') + (format === 'zip' ? '.zip' : '.tar.gz')
+      : 'archive' + (format === 'zip' ? '.zip' : '.tar.gz');
+
+    const promptMsg = isPersian 
+      ? `نام فایل فشرده خروجی را وارد کنید:\n(${files.length} فایل/پوشه انتخاب شده)`
+      : `Enter archive filename:\n(${files.length} item(s) selected)`;
+
+    const archiveName = prompt(promptMsg, defaultName);
+    if (!archiveName) return;
+
+    this.updateStatus(isPersian ? `در حال فشرده‌سازی ${archiveName}...` : `Compressing into ${archiveName}...`);
+
+    try {
+      const res = await this.sendRequest({
+        type: 'sftp-compress',
+        dir: this.currentPath,
+        files: files,
+        archiveName: archiveName,
+        format: archiveName.toLowerCase().endsWith('.tar.gz') || archiveName.toLowerCase().endsWith('.tgz') ? 'tar.gz' : 'zip'
+      });
+
+      if (res && res.success) {
+        const succMsg = isPersian ? `فایل "${archiveName}" با موفقیت ایجاد شد ✔` : `Archive "${archiveName}" created successfully ✔`;
+        this.updateStatus(succMsg);
+        alert(succMsg);
+        this.listDirectory(this.currentPath);
+      } else {
+        const errMsg = res && res.error ? res.error : 'Unknown compression error';
+        alert(isPersian ? `خطا در فشرده‌سازی:\n${errMsg}` : `Compression error:\n${errMsg}`);
+        this.updateStatus(isPersian ? 'خطا در فشرده‌سازی' : 'Compression failed');
+      }
+    } catch (err) {
+      alert(`Compression error: ${err.message}`);
+      this.updateStatus('Compression error');
     }
   }
 
@@ -533,7 +689,8 @@ class SFTPManager {
 
   async downloadFile(filename) {
     const targetPath = (this.currentPath.endsWith('/') ? this.currentPath : this.currentPath + '/') + filename;
-    this.updateStatus(`در حال دریافت ${filename}...`);
+    const isPersian = window.i18n && window.i18n.currentLang === 'fa';
+    this.updateStatus(isPersian ? `در حال دریافت ${filename}...` : `Downloading ${filename}...`);
 
     try {
       const res = await this.sendRequest({ type: 'sftp-read', path: targetPath });
@@ -557,20 +714,21 @@ class SFTPManager {
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
-      this.updateStatus(`دانلود ${filename} انجام شد ✔`);
+      this.updateStatus(isPersian ? `دانلود ${filename} انجام شد ✔` : `Downloaded ${filename} successfully ✔`);
     } catch (err) {
-      alert(`خطا در دانلود فایل: ${err.message}`);
+      alert((isPersian ? 'خطا در دانلود فایل: ' : 'Error downloading file: ') + err.message);
     }
   }
 
   async editFile(filename) {
     const targetPath = (this.currentPath.endsWith('/') ? this.currentPath : this.currentPath + '/') + filename;
-    this.updateStatus(`در حال باز کردن ${filename}...`);
+    const isPersian = window.i18n && window.i18n.currentLang === 'fa';
+    this.updateStatus(isPersian ? `در حال باز کردن ${filename}...` : `Opening ${filename}...`);
 
     try {
       const res = await this.sendRequest({ type: 'sftp-read', path: targetPath });
       if (res.isBinary) {
-        alert('این فایل باینری است و امکان ویرایش متنی آن وجود ندارد.');
+        alert(isPersian ? 'این فایل باینری است و امکان ویرایش متنی آن وجود ندارد.' : 'This file is binary and cannot be edited in text editor.');
         return;
       }
 
@@ -578,15 +736,16 @@ class SFTPManager {
       document.getElementById('editorTextarea').value = res.content;
       document.getElementById('editorModal').classList.add('active');
     } catch (err) {
-      alert(`خطا در باز کردن فایل: ${err.message}`);
+      alert((isPersian ? 'خطا در باز کردن فایل: ' : 'Error opening file: ') + err.message);
     }
   }
 
   async saveEditedFile() {
     const filePath = document.getElementById('editorFilePath').textContent;
     const content = document.getElementById('editorTextarea').value;
+    const isPersian = window.i18n && window.i18n.currentLang === 'fa';
 
-    this.updateStatus(`در حال ذخیره ${filePath}...`);
+    this.updateStatus(isPersian ? `در حال ذخیره ${filePath}...` : `Saving ${filePath}...`);
     try {
       await this.sendRequest({
         type: 'sftp-write',
@@ -594,16 +753,17 @@ class SFTPManager {
         content: content,
         isBase64: false
       });
-      alert('فایل با موفقیت روی سرور ذخیره شد ✔');
+      alert(isPersian ? 'فایل با موفقیت روی سرور ذخیره شد ✔' : 'File saved successfully on server ✔');
       document.getElementById('editorModal').classList.remove('active');
       this.listDirectory(this.currentPath);
     } catch (err) {
-      alert(`خطا در ذخیره فایل: ${err.message}`);
+      alert((isPersian ? 'خطا در ذخیره فایل: ' : 'Error saving file: ') + err.message);
     }
   }
 
   async createNewFile() {
-    const name = prompt('نام فایل جدید را وارد کنید:');
+    const isPersian = window.i18n && window.i18n.currentLang === 'fa';
+    const name = prompt(isPersian ? 'نام فایل جدید را وارد کنید:' : 'Enter new filename:');
     if (!name) return;
 
     const targetPath = (this.currentPath.endsWith('/') ? this.currentPath : this.currentPath + '/') + name;
@@ -611,12 +771,13 @@ class SFTPManager {
       await this.sendRequest({ type: 'sftp-write', path: targetPath, content: '', isBase64: false });
       this.listDirectory(this.currentPath);
     } catch (err) {
-      alert(`خطا: ${err.message}`);
+      alert((isPersian ? 'خطا: ' : 'Error: ') + err.message);
     }
   }
 
   async createNewFolder() {
-    const name = prompt('نام پوشه جدید را وارد کنید:');
+    const isPersian = window.i18n && window.i18n.currentLang === 'fa';
+    const name = prompt(isPersian ? 'نام پوشه جدید را وارد کنید:' : 'Enter new folder name:');
     if (!name) return;
 
     const targetPath = (this.currentPath.endsWith('/') ? this.currentPath : this.currentPath + '/') + name;
@@ -624,7 +785,7 @@ class SFTPManager {
       await this.sendRequest({ type: 'sftp-mkdir', path: targetPath });
       this.listDirectory(this.currentPath);
     } catch (err) {
-      alert(`خطا: ${err.message}`);
+      alert((isPersian ? 'خطا: ' : 'Error: ') + err.message);
     }
   }
 

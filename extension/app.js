@@ -19,10 +19,18 @@ document.addEventListener('DOMContentLoaded', async () => {
   const btnLangToggle = document.getElementById('btnLangToggle');
   const settingLanguage = document.getElementById('settingLanguage');
 
+  const onLanguageChanged = () => {
+    loadServersList();
+    if (sftpManager && sftpManager.currentFiles && sftpManager.currentFiles.length > 0) {
+      sftpManager.renderFiles(sftpManager.currentFiles);
+    }
+  };
+
   if (settingLanguage && window.i18n) {
     settingLanguage.value = window.i18n.currentLang;
     settingLanguage.addEventListener('change', async () => {
       await window.i18n.setLanguage(settingLanguage.value);
+      onLanguageChanged();
     });
   }
 
@@ -30,6 +38,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     btnLangToggle.addEventListener('click', async () => {
       const nextLang = await window.i18n.toggleLanguage();
       if (settingLanguage) settingLanguage.value = nextLang;
+      onLanguageChanged();
     });
   }
 
@@ -99,13 +108,15 @@ document.addEventListener('DOMContentLoaded', async () => {
   const btnLaunchSFTP = document.getElementById('btnLaunchSFTP');
 
   // Instantiate Managers
+  const sftpGridView = document.getElementById('sftpGridView');
   const termManager = new SSHTerminalManager(xtermWrapper, terminalTabsList);
-  const sftpManager = new SFTPManager(sftpTableBody, sftpCurrentPath, sftpSelectedInfo, sftpItemCount);
+  const sftpManager = new SFTPManager(sftpTableBody, sftpCurrentPath, sftpSelectedInfo, sftpItemCount, sftpGridView);
 
   // Global Connection Callback
   window.onGlobalConnectionChange = (status, name) => {
+    const isPersian = window.i18n && window.i18n.currentLang === 'fa';
     globalStatusDot.className = 'status-indicator ' + status;
-    globalServerName.textContent = name || 'اتصال برقرار نیست';
+    globalServerName.textContent = name || (isPersian ? 'اتصال برقرار نیست' : 'Not Connected');
   };
 
   // Switch Navigation Tabs
@@ -128,8 +139,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Modal handlers
   function openConnectModal(serverData = null) {
+    const isPersian = window.i18n && window.i18n.currentLang === 'fa';
     if (serverData) {
-      modalTitle.textContent = 'ویرایش سرور';
+      modalTitle.textContent = isPersian ? 'ویرایش سرور' : 'Edit Server';
       modalServerId.value = serverData.id || '';
       serverName.value = serverData.name || '';
       serverHost.value = serverData.host || '';
@@ -140,7 +152,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       serverPass.value = serverData.password || '';
       serverPrivateKey.value = serverData.privateKey || '';
     } else {
-      modalTitle.textContent = 'اتصال به سرور جدید';
+      modalTitle.textContent = isPersian ? 'اتصال به سرور جدید' : 'New Server Connection';
       modalServerId.value = '';
       serverName.value = '';
       serverHost.value = '';
@@ -177,8 +189,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Connect form launch SSH & SFTP
   async function getFormDataAndSave() {
     const host = serverHost.value.trim();
+    const isPersian = window.i18n && window.i18n.currentLang === 'fa';
     if (!host) {
-      alert('لطفاً آدرس سرور را وارد نمایید.');
+      alert(isPersian ? 'لطفاً آدرس سرور را وارد نمایید.' : 'Please enter a server host address.');
       serverHost.focus();
       return null;
     }
@@ -470,6 +483,24 @@ document.addEventListener('DOMContentLoaded', async () => {
       }
     });
   }
+  const btnSftpCompress = document.getElementById('btnSftpCompress');
+  if (btnSftpCompress) {
+    btnSftpCompress.addEventListener('click', () => {
+      sftpManager.compressSelected('zip');
+    });
+  }
+  const btnSftpViewList = document.getElementById('btnSftpViewList');
+  const btnSftpViewGrid = document.getElementById('btnSftpViewGrid');
+  if (btnSftpViewList) {
+    btnSftpViewList.addEventListener('click', () => {
+      sftpManager.setViewMode('list');
+    });
+  }
+  if (btnSftpViewGrid) {
+    btnSftpViewGrid.addEventListener('click', () => {
+      sftpManager.setViewMode('grid');
+    });
+  }
   btnSftpChmod.addEventListener('click', () => sftpManager.changePermissions());
   btnSftpDelete.addEventListener('click', () => {
     sftpManager.selectedFiles.forEach(f => {
@@ -484,6 +515,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const sftpCtxDownload = document.getElementById('sftpCtxDownload');
   const sftpCtxEdit = document.getElementById('sftpCtxEdit');
   const sftpCtxExtract = document.getElementById('sftpCtxExtract');
+  const sftpCtxCompress = document.getElementById('sftpCtxCompress');
   const sftpCtxRename = document.getElementById('sftpCtxRename');
   const sftpCtxChmod = document.getElementById('sftpCtxChmod');
   const sftpCtxCopyPath = document.getElementById('sftpCtxCopyPath');
@@ -511,6 +543,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (sftpCtxDownload) sftpCtxDownload.style.display = 'flex';
       if (sftpCtxEdit) sftpCtxEdit.style.display = isDir ? 'none' : 'flex';
       if (sftpCtxExtract) sftpCtxExtract.style.display = isArchive ? 'flex' : 'none';
+      if (sftpCtxCompress) sftpCtxCompress.style.display = 'flex';
       if (sftpCtxRename) sftpCtxRename.style.display = 'flex';
       if (sftpCtxChmod) sftpCtxChmod.style.display = 'flex';
       if (sftpCtxCopyPath) sftpCtxCopyPath.style.display = 'flex';
@@ -521,6 +554,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (sftpCtxDownload) sftpCtxDownload.style.display = 'none';
       if (sftpCtxEdit) sftpCtxEdit.style.display = 'none';
       if (sftpCtxExtract) sftpCtxExtract.style.display = 'none';
+      if (sftpCtxCompress) sftpCtxCompress.style.display = sftpManager.selectedFiles.size > 0 ? 'flex' : 'none';
       if (sftpCtxRename) sftpCtxRename.style.display = 'none';
       if (sftpCtxChmod) sftpCtxChmod.style.display = 'none';
       if (sftpCtxCopyPath) sftpCtxCopyPath.style.display = 'none';
@@ -556,7 +590,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   if (sftpDropZone) {
     sftpDropZone.addEventListener('contextmenu', (e) => {
-      if (!e.target.closest('.sftp-row')) {
+      if (!e.target.closest('.sftp-row') && !e.target.closest('.sftp-grid-card')) {
         e.preventDefault();
         window.showSftpContextMenu(e.clientX, e.clientY, {
           filename: null,
@@ -603,6 +637,13 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (sftpContextTarget && sftpContextTarget.filename) {
         sftpManager.extractArchive(sftpContextTarget.filename);
       }
+    });
+  }
+
+  if (sftpCtxCompress) {
+    sftpCtxCompress.addEventListener('click', () => {
+      hideSftpContextMenu();
+      sftpManager.compressSelected('zip');
     });
   }
 
@@ -715,11 +756,20 @@ document.addEventListener('DOMContentLoaded', async () => {
   async function loadServersList() {
     const { servers = [] } = await chrome.storage.local.get('servers');
     serversGrid.innerHTML = '';
+    const isPersian = window.i18n && window.i18n.currentLang === 'fa';
 
     if (servers.length === 0) {
-      serversGrid.innerHTML = '<div style="color: #64748b; padding: 20px; grid-column: 1/-1; text-align: center;">هیچ سروری ذخیره نشده است. با کلیک بر روی «سرور جدید +» اولین سرور خود را اضافه کنید.</div>';
+      const emptyMsg = isPersian
+        ? 'هیچ سروری ذخیره نشده است. با کلیک بر روی «سرور جدید +» اولین سرور خود را اضافه کنید.'
+        : 'No servers saved yet. Click "+ Add Server" to configure your first server.';
+      serversGrid.innerHTML = `<div style="color: #64748b; padding: 20px; grid-column: 1/-1; text-align: center;">${emptyMsg}</div>`;
       return;
     }
+
+    const sshLabel = isPersian ? '⚡ ترمینال SSH' : '⚡ SSH Terminal';
+    const sftpLabel = isPersian ? '📁 فایل منیجر SFTP' : '📁 SFTP Manager';
+    const editTitle = isPersian ? 'ویرایش' : 'Edit';
+    const delTitle = isPersian ? 'حذف' : 'Delete';
 
     servers.forEach(srv => {
       const card = document.createElement('div');
@@ -733,19 +783,22 @@ document.addEventListener('DOMContentLoaded', async () => {
             <div class="card-host">${srv.username}@${srv.host}:${srv.port || 22}</div>
           </div>
           <div style="display: flex; gap: 4px;">
-            <button class="btn-icon-sm btn-edit-srv" title="ویرایش">✏️</button>
-            <button class="btn-icon-sm btn-del-srv" title="حذف" style="color: #ef4444;">🗑️</button>
+            <button class="btn-icon-sm btn-edit-srv" title="${editTitle}">✏️</button>
+            <button class="btn-icon-sm btn-del-srv" title="${delTitle}" style="color: #ef4444;">🗑️</button>
           </div>
         </div>
         <div class="server-card-actions">
-          <button class="btn btn-sm btn-cyan btn-connect-ssh-card" style="flex: 1;">⚡ ترمینال SSH</button>
-          <button class="btn btn-sm btn-secondary btn-connect-sftp-card" style="flex: 1;">📁 فایل منیجر SFTP</button>
+          <button class="btn btn-sm btn-cyan btn-connect-ssh-card" style="flex: 1;">${sshLabel}</button>
+          <button class="btn btn-sm btn-secondary btn-connect-sftp-card" style="flex: 1;">${sftpLabel}</button>
         </div>
       `;
 
       card.querySelector('.btn-edit-srv').addEventListener('click', () => openConnectModal(srv));
       card.querySelector('.btn-del-srv').addEventListener('click', async () => {
-        if (confirm(`آیا از حذف سرور "${srv.name}" اطمینان دارید؟`)) {
+        const confirmMsg = isPersian 
+          ? `آیا از حذف سرور "${srv.name}" اطمینان دارید؟`
+          : `Are you sure you want to delete server "${srv.name}"?`;
+        if (confirm(confirmMsg)) {
           const { servers: cur = [] } = await chrome.storage.local.get('servers');
           const updated = cur.filter(s => s.id !== srv.id);
           await chrome.storage.local.set({ servers: updated });
@@ -773,8 +826,15 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Export / Import
   btnExportServers.addEventListener('click', async () => {
-    const data = await chrome.storage.local.get(['servers', 'bridgeUrl']);
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const { servers = [], bridgeUrl = 'ws://localhost:3000/ws' } = await chrome.storage.local.get(['servers', 'bridgeUrl']);
+    const exportData = {
+      version: '1.3.0',
+      exportedAt: new Date().toISOString(),
+      bridgeUrl,
+      servers
+    };
+
+    const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
@@ -791,17 +851,18 @@ document.addEventListener('DOMContentLoaded', async () => {
       const file = e.target.files[0];
       if (!file) return;
       const reader = new FileReader();
+      const isPersian = window.i18n && window.i18n.currentLang === 'fa';
       reader.onload = async () => {
         try {
           const json = JSON.parse(reader.result);
           if (json.servers) {
             await chrome.storage.local.set({ servers: json.servers });
             if (json.bridgeUrl) await chrome.storage.local.set({ bridgeUrl: json.bridgeUrl });
-            alert('اطلاعات با موفقیت بازیابی شد ✔');
+            alert(isPersian ? 'اطلاعات با موفقیت بازیابی شد ✔' : 'Servers imported successfully ✔');
             loadServersList();
           }
         } catch (err) {
-          alert('فایل وارد شده معتبر نمی‌باشد: ' + err.message);
+          alert((isPersian ? 'فایل وارد شده معتبر نمی‌باشد: ' : 'Invalid backup file: ') + err.message);
         }
       };
       reader.readAsText(file);
@@ -829,36 +890,38 @@ document.addEventListener('DOMContentLoaded', async () => {
     termManager.fontSize = fontSize;
     termManager.themeName = terminalTheme;
 
-    alert('تنظیمات با موفقیت ذخیره گردید ✔');
+    const isPersian = window.i18n && window.i18n.currentLang === 'fa';
+    alert(isPersian ? 'تنظیمات با موفقیت ذخیره گردید ✔' : 'Settings saved successfully ✔');
   });
 
   btnTestBridge.addEventListener('click', () => {
     const url = settingBridgeUrl.value.trim();
-    bridgeTestResult.textContent = 'در حال تست...';
+    const isPersian = window.i18n && window.i18n.currentLang === 'fa';
+    bridgeTestResult.textContent = isPersian ? 'در حال تست...' : 'Testing connection...';
     bridgeTestResult.style.color = '#f59e0b';
 
     try {
       const ws = new WebSocket(url);
       const timer = setTimeout(() => {
-        bridgeTestResult.textContent = 'خطا: عدم پاسخگویی در مدت زمان تعیین شده';
+        bridgeTestResult.textContent = isPersian ? 'خطا: عدم پاسخگویی در مدت زمان تعیین شده' : 'Error: Connection timed out';
         bridgeTestResult.style.color = '#ef4444';
         try { ws.close(); } catch (e) {}
       }, 4000);
 
       ws.onopen = () => {
         clearTimeout(timer);
-        bridgeTestResult.textContent = 'ارتباط با موفقیت برقرار شد 🚀';
+        bridgeTestResult.textContent = isPersian ? 'ارتباط با موفقیت برقرار شد 🚀' : 'Bridge connected successfully 🚀';
         bridgeTestResult.style.color = '#00ff9d';
         ws.close();
       };
 
       ws.onerror = (e) => {
         clearTimeout(timer);
-        bridgeTestResult.textContent = 'خطا در برقراری ارتباط با وب‌سوکت';
+        bridgeTestResult.textContent = isPersian ? 'خطا در برقراری ارتباط با وب‌سوکت' : 'WebSocket connection failed';
         bridgeTestResult.style.color = '#ef4444';
       };
     } catch (e) {
-      bridgeTestResult.textContent = 'خطا: ' + e.message;
+      bridgeTestResult.textContent = (isPersian ? 'خطا: ' : 'Error: ') + e.message;
       bridgeTestResult.style.color = '#ef4444';
     }
   });

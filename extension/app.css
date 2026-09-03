@@ -1360,6 +1360,7 @@ input:focus, select:focus, textarea:focus {
   font-weight: 800;
   background: linear-gradient(90deg, #ffffff, #00f0ff);
   -webkit-background-clip: text;
+  background-clip: text;
   -webkit-text-fill-color: transparent;
   margin: 0 0 6px 0;
 }
@@ -1508,5 +1509,118 @@ input:focus, select:focus, textarea:focus {
 .meta-val {
   color: #f8fafc;
   font-weight: 500;
+}
+
+/* ================= SFTP VIEW SWITCHER & GRID MODE ================= */
+.sftp-view-toggle-group {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(15, 23, 42, 0.6);
+  padding: 3px;
+  border-radius: var(--radius-xs);
+  border: 1px solid var(--border-glass);
+}
+
+.btn-icon-toggle {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  width: 28px;
+  height: 28px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.btn-icon-toggle:hover {
+  color: var(--text-main);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.btn-icon-toggle.active {
+  background: rgba(0, 240, 255, 0.15);
+  color: var(--accent-cyan);
+  border: 1px solid rgba(0, 240, 255, 0.4);
+  box-shadow: 0 0 8px var(--accent-cyan-glow);
+}
+
+.sftp-grid-view {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  gap: 12px;
+  padding: 16px;
+  overflow-y: auto;
+  align-content: start;
+  height: 100%;
+}
+
+.sftp-grid-card {
+  background: rgba(15, 23, 42, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: var(--radius-sm);
+  padding: 14px 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  position: relative;
+  cursor: pointer;
+  transition: all 0.15s ease-out;
+  user-select: none;
+}
+
+.sftp-grid-card:hover {
+  background: rgba(0, 240, 255, 0.06);
+  border-color: rgba(0, 240, 255, 0.3);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.sftp-grid-card.selected {
+  background: rgba(0, 240, 255, 0.12);
+  border-color: var(--accent-cyan);
+  box-shadow: 0 0 10px var(--accent-cyan-glow);
+}
+
+.grid-card-chk {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  opacity: 0.3;
+  transition: opacity 0.15s ease;
+  cursor: pointer;
+}
+
+.sftp-grid-card:hover .grid-card-chk,
+.sftp-grid-card.selected .grid-card-chk {
+  opacity: 1;
+}
+
+.grid-card-icon {
+  font-size: 34px;
+  margin-bottom: 8px;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.4));
+}
+
+.grid-card-name {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-main);
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  margin-bottom: 4px;
+  width: 100%;
+}
+
+.grid-card-size {
+  font-size: 10px;
+  font-family: var(--font-mono);
+  color: var(--text-muted);
 }
 

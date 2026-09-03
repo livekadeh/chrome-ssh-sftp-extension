@@ -566,6 +566,54 @@ wss.on('connection', (ws, req) => {
       return;
     }
 
+    // --- SFTP COMPRESS ARCHIVE ---
+    if (type === 'sftp-compress') {
+      const { dir: currentDir, files: fileNames, archiveName, format, id } = msg;
+      if (!sshClient || !isConnected) {
+        safeSend({ type: 'sftp-compress-res', id, success: false, error: 'SSH connection not active' });
+        return;
+      }
+
+      if (!Array.isArray(fileNames) || fileNames.length === 0) {
+        safeSend({ type: 'sftp-compress-res', id, success: false, error: 'No files specified for compression' });
+        return;
+      }
+
+      const escapeShell = (str) => "'" + str.replace(/'/g, "'\\''") + "'";
+      const destDir = escapeShell(currentDir || '.');
+      const safeArchive = escapeShell(archiveName);
+      const safeFiles = fileNames.map(f => escapeShell(f)).join(' ');
+
+      let cmd = '';
+      if (format === 'zip' || (archiveName && archiveName.toLowerCase().endsWith('.zip'))) {
+        cmd = `if command -v zip >/dev/null 2>&1; then cd ${destDir} && zip -r ${safeArchive} ${safeFiles}; elif command -v 7z >/dev/null 2>&1; then cd ${destDir} && 7z a ${safeArchive} ${safeFiles}; elif command -v python3 >/dev/null 2>&1; then cd ${destDir} && python3 -c "import zipfile, sys; z = zipfile.ZipFile(sys.argv[1], 'w', zipfile.ZIP_DEFLATED); [z.write(f) for f in sys.argv[2:]]; z.close()" ${safeArchive} ${safeFiles}; else echo "Error: zip or 7z is not installed on the remote server." >&2; exit 127; fi`;
+      } else {
+        cmd = `if command -v tar >/dev/null 2>&1; then cd ${destDir} && tar -czf ${safeArchive} ${safeFiles}; else echo "Error: tar is not installed on the remote server." >&2; exit 127; fi`;
+      }
+
+      sshClient.exec(cmd, (err, stream) => {
+        if (err) {
+          safeSend({ type: 'sftp-compress-res', id, success: false, error: err.message });
+          return;
+        }
+
+        let stdout = '';
+        let stderr = '';
+
+        stream.on('data', (d) => { stdout += d.toString(); });
+        stream.stderr.on('data', (d) => { stderr += d.toString(); });
+
+        stream.on('close', (code) => {
+          if (code === 0) {
+            safeSend({ type: 'sftp-compress-res', id, success: true, message: 'Archive created successfully.', output: stdout });
+          } else {
+            safeSend({ type: 'sftp-compress-res', id, success: false, error: stderr.trim() || stdout.trim() || `Compression failed with code ${code}` });
+          }
+        });
+      });
+      return;
+    }
+
     // --- SFTP STAT ---
     if (type === 'sftp-stat') {
       const { path: targetPath, id } = msg;

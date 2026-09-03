@@ -190,8 +190,29 @@
                 <button id="btnSftpDownload" class="btn btn-sm btn-secondary" disabled>📥 Download</button>
                 <button id="btnSftpEdit" class="btn btn-sm btn-secondary" disabled>✏️ Edit</button>
                 <button id="btnSftpExtract" class="btn btn-sm btn-secondary" disabled title="Extract archive on remote server"><span data-i18n="sftp_extract_btn">📦 Extract</span></button>
+                <button id="btnSftpCompress" class="btn btn-sm btn-secondary" disabled title="Compress selected files"><span data-i18n="sftp_compress_btn">🗜️ Compress</span></button>
                 <button id="btnSftpChmod" class="btn btn-sm btn-secondary" disabled>🔒 Chmod</button>
                 <button id="btnSftpDelete" class="btn btn-sm btn-danger" disabled>🗑️ Delete</button>
+              </div>
+              <div class="action-group sftp-view-toggle-group">
+                <button id="btnSftpViewList" class="btn-icon-toggle active" title="List View" data-i18n-title="sftp_view_list">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                    <line x1="8" y1="6" x2="21" y2="6"></line>
+                    <line x1="8" y1="12" x2="21" y2="12"></line>
+                    <line x1="8" y1="18" x2="21" y2="18"></line>
+                    <line x1="3" y1="6" x2="3.01" y2="6"></line>
+                    <line x1="3" y1="12" x2="3.01" y2="12"></line>
+                    <line x1="3" y1="18" x2="3.01" y2="18"></line>
+                  </svg>
+                </button>
+                <button id="btnSftpViewGrid" class="btn-icon-toggle" title="Grid View" data-i18n-title="sftp_view_grid">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                    <rect x="3" y="3" width="7" height="7"></rect>
+                    <rect x="14" y="3" width="7" height="7"></rect>
+                    <rect x="14" y="14" width="7" height="7"></rect>
+                    <rect x="3" y="14" width="7" height="7"></rect>
+                  </svg>
+                </button>
               </div>
             </div>
 
@@ -219,6 +240,11 @@
                   <!-- Injected via JS -->
                 </tbody>
               </table>
+
+              <!-- SFTP Grid View -->
+              <div class="sftp-grid-view" id="sftpGridView" style="display: none;">
+                <!-- Injected via JS -->
+              </div>
 
               <!-- SFTP Upload Progress Floating Bar -->
               <div id="sftpUploadProgressContainer" class="sftp-upload-progress" style="display: none;">
@@ -278,6 +304,10 @@
             <div class="context-item" id="sftpCtxExtract">
               <span class="ctx-icon">📦</span>
               <span class="ctx-label" data-i18n="sftp_ctx_extract">Extract Archive</span>
+            </div>
+            <div class="context-item" id="sftpCtxCompress">
+              <span class="ctx-icon">🗜️</span>
+              <span class="ctx-label" data-i18n="sftp_ctx_compress">Compress (Zip/Tar)</span>
             </div>
             <div class="context-item" id="sftpCtxRename">
               <span class="ctx-icon">🏷️</span>

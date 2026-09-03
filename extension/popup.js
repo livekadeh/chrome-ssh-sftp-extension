@@ -27,11 +27,15 @@ document.addEventListener('DOMContentLoaded', async () => {
     chrome.storage.local.get(['servers', 'bridgeUrl'], (data) => {
       const servers = data.servers || [];
       serversList.innerHTML = '';
+      const isPersian = window.i18n && window.i18n.currentLang === 'fa';
 
       if (servers.length === 0) {
-        serversList.innerHTML = '<div style="color: #64748b; font-size: 11px; text-align: center; padding: 10px;">سروری ذخیره نشده است</div>';
+        serversList.innerHTML = `<div style="color: #64748b; font-size: 11px; text-align: center; padding: 10px;">${isPersian ? 'سروری ذخیره نشده است' : 'No servers saved'}</div>`;
         return;
       }
+
+      const sshTitle = isPersian ? 'ترمینال SSH' : 'SSH Terminal';
+      const sftpTitle = isPersian ? 'فایل منیجر SFTP' : 'SFTP Manager';
 
       servers.forEach(srv => {
         const item = document.createElement('div');
@@ -45,8 +49,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             </div>
           </div>
           <div class="server-actions">
-            <button class="mini-btn btn-srv-ssh" title="ترمینال SSH">⚡</button>
-            <button class="mini-btn btn-srv-sftp" title="فایل منیجر SFTP">📁</button>
+            <button class="mini-btn btn-srv-ssh" title="${sshTitle}">⚡</button>
+            <button class="mini-btn btn-srv-sftp" title="${sftpTitle}">📁</button>
           </div>
         `;
 

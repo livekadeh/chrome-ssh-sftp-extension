@@ -68,6 +68,13 @@ const I18N_DICTIONARY = {
     sftp_ctx_copy_dir: 'Copy Directory Path',
     sftp_ctx_parent_dir: 'Parent Directory',
     sftp_ctx_refresh: 'Refresh Directory',
+    sftp_compress_btn: '🗜️ Compress',
+    sftp_ctx_compress: 'Compress (Zip / Tar)',
+    sftp_view_list: 'List View',
+    sftp_view_grid: 'Grid View',
+    sftp_items_count: 'items',
+    sftp_selected_count: 'item(s) selected',
+    sftp_no_selection: 'No files selected',
 
     // Servers View
     servers_title: 'Saved Server Vault',
@@ -76,6 +83,12 @@ const I18N_DICTIONARY = {
     servers_add_btn: '+ Add Server',
     servers_export_btn: 'Export JSON',
     servers_import_btn: 'Import JSON',
+    srv_card_ssh: '⚡ SSH Terminal',
+    srv_card_sftp: '📁 SFTP Manager',
+    srv_edit: 'Edit',
+    srv_delete: 'Delete',
+    srv_empty_msg: 'No servers saved yet. Click "+ Add Server" to configure your first server.',
+    srv_delete_confirm: 'Are you sure you want to delete server',
 
     // Settings View
     settings_title: 'Application Settings',
@@ -87,9 +100,17 @@ const I18N_DICTIONARY = {
     settings_theme_label: 'Terminal Color Scheme',
     settings_font_label: 'Terminal Font Family',
     settings_save_btn: 'Save Settings',
+    settings_saved_alert: 'Settings saved successfully ✔',
+    settings_test_running: 'Testing connection...',
+    settings_test_timeout: 'Error: Connection timed out',
+    settings_test_success: 'Bridge connected successfully 🚀',
+    settings_test_failed: 'WebSocket connection failed',
 
     // Modal
     modal_title_connect: 'Connect to Server',
+    modal_title_edit: 'Edit Server',
+    modal_title_new: 'New Server Connection',
+    modal_err_host: 'Please enter a server host address.',
     modal_label_name: 'Server Label',
     modal_label_host: 'Host IP / Domain',
     modal_label_port: 'Port',
@@ -192,6 +213,13 @@ const I18N_DICTIONARY = {
     sftp_ctx_copy_dir: 'کپی آدرس این پوشه',
     sftp_ctx_parent_dir: 'یک سطح بالاتر',
     sftp_ctx_refresh: 'بروزرسانی',
+    sftp_compress_btn: '🗜️ فشرده‌سازی',
+    sftp_ctx_compress: 'فشرده‌سازی فایل‌ها (Compress)',
+    sftp_view_list: 'نمای جدولی',
+    sftp_view_grid: 'نمای شبکه‌ای',
+    sftp_items_count: 'آیتم',
+    sftp_selected_count: 'آیتم انتخاب شده',
+    sftp_no_selection: 'هیچ فایلی انتخاب نشده',
 
     // Servers View
     servers_title: 'صندوقچه سرورهای ذخیره‌شده',
@@ -200,6 +228,12 @@ const I18N_DICTIONARY = {
     servers_add_btn: '+ افزودن سرور جدید',
     servers_export_btn: 'خروجی JSON',
     servers_import_btn: 'ورود اطلاعات JSON',
+    srv_card_ssh: '⚡ ترمینال SSH',
+    srv_card_sftp: '📁 فایل منیجر SFTP',
+    srv_edit: 'ویرایش',
+    srv_delete: 'حذف',
+    srv_empty_msg: 'هیچ سروری ذخیره نشده است. با کلیک بر روی «سرور جدید +» اولین سرور خود را اضافه کنید.',
+    srv_delete_confirm: 'آیا از حذف سرور اطمینان دارید؟',
 
     // Settings View
     settings_title: 'تنظیمات برنامه',
@@ -211,9 +245,17 @@ const I18N_DICTIONARY = {
     settings_theme_label: 'تم رنگی ترمینال',
     settings_font_label: 'فونت ترمینال',
     settings_save_btn: 'ذخیره تنظیمات',
+    settings_saved_alert: 'تنظیمات با موفقیت ذخیره گردید ✔',
+    settings_test_running: 'در حال تست...',
+    settings_test_timeout: 'خطا: عدم پاسخگویی در مدت زمان تعیین شده',
+    settings_test_success: 'ارتباط با موفقیت برقرار شد 🚀',
+    settings_test_failed: 'خطا در برقراری ارتباط با وب‌سوکت',
 
     // Modal
     modal_title_connect: 'اتصال به سرور',
+    modal_title_edit: 'ویرایش سرور',
+    modal_title_new: 'اتصال به سرور جدید',
+    modal_err_host: 'لطفاً آدرس سرور را وارد نمایید.',
     modal_label_name: 'نام نمایشی سرور',
     modal_label_host: 'آدرس سرور (IP یا دامنه)',
     modal_label_port: 'پورت',
