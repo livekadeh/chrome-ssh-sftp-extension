@@ -189,6 +189,7 @@
               <div class="action-group">
                 <button id="btnSftpDownload" class="btn btn-sm btn-secondary" disabled>📥 Download</button>
                 <button id="btnSftpEdit" class="btn btn-sm btn-secondary" disabled>✏️ Edit</button>
+                <button id="btnSftpExtract" class="btn btn-sm btn-secondary" disabled title="Extract archive on remote server"><span data-i18n="sftp_extract_btn">📦 Extract</span></button>
                 <button id="btnSftpChmod" class="btn btn-sm btn-secondary" disabled>🔒 Chmod</button>
                 <button id="btnSftpDelete" class="btn btn-sm btn-danger" disabled>🗑️ Delete</button>
               </div>
@@ -232,6 +233,7 @@
                     </div>
                     <div class="upload-header-right">
                       <span class="upload-percent-text" id="uploadProgressPercent">0%</span>
+                      <button id="btnCancelUpload" class="btn-cancel-upload" title="Cancel Upload / لغو آپلود">✕</button>
                     </div>
                   </div>
                   <div class="upload-track">
@@ -272,6 +274,10 @@
             <div class="context-item" id="sftpCtxEdit">
               <span class="ctx-icon">✏️</span>
               <span class="ctx-label" data-i18n="sftp_ctx_edit">Edit File</span>
+            </div>
+            <div class="context-item" id="sftpCtxExtract">
+              <span class="ctx-icon">📦</span>
+              <span class="ctx-label" data-i18n="sftp_ctx_extract">Extract Archive</span>
             </div>
             <div class="context-item" id="sftpCtxRename">
               <span class="ctx-icon">🏷️</span>

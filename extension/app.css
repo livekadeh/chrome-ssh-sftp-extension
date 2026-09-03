@@ -1229,12 +1229,40 @@ input:focus, select:focus, textarea:focus {
   color: var(--text-muted);
 }
 
+.upload-header-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
 .upload-percent-text {
   font-family: var(--font-mono);
   font-size: 16px;
   font-weight: 700;
   color: var(--accent-cyan);
   text-shadow: 0 0 8px var(--accent-cyan-glow);
+}
+
+.btn-cancel-upload {
+  background: rgba(239, 68, 68, 0.15);
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  color: #ef4444;
+  width: 26px;
+  height: 26px;
+  border-radius: var(--radius-xs);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.btn-cancel-upload:hover {
+  background: rgba(239, 68, 68, 0.35);
+  color: #ffffff;
+  box-shadow: 0 0 10px rgba(239, 68, 68, 0.5);
 }
 
 .upload-track {

@@ -19,6 +19,7 @@ class SFTPManager {
 
     this.pendingCallbacks = new Map();
     this.callbackSeq = 1;
+    this.isUploadCancelled = false;
   }
 
   connect(serverConfig, bridgeUrl, onReady) {
@@ -247,6 +248,22 @@ class SFTPManager {
     this.updateSelectionUI();
   }
 
+  isArchiveFile(filename) {
+    if (!filename) return false;
+    const lower = filename.toLowerCase();
+    return lower.endsWith('.zip') ||
+           lower.endsWith('.tar') ||
+           lower.endsWith('.tar.gz') ||
+           lower.endsWith('.tgz') ||
+           lower.endsWith('.tar.bz2') ||
+           lower.endsWith('.tbz2') ||
+           lower.endsWith('.tar.xz') ||
+           lower.endsWith('.txz') ||
+           lower.endsWith('.gz') ||
+           lower.endsWith('.7z') ||
+           lower.endsWith('.rar');
+  }
+
   updateSelectionUI() {
     const count = this.selectedFiles.size;
     this.statusEl.textContent = count > 0 ? `${count} آیتم انتخاب شده` : 'هیچ فایلی انتخاب نشده';
@@ -256,10 +273,85 @@ class SFTPManager {
     document.getElementById('btnSftpEdit').disabled = count !== 1;
     document.getElementById('btnSftpChmod').disabled = disabled;
     document.getElementById('btnSftpDelete').disabled = disabled;
+
+    const btnSftpExtract = document.getElementById('btnSftpExtract');
+    if (btnSftpExtract) {
+      const isSingleArchive = count === 1 && this.isArchiveFile(Array.from(this.selectedFiles)[0]);
+      btnSftpExtract.disabled = !isSingleArchive;
+    }
+  }
+
+  async extractArchive(filename) {
+    if (!filename) {
+      if (this.selectedFiles.size === 0) return;
+      filename = Array.from(this.selectedFiles)[0];
+    }
+    const isPersian = window.i18n && window.i18n.currentLang === 'fa';
+    const confirmMsg = isPersian 
+      ? `آیا می‌خواهید فایل فشرده "${filename}" در همین مسیر (${this.currentPath}) استخراج (Extract) شود؟`
+      : `Extract archive "${filename}" into current directory (${this.currentPath})?`;
+
+    if (!confirm(confirmMsg)) return;
+
+    const base = this.currentPath.endsWith('/') ? this.currentPath : this.currentPath + '/';
+    const archivePath = base + filename;
+    const destDir = this.currentPath;
+
+    this.updateStatus(isPersian ? `در حال استخراج ${filename}...` : `Extracting ${filename}...`);
+
+    try {
+      const res = await this.sendRequest({
+        type: 'sftp-extract',
+        path: archivePath,
+        dir: destDir
+      });
+
+      if (res && res.success) {
+        const succMsg = isPersian ? `فایل "${filename}" با موفقیت استخراج شد ✔` : `Archive "${filename}" extracted successfully ✔`;
+        this.updateStatus(succMsg);
+        alert(succMsg);
+        this.listDirectory(this.currentPath);
+      } else {
+        const errMsg = res && res.error ? res.error : 'Unknown extract error';
+        alert(isPersian ? `خطا در استخراج فایل فشرده:\n${errMsg}` : `Extract error:\n${errMsg}`);
+        this.updateStatus(isPersian ? 'خطا در استخراج آرشیو' : 'Extract failed');
+      }
+    } catch (err) {
+      alert(`Extract error: ${err.message}`);
+      this.updateStatus('Extract error');
+    }
+  }
+
+  cancelUpload() {
+    this.isUploadCancelled = true;
+    const isPersian = window.i18n && window.i18n.currentLang === 'fa';
+    this.updateStatus(isPersian ? 'آپلود توسط کاربر متوقف شد ✕' : 'Upload cancelled by user ✕');
+
+    const speedEl = document.getElementById('uploadProgressSpeed');
+    if (speedEl) speedEl.textContent = isPersian ? 'لغو شد' : 'Cancelled';
+
+    const percentEl = document.getElementById('uploadProgressPercent');
+    if (percentEl) {
+      percentEl.textContent = '✕';
+      percentEl.style.color = '#ef4444';
+    }
+
+    const barEl = document.getElementById('uploadProgressBar');
+    if (barEl) barEl.style.background = '#ef4444';
+
+    setTimeout(() => {
+      const progressContainer = document.getElementById('sftpUploadProgressContainer');
+      if (progressContainer) progressContainer.style.display = 'none';
+      if (barEl) barEl.style.background = '';
+      if (percentEl) percentEl.style.color = '';
+      this.listDirectory(this.currentPath);
+    }, 1200);
   }
 
   async uploadFiles(fileList) {
     if (!fileList || fileList.length === 0) return;
+
+    this.isUploadCancelled = false;
 
     const progressContainer = document.getElementById('sftpUploadProgressContainer');
     const fileNameEl = document.getElementById('uploadProgressFileName');
@@ -271,6 +363,14 @@ class SFTPManager {
 
     if (progressContainer) {
       progressContainer.style.display = 'block';
+      if (barEl) {
+        barEl.style.width = '0%';
+        barEl.style.background = '';
+      }
+      if (percentEl) {
+        percentEl.textContent = '0%';
+        percentEl.style.color = '';
+      }
     }
 
     let totalBytes = 0;
@@ -280,43 +380,60 @@ class SFTPManager {
     let overallUploadedBytes = 0;
     const startTime = Date.now();
 
+    // Fast arrayBuffer to base64 conversion avoiding FileReader overhead
+    const readSliceBase64 = async (blob) => {
+      const buffer = await blob.arrayBuffer();
+      let binary = '';
+      const bytes = new Uint8Array(buffer);
+      const len = bytes.byteLength;
+      const STEP = 32768;
+      for (let i = 0; i < len; i += STEP) {
+        binary += String.fromCharCode.apply(null, bytes.subarray(i, Math.min(i + STEP, len)));
+      }
+      return btoa(binary);
+    };
+
+    // 512 KB chunk size (4x larger to reduce network round trips)
+    const chunkSize = 512 * 1024;
+    // Pipelining: up to 3 chunks in flight concurrently to eliminate ping latency
+    const CONCURRENCY = 3;
+
     for (let i = 0; i < fileList.length; i++) {
+      if (this.isUploadCancelled) break;
+
       const file = fileList[i];
       const targetPath = (this.currentPath.endsWith('/') ? this.currentPath : this.currentPath + '/') + file.name;
 
       if (fileNameEl) fileNameEl.textContent = file.name;
-      if (counterEl) counterEl.textContent = `فایل ${i + 1} از ${fileList.length}`;
+      if (counterEl) counterEl.textContent = `${i + 1} / ${fileList.length}`;
       this.updateStatus(`در حال آپلود ${file.name} (${i + 1}/${fileList.length})...`);
 
-      const chunkSize = 128 * 1024; // 128 KB chunks
-
       if (file.size <= chunkSize) {
-        // Direct read for small files
-        const base64Data = await new Promise((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onload = () => resolve(reader.result.split(',')[1]);
-          reader.onerror = reject;
-          reader.readAsDataURL(file);
-        });
-
+        // Fast direct write for small files
         try {
+          const base64Data = await readSliceBase64(file);
+          if (this.isUploadCancelled) break;
           await this.sendRequest({
             type: 'sftp-write',
             path: targetPath,
             content: base64Data,
             isBase64: true
           });
+          overallUploadedBytes += file.size;
         } catch (err) {
-          alert(`خطا در آپلود ${file.name}: ${err.message}`);
+          if (!this.isUploadCancelled) alert(`خطا در آپلود ${file.name}: ${err.message}`);
+          break;
         }
 
-        overallUploadedBytes += file.size;
         const percent = totalBytes > 0 ? Math.round((overallUploadedBytes / totalBytes) * 100) : 100;
+        const elapsed = (Date.now() - startTime) / 1000;
+        const speed = elapsed > 0 ? overallUploadedBytes / elapsed : 0;
         if (percentEl) percentEl.textContent = `${percent}%`;
         if (barEl) barEl.style.width = `${percent}%`;
-        if (sizeEl) sizeEl.textContent = `${this.formatSize(overallUploadedBytes)} / ${this.formatSize(totalBytes)}`;
+        if (sizeEl) sizeEl.textContent = `${this.formatBytes(overallUploadedBytes)} / ${this.formatBytes(totalBytes)}`;
+        if (speedEl) speedEl.textContent = `${this.formatBytes(speed)}/s`;
       } else {
-        // Chunked stream upload for large files
+        // High-speed pipelined chunk upload for large files
         let initRes;
         try {
           initRes = await this.sendRequest({ type: 'sftp-chunk-init', path: targetPath });
@@ -326,81 +443,92 @@ class SFTPManager {
 
         if (initRes && initRes.success && initRes.uploadId) {
           const uploadId = initRes.uploadId;
-          for (let offset = 0; offset < file.size; offset += chunkSize) {
-            const slice = file.slice(offset, offset + chunkSize);
-            const chunkBase64 = await new Promise((resolve, reject) => {
-              const reader = new FileReader();
-              reader.onload = () => resolve(reader.result.split(',')[1]);
-              reader.onerror = reject;
-              reader.readAsDataURL(slice);
-            });
+          const inFlight = new Set();
+          let uploadError = null;
 
-            try {
+          for (let offset = 0; offset < file.size; offset += chunkSize) {
+            if (this.isUploadCancelled || uploadError) break;
+
+            const slice = file.slice(offset, offset + chunkSize);
+            const sliceOffset = offset;
+
+            const task = (async () => {
+              const chunkBase64 = await readSliceBase64(slice);
+              if (this.isUploadCancelled || uploadError) return;
+
               await this.sendRequest({
                 type: 'sftp-chunk-write',
                 uploadId: uploadId,
                 chunk: chunkBase64,
-                offset: offset
+                offset: sliceOffset
               });
-            } catch (err) {
-              alert(`خطا در آپلود تکه فایل ${file.name}: ${err.message}`);
-              break;
+
+              overallUploadedBytes += slice.size;
+              const percent = totalBytes > 0 ? Math.min(100, Math.round((overallUploadedBytes / totalBytes) * 100)) : 100;
+              const elapsed = (Date.now() - startTime) / 1000;
+              const speed = elapsed > 0 ? overallUploadedBytes / elapsed : 0;
+
+              if (percentEl) percentEl.textContent = `${percent}%`;
+              if (barEl) barEl.style.width = `${percent}%`;
+              if (sizeEl) sizeEl.textContent = `${this.formatBytes(overallUploadedBytes)} / ${this.formatBytes(totalBytes)}`;
+              if (speedEl) speedEl.textContent = `${this.formatBytes(speed)}/s`;
+            })().catch(err => {
+              uploadError = err;
+            });
+
+            inFlight.add(task);
+            task.finally(() => inFlight.delete(task));
+
+            if (inFlight.size >= CONCURRENCY) {
+              await Promise.race(inFlight);
             }
-
-            overallUploadedBytes += slice.size;
-            const percent = totalBytes > 0 ? Math.min(100, Math.round((overallUploadedBytes / totalBytes) * 100)) : 100;
-            const elapsed = (Date.now() - startTime) / 1000;
-            const speed = elapsed > 0 ? overallUploadedBytes / elapsed : 0;
-
-            if (percentEl) percentEl.textContent = `${percent}%`;
-            if (barEl) barEl.style.width = `${percent}%`;
-            if (sizeEl) sizeEl.textContent = `${this.formatSize(overallUploadedBytes)} / ${this.formatSize(totalBytes)}`;
-            if (speedEl) speedEl.textContent = `${this.formatSize(speed)}/s`;
           }
+
+          await Promise.all(inFlight);
 
           try {
             await this.sendRequest({ type: 'sftp-chunk-end', uploadId });
           } catch (e) {}
+
+          if (uploadError && !this.isUploadCancelled) {
+            alert(`خطا در آپلود ${file.name}: ${uploadError.message}`);
+            break;
+          }
         } else {
           // Direct write fallback
-          const base64Data = await new Promise((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onload = () => resolve(reader.result.split(',')[1]);
-            reader.onerror = reject;
-            reader.readAsDataURL(file);
-          });
-
           try {
+            const base64Data = await readSliceBase64(file);
+            if (this.isUploadCancelled) break;
             await this.sendRequest({
               type: 'sftp-write',
               path: targetPath,
               content: base64Data,
               isBase64: true
             });
+            overallUploadedBytes += file.size;
           } catch (err) {
-            alert(`خطا در آپلود ${file.name}: ${err.message}`);
+            if (!this.isUploadCancelled) alert(`خطا در آپلود ${file.name}: ${err.message}`);
+            break;
           }
-
-          overallUploadedBytes += file.size;
-          const percent = totalBytes > 0 ? Math.round((overallUploadedBytes / totalBytes) * 100) : 100;
-          if (percentEl) percentEl.textContent = `${percent}%`;
-          if (barEl) barEl.style.width = `${percent}%`;
-          if (sizeEl) sizeEl.textContent = `${this.formatSize(overallUploadedBytes)} / ${this.formatSize(totalBytes)}`;
         }
       }
     }
 
+    if (this.isUploadCancelled) {
+      return;
+    }
+
     if (percentEl) percentEl.textContent = '100% ✔';
     if (barEl) barEl.style.width = '100%';
-    if (speedEl) speedEl.textContent = 'تکمیل شد';
-    this.updateStatus('تمام فایل‌ها با موفقیت آپلود شدند ✔');
+    const isPersian = window.i18n && window.i18n.currentLang === 'fa';
+    if (speedEl) speedEl.textContent = isPersian ? 'تکمیل شد' : 'Complete';
+    this.updateStatus(isPersian ? 'تمام فایل‌ها با موفقیت آپلود شدند ✔' : 'All files uploaded successfully ✔');
 
     setTimeout(() => {
       if (progressContainer) progressContainer.style.display = 'none';
       if (barEl) barEl.style.width = '0%';
-    }, 1600);
-
-    this.listDirectory(this.currentPath);
+      this.listDirectory(this.currentPath);
+    }, 1500);
   }
 
   async downloadFile(filename) {

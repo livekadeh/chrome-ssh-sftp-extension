@@ -508,6 +508,64 @@ wss.on('connection', (ws, req) => {
       return;
     }
 
+    // --- SFTP EXTRACT ARCHIVE ---
+    if (type === 'sftp-extract') {
+      const { path: archivePath, dir: destDir, id } = msg;
+      if (!sshClient || !isConnected) {
+        safeSend({ type: 'sftp-extract-res', id, success: false, error: 'SSH connection not active' });
+        return;
+      }
+
+      const escapeShell = (str) => "'" + str.replace(/'/g, "'\\''") + "'";
+      const targetArchive = escapeShell(archivePath);
+      const destination = escapeShell(destDir || '.');
+      const lower = archivePath.toLowerCase();
+      let cmd = '';
+
+      if (lower.endsWith('.zip')) {
+        cmd = `if command -v unzip >/dev/null 2>&1; then unzip -o ${targetArchive} -d ${destination}; elif command -v 7z >/dev/null 2>&1; then 7z x -y -o${destination} ${targetArchive}; elif command -v python3 >/dev/null 2>&1; then python3 -c "import zipfile; zipfile.ZipFile(${targetArchive}).extractall(${destination})"; elif command -v python >/dev/null 2>&1; then python -c "import zipfile; zipfile.ZipFile(${targetArchive}).extractall(${destination})"; else echo "Error: Neither unzip, 7z, nor python is installed on the remote server." >&2; exit 127; fi`;
+      } else if (lower.endsWith('.tar.gz') || lower.endsWith('.tgz')) {
+        cmd = `if command -v tar >/dev/null 2>&1; then tar -xzf ${targetArchive} -C ${destination}; else echo "Error: tar is not installed on the remote server." >&2; exit 127; fi`;
+      } else if (lower.endsWith('.tar.bz2') || lower.endsWith('.tbz2')) {
+        cmd = `if command -v tar >/dev/null 2>&1; then tar -xjf ${targetArchive} -C ${destination}; else echo "Error: tar is not installed on the remote server." >&2; exit 127; fi`;
+      } else if (lower.endsWith('.tar.xz') || lower.endsWith('.txz')) {
+        cmd = `if command -v tar >/dev/null 2>&1; then tar -xJf ${targetArchive} -C ${destination}; else echo "Error: tar is not installed on the remote server." >&2; exit 127; fi`;
+      } else if (lower.endsWith('.tar')) {
+        cmd = `if command -v tar >/dev/null 2>&1; then tar -xf ${targetArchive} -C ${destination}; else echo "Error: tar is not installed on the remote server." >&2; exit 127; fi`;
+      } else if (lower.endsWith('.gz')) {
+        cmd = `if command -v gunzip >/dev/null 2>&1; then cd ${destination} && gunzip -k ${targetArchive}; elif command -v gzip >/dev/null 2>&1; then cd ${destination} && gzip -dk ${targetArchive}; else echo "Error: gzip/gunzip is not installed on the remote server." >&2; exit 127; fi`;
+      } else if (lower.endsWith('.7z')) {
+        cmd = `if command -v 7z >/dev/null 2>&1; then 7z x -y -o${destination} ${targetArchive}; else echo "Error: 7z is not installed on the remote server." >&2; exit 127; fi`;
+      } else if (lower.endsWith('.rar')) {
+        cmd = `if command -v unrar >/dev/null 2>&1; then unrar x -o+ ${targetArchive} ${destination}; elif command -v 7z >/dev/null 2>&1; then 7z x -y -o${destination} ${targetArchive}; else echo "Error: unrar or 7z is not installed on the remote server." >&2; exit 127; fi`;
+      } else {
+        safeSend({ type: 'sftp-extract-res', id, success: false, error: 'Unsupported archive format. Supported formats: .zip, .tar, .tar.gz, .tgz, .tar.bz2, .tar.xz, .gz, .7z, .rar' });
+        return;
+      }
+
+      sshClient.exec(cmd, (err, stream) => {
+        if (err) {
+          safeSend({ type: 'sftp-extract-res', id, success: false, error: err.message });
+          return;
+        }
+
+        let stdout = '';
+        let stderr = '';
+
+        stream.on('data', (d) => { stdout += d.toString(); });
+        stream.stderr.on('data', (d) => { stderr += d.toString(); });
+
+        stream.on('close', (code) => {
+          if (code === 0) {
+            safeSend({ type: 'sftp-extract-res', id, success: true, message: 'Archive extracted successfully.', output: stdout });
+          } else {
+            safeSend({ type: 'sftp-extract-res', id, success: false, error: stderr.trim() || stdout.trim() || `Command exited with code ${code}` });
+          }
+        });
+      });
+      return;
+    }
+
     // --- SFTP STAT ---
     if (type === 'sftp-stat') {
       const { path: targetPath, id } = msg;
