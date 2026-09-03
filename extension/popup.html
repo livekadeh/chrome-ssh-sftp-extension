@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="fa" dir="rtl">
+<html lang="en" dir="ltr">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -17,7 +17,7 @@
           <span class="subtitle">SSH & SFTP Pro</span>
         </div>
       </div>
-      <button id="btnOpenFull" class="btn-icon" title="باز کردن در تب بزرگ">
+      <button id="btnOpenFull" class="btn-icon" title="Open in Full Tab">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
           <polyline points="15 3 21 3 21 9"></polyline>
@@ -28,23 +28,23 @@
 
     <!-- Quick Server Connect Bar -->
     <div class="quick-connect-card">
-      <div class="card-title">اتصال سریع به سرور</div>
+      <div class="card-title" data-i18n="popup_quick_connect">Quick Connect to Server</div>
       <div class="form-row">
-        <input type="text" id="quickHost" placeholder="آدرس سرور یا IP (مثلاً 192.168.1.100 یا example.com)" dir="ltr">
+        <input type="text" id="quickHost" placeholder="Server IP or Host (e.g. 192.168.1.100)" data-i18n-placeholder="popup_host_placeholder" dir="ltr">
       </div>
       <div class="form-grid">
-        <input type="text" id="quickUser" placeholder="نام کاربری (مثلاً ubuntu)" value="root" dir="ltr">
-        <input type="number" id="quickPort" placeholder="پورت (22)" value="22" dir="ltr">
+        <input type="text" id="quickUser" placeholder="User (e.g. root)" data-i18n-placeholder="popup_user_placeholder" value="root" dir="ltr">
+        <input type="number" id="quickPort" placeholder="Port (22)" data-i18n-placeholder="popup_port_placeholder" value="22" dir="ltr">
       </div>
       <div class="form-row">
-        <input type="password" id="quickPass" placeholder="رمز عبور یا کلید" dir="ltr">
+        <input type="password" id="quickPass" placeholder="Password or key" data-i18n-placeholder="popup_pass_placeholder" dir="ltr">
       </div>
       <div class="action-buttons">
         <button id="btnQuickSSH" class="btn btn-primary">
-          <span>⚡ ترمینال SSH</span>
+          <span>⚡ SSH Terminal</span>
         </button>
         <button id="btnQuickSFTP" class="btn btn-secondary">
-          <span>📁 فایل منیجر SFTP</span>
+          <span>📁 SFTP Manager</span>
         </button>
       </div>
     </div>
@@ -52,8 +52,8 @@
     <!-- Saved Servers List -->
     <div class="saved-servers-section">
       <div class="section-header">
-        <span>سرورهای ذخیره‌شده</span>
-        <button id="btnManageServers" class="link-btn">مدیریت +</button>
+        <span data-i18n="popup_saved_servers">Saved Servers</span>
+        <button id="btnManageServers" class="link-btn" data-i18n="popup_manage">Manage +</button>
       </div>
       <div id="serversList" class="servers-list">
         <!-- Injected via JS -->
@@ -64,12 +64,13 @@
     <footer class="footer">
       <div class="bridge-status">
         <span class="status-dot" id="bridgeDot"></span>
-        <span id="bridgeStatusText">بریج سرور: در حال بررسی...</span>
+        <span id="bridgeStatusText" data-i18n="popup_bridge_checking">Bridge: Checking...</span>
       </div>
-      <button id="btnSettings" class="btn-icon" title="تنظیمات">⚙️</button>
+      <button id="btnSettings" class="btn-icon" title="Settings">⚙️</button>
     </footer>
   </div>
 
+  <script src="lib/i18n.js"></script>
   <script src="popup.js"></script>
 </body>
 </html>

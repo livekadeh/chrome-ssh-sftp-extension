@@ -2,7 +2,11 @@
  * LiveKadeh SSH & SFTP Manager - Popup Controller
  */
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
+  if (window.i18n) {
+    await window.i18n.init();
+  }
+
   const btnOpenFull = document.getElementById('btnOpenFull');
   const btnSettings = document.getElementById('btnSettings');
   const btnManageServers = document.getElementById('btnManageServers');

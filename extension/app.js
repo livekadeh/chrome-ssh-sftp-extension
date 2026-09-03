@@ -3,6 +3,11 @@
  */
 
 document.addEventListener('DOMContentLoaded', async () => {
+  // Initialize i18n (default: English)
+  if (window.i18n) {
+    await window.i18n.init();
+  }
+
   // Global elements
   const navTabs = document.querySelectorAll('.nav-tab');
   const viewPanels = document.querySelectorAll('.view-panel');
@@ -11,6 +16,22 @@ document.addEventListener('DOMContentLoaded', async () => {
   const btnConnectModal = document.getElementById('btnConnectModal');
   const connectModal = document.getElementById('connectModal');
   const btnCloseConnectModal = document.getElementById('btnCloseConnectModal');
+  const btnLangToggle = document.getElementById('btnLangToggle');
+  const settingLanguage = document.getElementById('settingLanguage');
+
+  if (settingLanguage && window.i18n) {
+    settingLanguage.value = window.i18n.currentLang;
+    settingLanguage.addEventListener('change', async () => {
+      await window.i18n.setLanguage(settingLanguage.value);
+    });
+  }
+
+  if (btnLangToggle && window.i18n) {
+    btnLangToggle.addEventListener('click', async () => {
+      const nextLang = await window.i18n.toggleLanguage();
+      if (settingLanguage) settingLanguage.value = nextLang;
+    });
+  }
 
   // Terminal elements
   const terminalTabsList = document.getElementById('terminalTabsList');

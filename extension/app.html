@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="fa" dir="rtl">
+<html lang="en" dir="ltr">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -24,29 +24,33 @@
       <nav class="nav-tabs">
         <button class="nav-tab active" data-view="ssh">
           <span class="tab-icon">⚡</span>
-          <span>ترمینال SSH</span>
+          <span data-i18n="nav_terminal">SSH Terminal</span>
         </button>
         <button class="nav-tab" data-view="sftp">
           <span class="tab-icon">📁</span>
-          <span>فایل منیجر SFTP</span>
+          <span data-i18n="nav_sftp">SFTP File Manager</span>
         </button>
         <button class="nav-tab" data-view="servers">
           <span class="tab-icon">🖥️</span>
-          <span>سرورهای ذخیره‌شده</span>
+          <span data-i18n="nav_servers">Saved Servers</span>
         </button>
         <button class="nav-tab" data-view="settings">
           <span class="tab-icon">⚙️</span>
-          <span>تنظیمات</span>
+          <span data-i18n="nav_settings">Settings</span>
         </button>
       </nav>
 
-      <!-- Active Connection Status Pill -->
+      <!-- Active Connection Status Pill & Actions -->
       <div class="header-right">
+        <button id="btnLangToggle" class="btn-lang-switcher" title="Switch Language / تغییر زبان">
+          <span id="langCurrentText">🌐 English</span>
+        </button>
+
         <div class="server-pill" id="activeServerPill">
           <span class="status-indicator disconnected" id="globalStatusDot"></span>
-          <span class="server-title" id="globalServerName">اتصال برقرار نیست</span>
+          <span class="server-title" id="globalServerName" data-i18n="not_connected">Not Connected</span>
         </div>
-        <button id="btnConnectModal" class="btn btn-primary"><span>+ اتصال جدید</span></button>
+        <button id="btnConnectModal" class="btn btn-primary"><span data-i18n="btn_new_connection">+ New Connection</span></button>
       </div>
     </header>
 
@@ -62,19 +66,19 @@
               <!-- Active Tabs injected here -->
             </div>
             <div class="terminal-toolbar">
-              <button id="btnNewTerminalTab" class="btn-action" title="ترمینال جدید">+</button>
-              <button id="btnToggleRtl" class="btn-action active-rtl" title="راست‌چین خودکار خطوط فارسی (RTL)">
-                <span>↔ راست‌چین فارسی</span>
+              <button id="btnNewTerminalTab" class="btn-action" title="New Terminal Tab" data-i18n-title="term_new_tab">+</button>
+              <button id="btnToggleRtl" class="btn-action active-rtl" title="Toggle RTL Persian" data-i18n-title="term_toggle_rtl">
+                <span data-i18n="term_toggle_rtl">↔ RTL Persian</span>
               </button>
-              <button id="btnTermReconnect" class="btn-action" title="اتصال مجدد">
+              <button id="btnTermReconnect" class="btn-action" title="Reconnect Session" data-i18n-title="term_reconnect">
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle;">
                   <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/>
                 </svg>
               </button>
-              <button id="btnTermClear" class="btn-action" title="پاک کردن ترمینال">🧹</button>
+              <button id="btnTermClear" class="btn-action" title="Clear Terminal" data-i18n-title="term_clear">🧹</button>
               <div class="font-controls">
-                <button id="btnFontMinus" class="btn-action" title="کاهش فونت">A-</button>
-                <button id="btnFontPlus" class="btn-action" title="افزایش فونت">A+</button>
+                <button id="btnFontMinus" class="btn-action" title="Decrease Font" data-i18n-title="term_font_minus">A-</button>
+                <button id="btnFontPlus" class="btn-action" title="Increase Font" data-i18n-title="term_font_plus">A+</button>
               </div>
             </div>
           </div>
@@ -83,40 +87,40 @@
           <div class="terminal-container" id="terminalContainer">
             <div id="terminalEmptyState" class="empty-state">
               <div class="empty-icon">⚡</div>
-              <h3>ترمینال SSH فعال نیست</h3>
-              <p>جهت اتصال به سرور و باز کردن خط فرمان، از دکمه اتصال جدید یا لیست سرورها استفاده کنید.</p>
-              <button class="btn btn-cyan btn-open-connect">اتصال به سرور 🚀</button>
+              <h3 data-i18n="term_empty_title">No Active SSH Session</h3>
+              <p data-i18n="term_empty_desc">Connect to a server from the connection modal or saved servers list.</p>
+              <button class="btn btn-cyan btn-open-connect" data-i18n="term_connect_now">Connect to Server 🚀</button>
             </div>
             <div id="xtermWrapper" class="xterm-wrapper" style="display: none;"></div>
           </div>
 
           <!-- Persian Terminal Input Helper Bar -->
           <div class="terminal-persian-bar" id="terminalPersianBar">
-            <div class="persian-bar-badge">⚡ ورودی فارسی:</div>
-            <input type="text" id="terminalPersianInput" placeholder="تایپ مستقیم دستور یا پیام به زبان فارسی (با زدن Enter ارسال می‌شود)..." dir="rtl">
-            <button id="btnSendPersianInput" class="btn btn-sm btn-cyan">ارسال ↵</button>
+            <div class="persian-bar-badge" data-i18n="persian_bar_badge">⚡ Persian Input:</div>
+            <input type="text" id="terminalPersianInput" placeholder="Type Persian text or commands (Press Enter to send)..." data-i18n-placeholder="persian_bar_placeholder" dir="rtl">
+            <button id="btnSendPersianInput" class="btn btn-sm btn-cyan" data-i18n="persian_bar_send">Send ↵</button>
           </div>
 
           <!-- Terminal Right-Click Context Menu -->
           <div id="terminalContextMenu" class="term-context-menu" style="display: none;">
             <div class="context-item" id="ctxCopy">
               <span class="ctx-icon">📋</span>
-              <span class="ctx-label">کپی (Copy)</span>
+              <span class="ctx-label" data-i18n="ctx_copy">Copy</span>
               <span class="ctx-shortcut">Ctrl+Shift+C</span>
             </div>
             <div class="context-item" id="ctxPaste">
               <span class="ctx-icon">📥</span>
-              <span class="ctx-label">پیست (Paste)</span>
+              <span class="ctx-label" data-i18n="ctx_paste">Paste</span>
               <span class="ctx-shortcut">Ctrl+Shift+V</span>
             </div>
             <div class="context-divider"></div>
             <div class="context-item" id="ctxSelectAll">
               <span class="ctx-icon">🔍</span>
-              <span class="ctx-label">انتخاب همه</span>
+              <span class="ctx-label" data-i18n="ctx_select_all">Select All</span>
             </div>
             <div class="context-item" id="ctxClear">
               <span class="ctx-icon">🧹</span>
-              <span class="ctx-label">پاک‌سازی صفحه</span>
+              <span class="ctx-label" data-i18n="ctx_clear">Clear Screen</span>
             </div>
           </div>
         </div>
@@ -128,7 +132,7 @@
           <!-- SFTP Left Sidebar (Quick Paths & Storage) -->
           <aside class="sftp-sidebar">
             <div class="sidebar-block">
-              <div class="sidebar-title">مسیرهای سریع</div>
+              <div class="sidebar-title" data-i18n="sftp_quick_paths">Quick Paths</div>
               <div class="quick-nav-list">
                 <button class="quick-nav-item" data-path="/root"><span>👑</span> /root</button>
                 <button class="quick-nav-item" data-path="/var/www"><span>🌐</span> /var/www</button>
@@ -138,16 +142,6 @@
                 <button class="quick-nav-item" data-path="/tmp"><span>📦</span> /tmp</button>
               </div>
             </div>
-
-            <div class="sidebar-block">
-              <div class="sidebar-title">راهنمای کلیدها</div>
-              <div class="shortcuts-guide">
-                <div><kbd>Enter</kbd> باز کردن پوشه / فایل</div>
-                <div><kbd>Del</kbd> حذف فایل</div>
-                <div><kbd>F2</kbd> تغییر نام</div>
-                <div><kbd>Ctrl+S</kbd> ذخیره در ادیتور</div>
-              </div>
-            </div>
           </aside>
 
           <!-- SFTP Main Browser -->
@@ -155,7 +149,7 @@
             <!-- Breadcrumb & Search Bar -->
             <div class="sftp-nav-bar">
               <div class="nav-buttons">
-                <button id="btnSftpRefresh" class="btn-icon-sm" title="بروزرسانی">
+                <button id="btnSftpRefresh" class="btn-icon-sm" title="Refresh" data-i18n-title="sftp_refresh">
                   <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle;">
                     <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/>
                   </svg>
@@ -163,10 +157,10 @@
               </div>
               <div class="breadcrumb-container">
                 <input type="text" id="sftpCurrentPath" value="/root" dir="ltr" class="path-input">
-                <button id="btnGoPath" class="btn-sm btn-cyan">برو</button>
+                <button id="btnGoPath" class="btn-sm btn-cyan">Go</button>
               </div>
               <div class="sftp-search">
-                <input type="text" id="sftpSearchInput" placeholder="🔍 فیلتر و جستجوی فایل...">
+                <input type="text" id="sftpSearchInput" placeholder="Filter files in current folder..." data-i18n-placeholder="sftp_search_placeholder">
               </div>
             </div>
 
@@ -174,25 +168,25 @@
             <div class="sftp-actions-bar">
               <div class="action-group">
                 <label class="btn btn-sm btn-cyan file-upload-label">
-                  <span>📤 آپلود فایل</span>
+                  <span data-i18n="sftp_upload_btn">📤 Upload Files</span>
                   <input type="file" id="sftpFileInput" style="display: none;" multiple>
                 </label>
-                <button id="btnSftpNewFile" class="btn btn-sm btn-secondary">📄 فایل جدید</button>
-                <button id="btnSftpNewFolder" class="btn btn-sm btn-secondary">📁 پوشه جدید</button>
-                <button id="btnSftpUp" class="btn btn-sm btn-secondary" title="یک سطح بالاتر">
+                <button id="btnSftpNewFile" class="btn btn-sm btn-secondary" data-i18n="sftp_new_file">📄 New File</button>
+                <button id="btnSftpNewFolder" class="btn btn-sm btn-secondary" data-i18n="sftp_new_folder">📁 New Folder</button>
+                <button id="btnSftpUp" class="btn btn-sm btn-secondary" title="Go to parent directory" data-i18n-title="sftp_parent_dir">
                   <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: middle; margin-left: 5px;">
                     <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
                     <line x1="12" y1="11" x2="12" y2="17"></line>
                     <polyline points="9 14 12 11 15 14"></polyline>
                   </svg>
-                  <span>یک سطح بالاتر</span>
+                  <span data-i18n="sftp_parent_dir">Parent Dir</span>
                 </button>
               </div>
               <div class="action-group">
-                <button id="btnSftpDownload" class="btn btn-sm btn-secondary" disabled>📥 دانلود</button>
-                <button id="btnSftpEdit" class="btn btn-sm btn-secondary" disabled>✏️ ویرایش</button>
-                <button id="btnSftpChmod" class="btn btn-sm btn-secondary" disabled>🔒 مجوزها</button>
-                <button id="btnSftpDelete" class="btn btn-sm btn-danger" disabled>🗑️ حذف</button>
+                <button id="btnSftpDownload" class="btn btn-sm btn-secondary" disabled>📥 Download</button>
+                <button id="btnSftpEdit" class="btn btn-sm btn-secondary" disabled>✏️ Edit</button>
+                <button id="btnSftpChmod" class="btn btn-sm btn-secondary" disabled>🔒 Chmod</button>
+                <button id="btnSftpDelete" class="btn btn-sm btn-danger" disabled>🗑️ Delete</button>
               </div>
             </div>
 
@@ -200,20 +194,20 @@
             <div class="sftp-table-container" id="sftpDropZone">
               <div id="sftpEmptyState" class="empty-state">
                 <div class="empty-icon">📁</div>
-                <h3>اتصال SFTP برقرار نیست</h3>
-                <p>جهت مشاهده و مدیریت فایل‌های سرور، لطفاً ابتدا متصل شوید.</p>
-                <button class="btn btn-cyan btn-open-connect">اتصال به SFTP 🚀</button>
+                <h3>No SFTP Connection</h3>
+                <p>Connect to an SSH/SFTP server to view and manage remote files.</p>
+                <button class="btn btn-cyan btn-open-connect">Connect to SFTP 🚀</button>
               </div>
               
               <table class="sftp-table" id="sftpTable" style="display: none;">
                 <thead>
                   <tr>
                     <th style="width: 40px;"><input type="checkbox" id="selectAllFiles"></th>
-                    <th>نام فایل / پوشه</th>
-                    <th style="width: 120px;">حجم</th>
-                    <th style="width: 110px;">مجوزها</th>
-                    <th style="width: 180px;">آخرین تغییرات</th>
-                    <th style="width: 120px; text-align: center;">عملیات</th>
+                    <th data-i18n="sftp_th_name">Name</th>
+                    <th style="width: 120px;" data-i18n="sftp_th_size">Size</th>
+                    <th style="width: 110px;" data-i18n="sftp_th_perms">Permissions</th>
+                    <th style="width: 180px;" data-i18n="sftp_th_modified">Modified</th>
+                    <th style="width: 120px; text-align: center;" data-i18n="sftp_th_actions">Actions</th>
                   </tr>
                 </thead>
                 <tbody id="sftpTableBody">
@@ -265,11 +259,11 @@
       <section id="viewSERVERS" class="view-panel">
         <div class="servers-workspace">
           <div class="section-top-bar">
-            <h2>مدیریت سرورهای ذخیره‌شده</h2>
+            <h2 data-i18n="servers_title">Saved Server Vault</h2>
             <div class="actions">
-              <button id="btnExportServers" class="btn btn-sm btn-secondary">خروجی بکاپ 📤</button>
-              <button id="btnImportServers" class="btn btn-sm btn-secondary">ورود اطلاعات 📥</button>
-              <button id="btnAddServerCard" class="btn btn-sm btn-cyan">افزودن سرور جدید +</button>
+              <button id="btnExportServers" class="btn btn-sm btn-secondary" data-i18n="servers_export_btn">Export JSON 📤</button>
+              <button id="btnImportServers" class="btn btn-sm btn-secondary" data-i18n="servers_import_btn">Import JSON 📥</button>
+              <button id="btnAddServerCard" class="btn btn-sm btn-cyan" data-i18n="servers_add_btn">+ Add Server</button>
             </div>
           </div>
 
@@ -282,16 +276,28 @@
       <!-- ================= SETTINGS VIEW ================= -->
       <section id="viewSETTINGS" class="view-panel">
         <div class="settings-workspace">
-          <h2>تنظیمات اکستنشن و ارتباطات</h2>
+          <h2 data-i18n="settings_title">Application Settings</h2>
+
+          <!-- Language Settings Card -->
+          <div class="settings-card">
+            <h3>🌐 Language / انتخاب زبان</h3>
+            <div class="form-row">
+              <label>Interface Language / زبان برنامه:</label>
+              <select id="settingLanguage">
+                <option value="en">English (Default)</option>
+                <option value="fa">فارسی (Persian)</option>
+              </select>
+            </div>
+          </div>
           
           <div class="settings-card">
-            <h3>تنظیمات بریج سرور (WebSocket Bridge Server)</h3>
-            <p class="help-text">آدرس وب‌سوکت سرور واسط Node.js جهت برقراری نشست‌های SSH و استریم‌های SFTP:</p>
+            <h3 data-i18n="settings_bridge_label">WebSocket Bridge Server</h3>
+            <p class="help-text" data-i18n="settings_bridge_hint">The local or remote bridge daemon handling raw SSH/SFTP connections:</p>
             <div class="form-row">
-              <label>آدرس WebSocket بریج فعال:</label>
+              <label>Active WebSocket Bridge URL:</label>
               <input type="text" id="settingBridgeUrl" dir="ltr" value="wss://nl.livekadeh.com/ws">
             </div>
-            <button id="btnTestBridge" class="btn btn-sm btn-cyan">تست اتصال بریج ⚡</button>
+            <button id="btnTestBridge" class="btn btn-sm btn-cyan" data-i18n="settings_test_bridge">Test Bridge Connection ⚡</button>
             <span id="bridgeTestResult" class="test-result"></span>
           </div>
 
@@ -299,14 +305,14 @@
           <div class="settings-card">
             <div class="card-header-flex">
               <div>
-                <h3>سرورهای عمومی بریج (Public Bridges) 🌐</h3>
-                <p class="help-text">لیست سرورهای عمومی واسط که مستقیماً از مخزن گیت‌هاب پروژه همگام‌سازی می‌شوند:</p>
+                <h3 data-i18n="settings_public_bridges">Public Community Bridges 🌐</h3>
+                <p class="help-text">Public verified bridge servers synced directly from the GitHub repository:</p>
               </div>
-              <button id="btnFetchPublicBridges" class="btn btn-sm btn-secondary" title="بروزرسانی از گیت‌هاب">
+              <button id="btnFetchPublicBridges" class="btn btn-sm btn-secondary" title="Fetch Latest from GitHub" data-i18n="settings_fetch_bridges">
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; margin-left: 4px;">
                   <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/>
                 </svg>
-                دریافت آخرین لیست از گیت‌هاب 🔄
+                Fetch Latest from GitHub 🔄
               </button>
             </div>
             
@@ -316,26 +322,26 @@
           </div>
 
           <div class="settings-card">
-            <h3>تنظیمات ترمینال (xterm.js)</h3>
+            <h3 data-i18n="settings_theme_label">Terminal Appearance (xterm.js)</h3>
             <div class="form-grid-2">
               <div class="form-row">
-                <label>فونت ترمینال:</label>
+                <label data-i18n="settings_font_label">Terminal Font:</label>
                 <select id="settingFontFamily">
-                  <option value="'JetBrains Mono', 'Vazirmatn', 'Fira Code', monospace">JetBrains Mono & Vazirmatn (پیش‌فرض)</option>
+                  <option value="'JetBrains Mono', 'Vazirmatn', 'Fira Code', monospace">JetBrains Mono & Vazirmatn (Default)</option>
                   <option value="'Fira Code', 'Vazirmatn', monospace">Fira Code</option>
                   <option value="'Cascadia Code', monospace">Cascadia Code</option>
                   <option value="monospace">Standard Monospace</option>
                 </select>
               </div>
               <div class="form-row">
-                <label>اندازه فونت (px):</label>
+                <label>Font Size (px):</label>
                 <input type="number" id="settingFontSize" value="14" min="10" max="28">
               </div>
             </div>
             <div class="form-row">
-              <label>تم رنگی ترمینال:</label>
+              <label data-i18n="settings_theme_label">Terminal Theme:</label>
               <select id="settingTerminalTheme">
-                <option value="cyberpunk">Cyberpunk Neon (پیش‌فرض LiveKadeh)</option>
+                <option value="cyberpunk">Cyberpunk Neon (LiveKadeh Default)</option>
                 <option value="dracula">Dracula Dark</option>
                 <option value="tokyoNight">Tokyo Night</option>
                 <option value="monokai">Monokai Pro</option>
@@ -345,8 +351,8 @@
           </div>
 
           <div class="settings-card">
-            <h3>ذخیره و بازیابی</h3>
-            <button id="btnSaveSettings" class="btn btn-cyan">ذخیره تنظیمات 💾</button>
+            <h3>Save & Persist</h3>
+            <button id="btnSaveSettings" class="btn btn-cyan" data-i18n="settings_save_btn">Save Settings 💾</button>
           </div>
         </div>
       </section>
@@ -357,57 +363,57 @@
     <div id="connectModal" class="modal-backdrop">
       <div class="modal-box">
         <div class="modal-header">
-          <h3 id="modalTitle">اتصال به سرور</h3>
+          <h3 id="modalTitle" data-i18n="modal_title_connect">Connect to Server</h3>
           <button class="modal-close" id="btnCloseConnectModal">✕</button>
         </div>
         <form id="connectForm" class="modal-body">
           <input type="hidden" id="modalServerId">
           <div class="form-row">
-            <label>نام نمایشی سرور:</label>
-            <input type="text" id="serverName" placeholder="مثلاً: سرور لینوکس">
+            <label data-i18n="modal_label_name">Server Label:</label>
+            <input type="text" id="serverName" placeholder="e.g. Production Linux">
           </div>
           <div class="form-grid-2">
             <div class="form-row">
-              <label>آدرس سرور / IP:</label>
-              <input type="text" id="serverHost" placeholder="192.168.1.100 یا example.com" dir="ltr" required>
+              <label data-i18n="modal_label_host">Host IP / Domain:</label>
+              <input type="text" id="serverHost" placeholder="192.168.1.100 or example.com" dir="ltr" required>
             </div>
             <div class="form-row">
-              <label>پورت SSH:</label>
+              <label data-i18n="modal_label_port">Port:</label>
               <input type="number" id="serverPort" value="22" dir="ltr" required>
             </div>
           </div>
           <div class="form-grid-2">
             <div class="form-row">
-              <label>نام کاربری:</label>
+              <label data-i18n="modal_label_user">Username:</label>
               <input type="text" id="serverUser" value="root" dir="ltr" required>
             </div>
             <div class="form-row">
-              <label>رنگ برچسب:</label>
+              <label>Badge Color:</label>
               <input type="color" id="serverColor" value="#00f0ff">
             </div>
           </div>
           <div class="form-row">
-            <label>نوع احراز هویت:</label>
+            <label>Authentication Type:</label>
             <select id="serverAuthType">
-              <option value="password">رمز عبور (Password)</option>
-              <option value="privateKey">کلید خصوصی (SSH Key)</option>
+              <option value="password">Password</option>
+              <option value="privateKey">Private Key (SSH Key)</option>
             </select>
           </div>
           <div class="form-row" id="passAuthRow">
-            <label>رمز عبور:</label>
-            <input type="password" id="serverPass" placeholder="رمز عبور سرور" dir="ltr">
+            <label data-i18n="modal_label_pass">Password:</label>
+            <input type="password" id="serverPass" placeholder="Server Password" dir="ltr">
           </div>
           <div class="form-row" id="keyAuthRow" style="display: none;">
-            <label>محتوای کلید خصوصی (RSA/Ed25519):</label>
+            <label data-i18n="modal_label_key">Private Key Content (RSA/Ed25519):</label>
             <textarea id="serverPrivateKey" rows="4" placeholder="-----BEGIN OPENSSH PRIVATE KEY-----..." dir="ltr"></textarea>
           </div>
           <div class="modal-footer">
             <label class="checkbox-label">
-              <input type="checkbox" id="saveServerCheck" checked> ذخیره در لیست سرورها
+              <input type="checkbox" id="saveServerCheck" checked> Save to Server Vault
             </label>
             <div class="modal-btns">
-              <button type="button" id="btnLaunchSSH" class="btn btn-cyan">⚡ اتصال SSH</button>
-              <button type="button" id="btnLaunchSFTP" class="btn btn-secondary">📁 اتصال SFTP</button>
+              <button type="button" id="btnLaunchSSH" class="btn btn-cyan" data-i18n="modal_btn_connect_term">⚡ Connect SSH</button>
+              <button type="button" id="btnLaunchSFTP" class="btn btn-secondary" data-i18n="modal_btn_connect_sftp">📁 Open SFTP</button>
             </div>
           </div>
         </form>
@@ -423,7 +429,7 @@
             <span id="editorFilePath">/root/example.txt</span>
           </div>
           <div class="editor-header-actions">
-            <button id="btnEditorSave" class="btn btn-sm btn-cyan">ذخیره (Ctrl+S) 💾</button>
+            <button id="btnEditorSave" class="btn btn-sm btn-cyan">Save (Ctrl+S) 💾</button>
             <button class="modal-close" id="btnCloseEditorModal">✕</button>
           </div>
         </div>
@@ -438,6 +444,7 @@
   <script src="lib/xterm.js"></script>
   <script src="lib/xterm-addon-fit.js"></script>
   <script src="lib/persian-bidi-shaper.js"></script>
+  <script src="lib/i18n.js"></script>
   <script src="ssh-terminal.js"></script>
   <script src="sftp-manager.js"></script>
   <script src="app.js"></script>
