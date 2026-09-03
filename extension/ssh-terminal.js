@@ -9,8 +9,9 @@ class SSHTerminalManager {
     this.sessions = new Map();
     this.activeSessionId = null;
     this.fontSize = 14;
-    this.fontFamily = "'JetBrains Mono', 'Fira Code', 'Courier New', monospace";
+    this.fontFamily = "'Vazirmatn', 'JetBrains Mono', 'Fira Code', 'Courier New', monospace, Tahoma";
     this.themeName = 'cyberpunk';
+    this.rtlAlignEnabled = true;
 
     this.themes = {
       cyberpunk: {
@@ -114,6 +115,34 @@ class SSHTerminalManager {
     session.status = 'connecting';
     this.updateTabUI(session.id);
 
+    const streamBuffer = {
+      data: '',
+      timer: null,
+      feed: (chunk) => {
+        streamBuffer.data += chunk;
+        if (streamBuffer.data.includes('\n') || streamBuffer.data.includes('\r') || streamBuffer.data.length > 250) {
+          streamBuffer.flush();
+        } else {
+          if (streamBuffer.timer) clearTimeout(streamBuffer.timer);
+          streamBuffer.timer = setTimeout(() => streamBuffer.flush(), 10);
+        }
+      },
+      flush: () => {
+        if (streamBuffer.timer) {
+          clearTimeout(streamBuffer.timer);
+          streamBuffer.timer = null;
+        }
+        if (!streamBuffer.data) return;
+        const chunk = streamBuffer.data;
+        streamBuffer.data = '';
+        const text = typeof processBiDiTerminalText === 'function'
+          ? processBiDiTerminalText(chunk, term.cols || 80, this.rtlAlignEnabled)
+          : chunk;
+        term.write(text);
+      }
+    };
+    session.streamBuffer = streamBuffer;
+
     try {
       const ws = new WebSocket(bridgeUrl);
       session.ws = ws;
@@ -141,9 +170,9 @@ class SSHTerminalManager {
         try {
           const msg = JSON.parse(event.data);
           if (msg.type === 'ssh-output') {
-            const text = typeof processBiDiTerminalText === 'function' ? processBiDiTerminalText(msg.data) : msg.data;
-            term.write(text);
+            streamBuffer.feed(msg.data);
           } else if (msg.type === 'ssh-status') {
+            streamBuffer.flush();
             if (msg.status === 'connected') {
               session.status = 'connected';
               this.updateTabUI(session.id);
@@ -161,12 +190,12 @@ class SSHTerminalManager {
             }
           }
         } catch (e) {
-          const text = typeof processBiDiTerminalText === 'function' ? processBiDiTerminalText(event.data) : event.data;
-          term.write(text);
+          streamBuffer.feed(event.data);
         }
       };
 
       ws.onclose = () => {
+        streamBuffer.flush();
         term.writeln(`\r\n\x1b[33m⚡ [LiveKadeh] Bridge connection closed.\x1b[0m\r\n`);
         session.status = 'disconnected';
         this.updateTabUI(session.id);
@@ -176,6 +205,7 @@ class SSHTerminalManager {
       };
 
       ws.onerror = (err) => {
+        streamBuffer.flush();
         term.writeln(`\r\n\x1b[31m✖ [Bridge Error] Failed to connect to WebSocket bridge (${bridgeUrl})\x1b[0m\r\n`);
         session.status = 'error';
         this.updateTabUI(session.id);
@@ -331,6 +361,11 @@ class SSHTerminalManager {
 
   updateTabUI(sessionId) {
     this.renderTabs();
+  }
+
+  toggleRtl() {
+    this.rtlAlignEnabled = !this.rtlAlignEnabled;
+    return this.rtlAlignEnabled;
   }
 }
 

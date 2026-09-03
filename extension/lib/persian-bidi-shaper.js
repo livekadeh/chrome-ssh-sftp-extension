@@ -1,7 +1,7 @@
 /**
- * Persian & Arabic BiDi Shaper & Reshaper for Terminal / xterm.js
- * Handles contextual cursive shaping (Presentation Forms-B) and BiDi reversal
- * while preserving ANSI escape codes, English words, numbers, and symbols.
+ * Persian & Arabic BiDi Shaper & Alignment Engine for Terminal / xterm.js
+ * Handles contextual cursive shaping (Presentation Forms-B), BiDi reversal,
+ * line right-alignment for Persian text, and keystroke stream buffering.
  */
 
 const ARABIC_PERSIAN_TABLE = {
@@ -81,7 +81,7 @@ function shapeArabicPersianWord(word) {
     const nextCode = (i + 1 < len) ? chars[i + 1].charCodeAt(0) : 0;
     const prevCode = (i > 0) ? chars[i - 1].charCodeAt(0) : 0;
 
-    // Check Lam-Alef ligature
+    // Lam-Alef ligature
     if (code === LAM && LAM_ALEF_MAP[nextCode]) {
       const prevConnected = (i > 0) && isJoiner(prevCode);
       const formIdx = prevConnected ? 2 : 0;
@@ -117,68 +117,90 @@ function shapeArabicPersianWord(word) {
 }
 
 /**
- * Process a line or text segment for BiDi display in LTR terminal emulator
+ * Process a line or text segment for BiDi display in LTR terminal emulator.
+ * Supports line right-alignment when rightAlign is true and line contains Persian.
  */
-function processBiDiTerminalText(text) {
+function processBiDiTerminalText(text, termCols = 80, rightAlign = false) {
   if (!text || typeof text !== 'string') return text;
   
-  // Quick check if text contains Arabic/Persian characters
+  // Check if text contains Arabic/Persian characters
   let hasRTL = false;
+  let rtlCount = 0;
+  let totalChars = 0;
+
   for (let i = 0; i < text.length; i++) {
     const c = text.charCodeAt(i);
     if ((c >= 0x0600 && c <= 0x06FF) || (c >= 0xFB50 && c <= 0xFEFC)) {
       hasRTL = true;
-      break;
+      rtlCount++;
     }
+    if (c > 32) totalChars++;
   }
 
   if (!hasRTL) return text;
 
-  // Split by ANSI escape sequences to avoid breaking terminal control codes
-  const parts = text.split(/(\x1b\[[0-9;?]*[a-zA-Z]|\x1b\].*?\x07|\x1b[()][A-Z0-9])/g);
+  // Split lines if multiline
+  const lines = text.split(/(\r\n|\n|\r)/);
+  const processedLines = lines.map((line) => {
+    if (line === '\r\n' || line === '\n' || line === '\r') return line;
 
-  for (let p = 0; p < parts.length; p++) {
-    const part = parts[p];
-    if (!part || part.startsWith('\x1b')) continue;
+    // Split by ANSI escape sequences to avoid breaking terminal control codes
+    const parts = line.split(/(\x1b\[[0-9;?]*[a-zA-Z]|\x1b\].*?\x07|\x1b[()][A-Z0-9])/g);
 
-    // Tokenize text into RTL blocks and non-RTL blocks
-    // Match contiguous Arabic/Persian words + spaces/numbers between them
-    const rtlRegex = /([\u0600-\u06FF\uFB50-\uFEFC][\u0600-\u06FF\uFB50-\uFEFC\s0-9\u0660-\u0669\u06F0-\u06F9«»()\-.:،؛؟]*[\u0600-\u06FF\uFB50-\uFEFC])/g;
+    let visibleLength = 0;
+    let lineRtlCount = 0;
 
-    parts[p] = part.replace(rtlRegex, (match) => {
-      // Split into words while keeping delimiters
-      const tokens = match.split(/(\s+|[0-9]+|[«»()\-.:،؛؟]+)/);
-      const shapedTokens = tokens.map(token => {
-        let containsArabic = false;
-        for (let i = 0; i < token.length; i++) {
-          const c = token.charCodeAt(i);
-          if ((c >= 0x0600 && c <= 0x06FF) || (c >= 0xFB50 && c <= 0xFEFC)) {
-            containsArabic = true;
-            break;
+    for (let p = 0; p < parts.length; p++) {
+      const part = parts[p];
+      if (!part || part.startsWith('\x1b')) continue;
+
+      const rtlRegex = /([\u0600-\u06FF\uFB50-\uFEFC][\u0600-\u06FF\uFB50-\uFEFC\s0-9\u0660-\u0669\u06F0-\u06F9«»()\-.:،؛؟]*[\u0600-\u06FF\uFB50-\uFEFC]|[\u0600-\u06FF\uFB50-\uFEFC])/g;
+
+      parts[p] = part.replace(rtlRegex, (match) => {
+        lineRtlCount += match.length;
+        const tokens = match.split(/(\s+|[0-9]+|[«»()\-.:،؛؟]+)/);
+        const shapedTokens = tokens.map(token => {
+          let containsArabic = false;
+          for (let i = 0; i < token.length; i++) {
+            const c = token.charCodeAt(i);
+            if ((c >= 0x0600 && c <= 0x06FF) || (c >= 0xFB50 && c <= 0xFEFC)) {
+              containsArabic = true;
+              break;
+            }
           }
-        }
-        if (containsArabic) {
-          const shaped = shapeArabicPersianWord(token);
-          return Array.from(shaped).reverse().join('');
-        }
-        // Mirror parenthesis/brackets in RTL context
-        if (token === '(') return ')';
-        if (token === ')') return '(';
-        if (token === '[') return ']';
-        if (token === ']') return '[';
-        if (token === '{') return '}';
-        if (token === '}') return '{';
-        if (token === '«') return '»';
-        if (token === '»') return '«';
-        return token;
+          if (containsArabic) {
+            const shaped = shapeArabicPersianWord(token);
+            return Array.from(shaped).reverse().join('');
+          }
+          if (token === '(') return ')';
+          if (token === ')') return '(';
+          if (token === '[') return ']';
+          if (token === ']') return '[';
+          if (token === '{') return '}';
+          if (token === '}') return '{';
+          if (token === '«') return '»';
+          if (token === '»') return '«';
+          return token;
+        });
+
+        return shapedTokens.reverse().join('');
       });
 
-      // Reverse token order for visual LTR terminal rendering
-      return shapedTokens.reverse().join('');
-    });
-  }
+      visibleLength += parts[p].length;
+    }
 
-  return parts.join('');
+    let result = parts.join('');
+
+    // If right alignment is requested and the line is predominantly Persian
+    if (rightAlign && lineRtlCount > 0 && lineRtlCount >= (visibleLength * 0.4) && termCols > visibleLength) {
+      const padSpaces = ' '.repeat(Math.max(0, termCols - visibleLength - 2));
+      result = padSpaces + result;
+    }
+
+    return result;
+  });
+
+  return processedLines.join('');
 }
 
 if (typeof module !== 'undefined' && module.exports) {

@@ -16,6 +16,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const terminalTabsList = document.getElementById('terminalTabsList');
   const xtermWrapper = document.getElementById('xtermWrapper');
   const btnNewTerminalTab = document.getElementById('btnNewTerminalTab');
+  const btnToggleRtl = document.getElementById('btnToggleRtl');
   const btnTermReconnect = document.getElementById('btnTermReconnect');
   const btnTermClear = document.getElementById('btnTermClear');
   const btnFontPlus = document.getElementById('btnFontPlus');
@@ -212,6 +213,14 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Terminal Controls
   btnNewTerminalTab.addEventListener('click', () => openConnectModal());
+  if (btnToggleRtl) {
+    btnToggleRtl.addEventListener('click', () => {
+      const isRtl = termManager.toggleRtl();
+      btnToggleRtl.classList.toggle('active-rtl', isRtl);
+      btnToggleRtl.style.borderColor = isRtl ? '#00f0ff' : 'var(--border-glass)';
+      btnToggleRtl.style.color = isRtl ? '#00f0ff' : 'var(--text-muted)';
+    });
+  }
   btnTermReconnect.addEventListener('click', () => termManager.reconnectActive());
   btnTermClear.addEventListener('click', () => termManager.clearActive());
   btnFontPlus.addEventListener('click', () => termManager.changeFontSize(1));
