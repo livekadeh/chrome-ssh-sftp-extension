@@ -8,20 +8,20 @@ chrome.runtime.onInstalled.addListener((details) => {
   // Initialize default settings if not set
   chrome.storage.local.get(['bridgeUrl', 'servers'], (result) => {
     if (!result.bridgeUrl) {
-      chrome.storage.local.set({ bridgeUrl: 'ws://nl.livekadeh.com:3000/ws' });
+      chrome.storage.local.set({ bridgeUrl: 'ws://localhost:3000/ws' });
     }
     if (!result.servers) {
       chrome.storage.local.set({
         servers: [
           {
-            id: 'server-nl-demo',
-            name: 'Netherlands Core (nl.livekadeh.com)',
-            host: 'nl.livekadeh.com',
+            id: 'server-demo-local',
+            name: 'Local Server (Example)',
+            host: '127.0.0.1',
             port: 22,
-            username: 'root',
+            username: 'ubuntu',
             authType: 'password',
             color: '#00f0ff',
-            defaultPath: '/root',
+            defaultPath: '/home/ubuntu',
             createdAt: Date.now()
           }
         ]

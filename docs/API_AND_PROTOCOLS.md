@@ -10,7 +10,7 @@
 ```json
 {
   "type": "ssh-init",
-  "host": "nl.livekadeh.com",
+  "host": "server.example.com",
   "port": 22,
   "username": "root",
   "password": "your_password",
@@ -63,7 +63,7 @@
 ```json
 {
   "type": "sftp-init",
-  "host": "nl.livekadeh.com",
+  "host": "server.example.com",
   "port": 22,
   "username": "root",
   "password": "your_password"

@@ -64,7 +64,7 @@ document.addEventListener('DOMContentLoaded', () => {
       });
 
       // Check Bridge Server Health
-      checkBridgeStatus(data.bridgeUrl || 'ws://nl.livekadeh.com:3000/ws');
+      checkBridgeStatus(data.bridgeUrl || 'ws://localhost:3000/ws');
     });
   }
 

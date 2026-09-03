@@ -85,9 +85,9 @@ chrome-ssh-sftp-extension/
 
 ---
 
-### ۲. راه‌اندازی بریج سرور روی لینوکس (`nl.livekadeh.com`)
+### ۲. راه‌اندازی بریج سرور روی لینوکس (Bridge Server Setup)
 
-بریج سرور به صورت پیش‌فرض روی سرور شما مستقر شده است. برای اجرای دستی یا بروزرسانی مراحل زیر را در سرور اجرا کنید:
+برای راه‌اندازی یا بروزرسانی سرور واسط (Bridge Server):
 
 ```bash
 cd /root/chrome-ssh-sftp-extension
@@ -104,9 +104,9 @@ pm2 start ecosystem.config.js
 pm2 save
 ```
 
-وضعیت سلامت بریج سرور در آدرس زیر قابل مشاهده است:
-- `http://nl.livekadeh.com:3000/health`
-- وب‌سوکت: `ws://nl.livekadeh.com:3000/ws`
+وضعیت سلامت بریج سرور در آدرس‌های زیر قابل مشاهده است:
+- `http://<YOUR_SERVER_IP>:3000/health`
+- وب‌سوکت: `ws://<YOUR_SERVER_IP>:3000/ws` (یا `ws://localhost:3000/ws` در محیط توسعه)
 
 ---
 

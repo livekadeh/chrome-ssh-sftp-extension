@@ -1,5 +1,15 @@
 node_modules/
 .env
+.env.*
 *.log
+*.pem
+*.key
+*.crt
+*.pfx
+*.pub
+id_rsa
+id_ecdsa
+id_ed25519
 .DS_Store
 Thumbs.db
+

@@ -30,10 +30,10 @@ pm2 startup
 ```nginx
 server {
     listen 443 ssl http2;
-    server_name nl.livekadeh.com;
+    server_name your-domain.com;
 
-    ssl_certificate /etc/letsencrypt/live/nl.livekadeh.com/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/nl.livekadeh.com/privkey.pem;
+    ssl_certificate /etc/letsencrypt/live/your-domain.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/your-domain.com/privkey.pem;
 
     location /ws {
         proxy_pass http://127.0.0.1:3000/ws;

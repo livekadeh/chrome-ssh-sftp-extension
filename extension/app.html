@@ -219,7 +219,7 @@
             <p class="help-text">آدرس وب‌سوکت سرور واسط Node.js جهت برقراری نشست‌های SSH و استریم‌های SFTP:</p>
             <div class="form-row">
               <label>آدرس WebSocket بریج:</label>
-              <input type="text" id="settingBridgeUrl" dir="ltr" value="ws://nl.livekadeh.com:3000/ws">
+              <input type="text" id="settingBridgeUrl" dir="ltr" value="ws://localhost:3000/ws">
             </div>
             <button id="btnTestBridge" class="btn btn-sm btn-cyan">تست اتصال بریج ⚡</button>
             <span id="bridgeTestResult" class="test-result"></span>
@@ -274,12 +274,12 @@
           <input type="hidden" id="modalServerId">
           <div class="form-row">
             <label>نام نمایشی سرور:</label>
-            <input type="text" id="serverName" placeholder="مثلاً: سرور هلند LiveKadeh">
+            <input type="text" id="serverName" placeholder="مثلاً: سرور لینوکس">
           </div>
           <div class="form-grid-2">
             <div class="form-row">
               <label>آدرس سرور / IP:</label>
-              <input type="text" id="serverHost" placeholder="nl.livekadeh.com" dir="ltr" required>
+              <input type="text" id="serverHost" placeholder="192.168.1.100 یا example.com" dir="ltr" required>
             </div>
             <div class="form-row">
               <label>پورت SSH:</label>

@@ -194,7 +194,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const srv = await getFormDataAndSave();
     if (!srv) return;
     closeConnectModal();
-    const { bridgeUrl = 'ws://nl.livekadeh.com:3000/ws' } = await chrome.storage.local.get('bridgeUrl');
+    const { bridgeUrl = 'ws://localhost:3000/ws' } = await chrome.storage.local.get('bridgeUrl');
     switchView('ssh');
     termManager.createSession(srv, bridgeUrl);
   });
@@ -203,7 +203,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const srv = await getFormDataAndSave();
     if (!srv) return;
     closeConnectModal();
-    const { bridgeUrl = 'ws://nl.livekadeh.com:3000/ws' } = await chrome.storage.local.get('bridgeUrl');
+    const { bridgeUrl = 'ws://localhost:3000/ws' } = await chrome.storage.local.get('bridgeUrl');
     switchView('sftp');
     sftpManager.connect(srv, bridgeUrl, () => {
       window.onGlobalConnectionChange('connected', srv.name);
@@ -358,13 +358,13 @@ document.addEventListener('DOMContentLoaded', async () => {
       });
 
       card.querySelector('.btn-connect-ssh-card').addEventListener('click', async () => {
-        const { bridgeUrl = 'ws://nl.livekadeh.com:3000/ws' } = await chrome.storage.local.get('bridgeUrl');
+        const { bridgeUrl = 'ws://localhost:3000/ws' } = await chrome.storage.local.get('bridgeUrl');
         switchView('ssh');
         termManager.createSession(srv, bridgeUrl);
       });
 
       card.querySelector('.btn-connect-sftp-card').addEventListener('click', async () => {
-        const { bridgeUrl = 'ws://nl.livekadeh.com:3000/ws' } = await chrome.storage.local.get('bridgeUrl');
+        const { bridgeUrl = 'ws://localhost:3000/ws' } = await chrome.storage.local.get('bridgeUrl');
         switchView('sftp');
         sftpManager.connect(srv, bridgeUrl, () => {
           window.onGlobalConnectionChange('connected', srv.name);
@@ -478,7 +478,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   if (host) {
-    const { bridgeUrl = 'ws://nl.livekadeh.com:3000/ws' } = await chrome.storage.local.get('bridgeUrl');
+    const { bridgeUrl = 'ws://localhost:3000/ws' } = await chrome.storage.local.get('bridgeUrl');
     const srv = {
       host,
       port: parseInt(urlParams.get('port') || 22, 10),
