@@ -38,6 +38,10 @@
           <span class="tab-icon">⚙️</span>
           <span data-i18n="nav_settings">Settings</span>
         </button>
+        <button class="nav-tab" data-view="about">
+          <span class="tab-icon">ℹ️</span>
+          <span data-i18n="nav_about">About</span>
+        </button>
       </nav>
 
       <!-- Active Connection Status Pill & Actions -->
@@ -417,6 +421,88 @@
           <div class="settings-card">
             <h3>Save & Persist</h3>
             <button id="btnSaveSettings" class="btn btn-cyan" data-i18n="settings_save_btn">Save Settings 💾</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= ABOUT VIEW ================= -->
+      <section id="viewABOUT" class="view-panel">
+        <div class="about-workspace">
+          <div class="about-hero-card">
+            <div class="about-hero-brand">
+              <div class="about-badge-logo">⚡</div>
+              <div>
+                <h1 class="about-app-title">LiveKadeh SSH & SFTP Pro</h1>
+                <div class="about-version-tag">
+                  <span class="version-label">v1.2.0</span>
+                  <span class="version-status" id="aboutUpdateBadge">Release</span>
+                </div>
+              </div>
+            </div>
+            
+            <p class="about-app-desc" data-i18n="about_desc">
+              High-performance, in-browser SSH Terminal with complete Persian/BiDi cursive shaping and full-featured SFTP File Manager powered by WebSocket bridge architecture.
+            </p>
+
+            <div class="about-actions-row">
+              <button id="btnCheckUpdate" class="btn btn-cyan">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; margin-left: 4px;">
+                  <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/>
+                </svg>
+                <span data-i18n="about_btn_check_update">Check for Updates 🔄</span>
+              </button>
+              <a href="https://github.com/livekadeh/chrome-ssh-sftp-extension" target="_blank" class="btn btn-secondary">
+                <span>GitHub Repository 🐙</span>
+              </a>
+              <a href="https://livekadeh.com" target="_blank" class="btn btn-secondary">
+                <span>Official Website 🌐</span>
+              </a>
+            </div>
+
+            <!-- Dynamic Update Check Result Alert Box -->
+            <div id="updateResultBox" class="update-result-box" style="display: none;"></div>
+          </div>
+
+          <!-- Feature Cards Grid -->
+          <div class="about-grid">
+            <div class="about-card">
+              <div class="card-icon">⚡</div>
+              <h3 data-i18n="about_feat_term_title">Interactive SSH Terminal</h3>
+              <p data-i18n="about_feat_term_desc">Full xterm-256color emulation, ANSI colors, tabs, custom themes, and complete Persian/BiDi shaping with right-click Copy/Paste.</p>
+            </div>
+            <div class="about-card">
+              <div class="card-icon">📁</div>
+              <h3 data-i18n="about_feat_sftp_title">Advanced SFTP Explorer</h3>
+              <p data-i18n="about_feat_sftp_desc">Fast chunked uploads with live progress bar, drag & drop, in-browser file editor with Ctrl+S, permissions chmod, and rich context menu.</p>
+            </div>
+            <div class="about-card">
+              <div class="card-icon">🔒</div>
+              <h3 data-i18n="about_feat_security_title">Local & Encrypted Storage</h3>
+              <p data-i18n="about_feat_security_desc">All server credentials and private keys are stored strictly in your browser local storage with JSON backup export/import.</p>
+            </div>
+            <div class="about-card">
+              <div class="card-icon">🌐</div>
+              <h3 data-i18n="about_feat_bridge_title">High-Speed Bridge Server</h3>
+              <p data-i18n="about_feat_bridge_desc">Node.js ssh2 WebSocket bridge proxying raw SSH and SFTP streams with low latency, portable zero-config runners available.</p>
+            </div>
+          </div>
+
+          <!-- Credits & Meta Info -->
+          <div class="about-footer-card">
+            <div class="about-meta-row">
+              <div>
+                <span class="meta-label">Developer:</span>
+                <a href="https://livekadeh.com" target="_blank" class="meta-link">LiveKadeh</a>
+              </div>
+              <div>
+                <span class="meta-label">License:</span>
+                <span class="meta-val">MIT Open Source</span>
+              </div>
+              <div>
+                <span class="meta-label">Chrome Web Store:</span>
+                <span class="meta-val">Manifest V3 Compliant</span>
+              </div>
+            </div>
           </div>
         </div>
       </section>

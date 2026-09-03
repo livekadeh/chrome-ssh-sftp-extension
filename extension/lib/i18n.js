@@ -11,6 +11,7 @@ const I18N_DICTIONARY = {
     nav_sftp: 'SFTP File Manager',
     nav_servers: 'Saved Servers',
     nav_settings: 'Settings',
+    nav_about: 'About',
     not_connected: 'Not Connected',
     btn_new_connection: '+ New Connection',
 
@@ -107,6 +108,22 @@ const I18N_DICTIONARY = {
     popup_port_placeholder: 'Port (22)',
     popup_pass_placeholder: 'Password or key',
 
+    // About
+    about_desc: 'High-performance, in-browser SSH Terminal with complete Persian/BiDi cursive shaping and full-featured SFTP File Manager powered by WebSocket bridge architecture.',
+    about_btn_check_update: 'Check for Updates 🔄',
+    about_feat_term_title: 'Interactive SSH Terminal',
+    about_feat_term_desc: 'Full xterm-256color emulation, ANSI colors, tabs, custom themes, and complete Persian/BiDi shaping with right-click Copy/Paste.',
+    about_feat_sftp_title: 'Advanced SFTP Explorer',
+    about_feat_sftp_desc: 'Fast chunked uploads with live progress bar, drag & drop, in-browser file editor with Ctrl+S, permissions chmod, and rich context menu.',
+    about_feat_security_title: 'Local & Encrypted Storage',
+    about_feat_security_desc: 'All server credentials and private keys are stored strictly in your browser local storage with JSON backup export/import.',
+    about_feat_bridge_title: 'High-Speed Bridge Server',
+    about_feat_bridge_desc: 'Node.js ssh2 WebSocket bridge proxying raw SSH and SFTP streams with low latency, portable zero-config runners available.',
+    about_checking: 'Checking GitHub for updates...',
+    about_up_to_date: 'You are using the latest version (v1.2.0) ✔',
+    about_update_available: 'New version available:',
+    about_btn_download_update: 'Download New Version 📥',
+
     // Language Toggle
     lang_btn: '🌐 English',
   },
@@ -116,6 +133,7 @@ const I18N_DICTIONARY = {
     nav_sftp: 'فایل منیجر SFTP',
     nav_servers: 'سرورهای ذخیره‌شده',
     nav_settings: 'تنظیمات',
+    nav_about: 'درباره ما',
     not_connected: 'اتصال برقرار نیست',
     btn_new_connection: '+ اتصال جدید',
 
@@ -211,6 +229,22 @@ const I18N_DICTIONARY = {
     popup_user_placeholder: 'نام کاربری (مثلاً root)',
     popup_port_placeholder: 'پورت (22)',
     popup_pass_placeholder: 'رمز عبور یا کلید',
+
+    // About
+    about_desc: 'اکستنشن حرفه‌ای تحت مرورگر برای دسترسی به خط فرمان SSH با شبیه‌ساز xterm و پشتیبانی کامل از حروف متصل فارسی، به همراه مدیریت فایل کامل SFTP بر بستر وب‌سوکت.',
+    about_btn_check_update: 'بررسی نسخه جدید 🔄',
+    about_feat_term_title: 'ترمینال تعاملی SSH',
+    about_feat_term_desc: 'شبیه‌ساز کامل xterm با رنگ‌های ۲۵۶ تایی، تب‌های همزمان، تم‌های سایبرپانک و شکل‌دهی بی‌نقص فارسی همراه با منوی کلیک‌راست کپی/پیست.',
+    about_feat_sftp_title: 'مدیریت فایل پیشرفته SFTP',
+    about_feat_sftp_desc: 'آپلود تکه‌ای با نوار پیشرفت زنده، درگ اند دراپ، ادیتور درون‌برنامه‌ای با کلید Ctrl+S، تغییر مجوزها (chmod) و منوی کلیک‌راست کامل.',
+    about_feat_security_title: 'صندوقچه امن و لوکال',
+    about_feat_security_desc: 'اطلاعات سرورها و کلیدهای خصوصی تنها در حافظه محلی مرورگر ذخیره شده و هیچ داده‌ای به خارج ارسال نمی‌شود با امکان بکاپ‌گیری JSON.',
+    about_feat_bridge_title: 'سرور واسط پرسرعت (Bridge)',
+    about_feat_bridge_desc: 'ارتباط کم‌تاخیر با سرورها بر بستر WebSocket و لایبرری استاندارد ssh2 بدون نیاز به نصب نرم‌افزار اضافی در نسخه‌های پرتابل.',
+    about_checking: 'در حال بررسی گیت‌هاب برای نسخه جدید...',
+    about_up_to_date: 'شما از آخرین نسخه پایدار (v1.2.0) استفاده می‌کنید ✔',
+    about_update_available: 'نسخه جدید در دسترس است:',
+    about_btn_download_update: 'دانلود نسخه جدید 📥',
 
     // Language Toggle
     lang_btn: '🌐 فارسی',

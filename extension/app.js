@@ -951,6 +951,63 @@ document.addEventListener('DOMContentLoaded', async () => {
     btnFetchPublicBridges.addEventListener('click', () => loadPublicBridges());
   }
 
+  // ================= ABOUT & UPDATE CHECKER =================
+  const btnCheckUpdate = document.getElementById('btnCheckUpdate');
+  const updateResultBox = document.getElementById('updateResultBox');
+  const aboutUpdateBadge = document.getElementById('aboutUpdateBadge');
+
+  async function checkForUpdates() {
+    if (!btnCheckUpdate || !updateResultBox) return;
+
+    const manifestVersion = (chrome.runtime && chrome.runtime.getManifest) 
+      ? chrome.runtime.getManifest().version 
+      : '1.2.0';
+
+    updateResultBox.className = 'update-result-box checking';
+    updateResultBox.style.display = 'flex';
+    updateResultBox.innerHTML = `
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="animation: spin 1s linear infinite;">
+        <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/>
+      </svg>
+      <span>${window.i18n ? window.i18n.t('about_checking') : 'Checking GitHub for updates...'}</span>
+    `;
+
+    try {
+      const res = await fetch('https://api.github.com/repos/livekadeh/chrome-ssh-sftp-extension/releases/latest');
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const release = await res.json();
+      const latestTag = release.tag_name || '';
+      const latestVer = latestTag.replace(/^v/, '');
+
+      if (latestVer === manifestVersion) {
+        updateResultBox.className = 'update-result-box up-to-date';
+        updateResultBox.innerHTML = `
+          <span>✔</span>
+          <span>${window.i18n ? window.i18n.t('about_up_to_date') : `You are using the latest version (v${manifestVersion})`}</span>
+        `;
+        if (aboutUpdateBadge) aboutUpdateBadge.textContent = `Latest v${manifestVersion}`;
+      } else {
+        updateResultBox.className = 'update-result-box new-available';
+        updateResultBox.innerHTML = `
+          <span>⚡</span>
+          <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+            <strong>${window.i18n ? window.i18n.t('about_update_available') : 'New version available:'} ${latestTag}</strong>
+            <a href="${release.html_url}" target="_blank" class="btn btn-sm btn-cyan">${window.i18n ? window.i18n.t('about_btn_download_update') : 'Download New Version 📥'}</a>
+          </div>
+        `;
+        if (aboutUpdateBadge) aboutUpdateBadge.textContent = `Update: ${latestTag}`;
+      }
+    } catch (err) {
+      updateResultBox.className = 'update-result-box';
+      updateResultBox.style.color = '#ef4444';
+      updateResultBox.innerHTML = `⚠️ ${err.message || 'Error checking for updates'}`;
+    }
+  }
+
+  if (btnCheckUpdate) {
+    btnCheckUpdate.addEventListener('click', checkForUpdates);
+  }
+
   // Initial loads
   await loadSettings();
   await loadServersList();
