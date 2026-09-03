@@ -3,10 +3,10 @@
 [![English Version](https://img.shields.io/badge/Language-English-blue.svg)](README.md)
 [![GitHub Repository](https://img.shields.io/badge/GitHub-livekadeh%2Fchrome--ssh--sftp--extension-00f0ff?style=for-the-badge&logo=github)](https://github.com/livekadeh/chrome-ssh-sftp-extension)
 [![Manifest V3](https://img.shields.io/badge/Chrome_Extension-Manifest_V3-00ff9d?style=for-the-badge&logo=googlechrome)](https://developer.chrome.com/docs/extensions/mv3/)
-[![Release v1.3.0](https://img.shields.io/badge/Release-v1.3.0-orange?style=for-the-badge)](https://github.com/livekadeh/chrome-ssh-sftp-extension/releases/tag/v1.3.0)
+[![Release v1.4.0](https://img.shields.io/badge/Release-v1.4.0-orange?style=for-the-badge)](https://github.com/livekadeh/chrome-ssh-sftp-extension/releases/tag/v1.4.0)
 [![License: MIT](https://img.shields.io/badge/License-MIT-purple?style=for-the-badge)](LICENSE)
 
-اکستنشن حرفه‌ای و پیشرفته گوگل کروم (نسخه Pro) برای اتصال مستقیم به خط فرمان **SSH (با شبیه‌ساز قدرتمند xterm.js، پشتیبانی کامل فارسی/BiDi، و منوی کلیک‌راست کپی/پیست)** و **مدیریت فایل پیشرفته SFTP (با نوار پیشرفت زنده و آپلود تکه‌ای Chunked)** همراه با سرور واسط پرسرعت (WebSocket Bridge Server).
+اکستنشن حرفه‌ای و پیشرفته گوگل کروم (نسخه Pro) برای اتصال مستقیم به خط فرمان **SSH (با شبیه‌ساز قدرتمند xterm.js، پشتیبانی کامل فارسی/BiDi، و منوی کلیک‌راست کپی/پیست)** و **مدیریت فایل پیشرفته SFTP (با پخش‌کننده و نمایشگر عکس و فیلم و صوت، فشرده‌سازی، حالت پنجره مستقل و نوار پیشرفت زنده آپلود)** همراه با سرور واسط پرسرعت (WebSocket Bridge Server).
 
 ---
 
@@ -20,13 +20,13 @@
 - **شخصی‌سازی بصری**: تغییر اندازه فونت و انتخاب تم‌های جذاب (Cyberpunk Neon, Dracula, Tokyo Night, Monokai, Matrix).
 
 ### 📁 مدیریت فایل پیشرفته SFTP
-- **مرورگر فایل حرفه‌ای**: نمایش ساختار پوشه‌ها و فایل‌ها همراه با آیکون اختصاصی، حجم، تاریخ ویرایش و مجوزهای دسترسی عددی (Octal Permissions نظیر `0755` و `0644`).
+- **پخش و نمایش مستقیم مدیا (Media Viewer & Player)**: مشاهده و پخش درون‌مرورگری عکس‌ها، ویدیوها (`.mp4`, `.webm`, `.mov`, `.mkv`) و فایل‌های صوتی (`.mp3`, `.wav`, `.ogg`, `.flac`) تنها با دو بار کلیک!
+- **تغییر چیدمان نمایش (List & Grid Views)**: انتخاب بین نمای جدولی با جزئیات کامل و نمای کارتی شبکه‌ای.
+- **فشرده‌سازی و استخراج آرشیو**: فشرده‌سازی فایل‌ها به `.zip` یا `.tar.gz` و استخراج روی سرور ریموت.
+- **اجرای مستقل در پنجره اختصاصی دسکتاپ (Standalone App Window)** بدون نوار آدرس یا تب‌های کروم و ایجاد شورتکات دسکتاپ.
 - **نوار پیشرفت زنده برای آپلود**: نمایش درصد پیشرفت، سرعت و بایت‌های منتقل‌شده هنگام آپلود فایل‌های حجیم به صورت Chunked.
-- **آپلود آسان با Drag & Drop**: قابلیت کشیدن و رها کردن فایل‌ها از کامپیوتر به پنجره مرورگر.
-- **دانلود سریع فایل‌ها با یک کلیک**.
-- **ویرایشگر کد درون‌برنامه‌ای (Built-in Code Editor)**: باز کردن و ویرایش مستقیم فایل‌های متنی با امکان ذخیره فوری (`Ctrl+S`).
+- **ویرایشگر کد درون‌برنامه‌ای (Built-in Code Editor)** با کلید میانبر ذخیره فوری (`Ctrl+S`).
 - **عملیات کامل فایل**: ساخت فایل/پوشه جدید، تغییر نام، حذف و تغییر سطح دسترسی (`chmod`).
-- **نوار دسترسی سریع (Quick Paths)** برای دایرکتوری‌های پرکاربرد سرور (`/root`، `/var/www`، `/home`، `/etc` و ...).
 
 ### 🖥️ صندوقچه امن سرورها (Server Vault)
 - ذخیره اطلاعات سرورها شامل هاست، پورت، نام کاربری، رمز عبور یا کلید خصوصی (SSH Private Key).
@@ -46,10 +46,10 @@
 ## 🚀 راهنمای نصب و راه‌اندازی
 
 ### ۱. نصب افزونه در گوگل کروم
-1. فایل زیپ افزونه [`chrome-ssh-sftp-extension-v1.3.0.zip`](https://github.com/livekadeh/chrome-ssh-sftp-extension/releases/download/v1.3.0/chrome-ssh-sftp-extension-v1.3.0.zip) را دانلود و استخراج (Extract) کنید.
+1. فایل زیپ افزونه [`livekadeh-ssh-sftp-extension-v1.4.0.zip`](https://github.com/livekadeh/chrome-ssh-sftp-extension/releases/download/v1.4.0/livekadeh-ssh-sftp-extension-v1.4.0.zip) را دانلود و استخراج (Extract) کنید.
 2. مرورگر کروم را باز کرده و به آدرس `chrome://extensions` بروید.
 3. گزینه **Developer mode** را در بالا سمت راست فعال کنید.
-4. روی دکمه **Load unpacked** کلیک کرده و پوشه `extension` را انتخاب کنید.
+4. روی دکمه **Load unpacked** کلیک کرده و همان پوشه استخراج شده را انتخاب کنید (تمام فایل‌ها از جمله `manifest.json` مستقیماً در ریشه پوشه قرار دارند).
 5. آیکون ⚡ **LiveKadeh** به مرورگر شما اضافه خواهد شد!
 
 ---

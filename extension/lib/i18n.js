@@ -153,7 +153,7 @@ const I18N_DICTIONARY = {
     about_checking: 'Checking GitHub for updates...',
     nav_standalone_window: 'Open in Standalone App Window',
     nav_standalone_btn: 'App Window ⤢',
-    about_up_to_date: 'You are using the latest version (v1.3.0) ✔',
+    about_up_to_date: 'You are using the latest version (v1.4.0) ✔',
     about_update_available: 'New version available:',
     about_btn_download_update: 'Download New Version 📥',
 
@@ -308,7 +308,7 @@ const I18N_DICTIONARY = {
     about_checking: 'در حال بررسی گیت‌هاب برای نسخه جدید...',
     nav_standalone_window: 'اجرا در پنجره مستقل برنامه',
     nav_standalone_btn: 'پنجره اختصاصی ⤢',
-    about_up_to_date: 'شما از آخرین نسخه پایدار (v1.3.0) استفاده می‌کنید ✔',
+    about_up_to_date: 'شما از آخرین نسخه پایدار (v1.4.0) استفاده می‌کنید ✔',
     about_update_available: 'نسخه جدید در دسترس است:',
     about_btn_download_update: 'دانلود نسخه جدید 📥',
 

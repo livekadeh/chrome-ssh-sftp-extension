@@ -903,7 +903,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   btnExportServers.addEventListener('click', async () => {
     const { servers = [], bridgeUrl = 'ws://localhost:3000/ws' } = await chrome.storage.local.get(['servers', 'bridgeUrl']);
     const exportData = {
-      version: '1.3.0',
+      version: '1.4.0',
       exportedAt: new Date().toISOString(),
       bridgeUrl,
       servers
@@ -1125,7 +1125,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     const manifestVersion = (chrome.runtime && chrome.runtime.getManifest) 
       ? chrome.runtime.getManifest().version 
-      : '1.3.0';
+      : '1.4.0';
 
     updateResultBox.className = 'update-result-box checking';
     updateResultBox.style.display = 'flex';
