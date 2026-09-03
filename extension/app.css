@@ -293,7 +293,6 @@ body {
 .xterm-rows > div.persian-line {
   text-align: right !important;
   text-align-last: right !important;
-  direction: rtl !important;
 }
 
 .terminal-container {
