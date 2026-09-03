@@ -22,7 +22,7 @@ app.get('/', (req, res) => {
   res.json({
     status: 'online',
     service: 'LiveKadeh SSH & SFTP Bridge Server',
-    version: '1.1.0',
+    version: '1.2.0',
     uptime: process.uptime(),
     timestamp: new Date().toISOString(),
     endpoints: {
