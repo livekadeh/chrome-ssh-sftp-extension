@@ -465,6 +465,212 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
   });
 
+  // ================= SFTP CONTEXT MENU =================
+  const sftpContextMenu = document.getElementById('sftpContextMenu');
+  const sftpCtxOpen = document.getElementById('sftpCtxOpen');
+  const sftpCtxDownload = document.getElementById('sftpCtxDownload');
+  const sftpCtxEdit = document.getElementById('sftpCtxEdit');
+  const sftpCtxRename = document.getElementById('sftpCtxRename');
+  const sftpCtxChmod = document.getElementById('sftpCtxChmod');
+  const sftpCtxCopyPath = document.getElementById('sftpCtxCopyPath');
+  const sftpCtxDelete = document.getElementById('sftpCtxDelete');
+  const sftpCtxDivider = document.getElementById('sftpCtxDivider');
+  const sftpCtxUpload = document.getElementById('sftpCtxUpload');
+  const sftpCtxNewFolder = document.getElementById('sftpCtxNewFolder');
+  const sftpCtxNewFile = document.getElementById('sftpCtxNewFile');
+  const sftpCtxCopyDir = document.getElementById('sftpCtxCopyDir');
+  const sftpCtxParentDir = document.getElementById('sftpCtxParentDir');
+  const sftpCtxRefresh = document.getElementById('sftpCtxRefresh');
+
+  let sftpContextTarget = null;
+
+  window.showSftpContextMenu = (x, y, target) => {
+    if (!sftpContextMenu) return;
+    sftpContextTarget = target;
+
+    const isRow = target && target.isRow;
+    const isDir = target && target.isDir;
+
+    if (isRow) {
+      if (sftpCtxOpen) sftpCtxOpen.style.display = isDir ? 'flex' : 'none';
+      if (sftpCtxDownload) sftpCtxDownload.style.display = 'flex';
+      if (sftpCtxEdit) sftpCtxEdit.style.display = isDir ? 'none' : 'flex';
+      if (sftpCtxRename) sftpCtxRename.style.display = 'flex';
+      if (sftpCtxChmod) sftpCtxChmod.style.display = 'flex';
+      if (sftpCtxCopyPath) sftpCtxCopyPath.style.display = 'flex';
+      if (sftpCtxDelete) sftpCtxDelete.style.display = 'flex';
+      if (sftpCtxDivider) sftpCtxDivider.style.display = 'block';
+    } else {
+      if (sftpCtxOpen) sftpCtxOpen.style.display = 'none';
+      if (sftpCtxDownload) sftpCtxDownload.style.display = 'none';
+      if (sftpCtxEdit) sftpCtxEdit.style.display = 'none';
+      if (sftpCtxRename) sftpCtxRename.style.display = 'none';
+      if (sftpCtxChmod) sftpCtxChmod.style.display = 'none';
+      if (sftpCtxCopyPath) sftpCtxCopyPath.style.display = 'none';
+      if (sftpCtxDelete) sftpCtxDelete.style.display = 'none';
+      if (sftpCtxDivider) sftpCtxDivider.style.display = 'none';
+    }
+
+    sftpContextMenu.style.display = 'block';
+    const menuWidth = sftpContextMenu.offsetWidth || 210;
+    const menuHeight = sftpContextMenu.offsetHeight || 300;
+
+    let posX = x;
+    let posY = y;
+    if (posX + menuWidth > window.innerWidth) posX = window.innerWidth - menuWidth - 10;
+    if (posY + menuHeight > window.innerHeight) posY = window.innerHeight - menuHeight - 10;
+
+    sftpContextMenu.style.left = `${Math.max(10, posX)}px`;
+    sftpContextMenu.style.top = `${Math.max(10, posY)}px`;
+  };
+
+  function hideSftpContextMenu() {
+    if (sftpContextMenu) {
+      sftpContextMenu.style.display = 'none';
+    }
+  }
+
+  document.addEventListener('click', hideSftpContextMenu);
+  document.addEventListener('contextmenu', (e) => {
+    if (!e.target.closest('#viewSFTP')) {
+      hideSftpContextMenu();
+    }
+  });
+
+  if (sftpDropZone) {
+    sftpDropZone.addEventListener('contextmenu', (e) => {
+      if (!e.target.closest('.sftp-row')) {
+        e.preventDefault();
+        window.showSftpContextMenu(e.clientX, e.clientY, {
+          filename: null,
+          isDir: false,
+          isRow: false
+        });
+      }
+    });
+  }
+
+  if (sftpCtxOpen) {
+    sftpCtxOpen.addEventListener('click', () => {
+      hideSftpContextMenu();
+      if (sftpContextTarget && sftpContextTarget.filename) {
+        const next = sftpManager.currentPath.endsWith('/') 
+          ? sftpManager.currentPath + sftpContextTarget.filename 
+          : sftpManager.currentPath + '/' + sftpContextTarget.filename;
+        sftpManager.listDirectory(next);
+      }
+    });
+  }
+
+  if (sftpCtxDownload) {
+    sftpCtxDownload.addEventListener('click', () => {
+      hideSftpContextMenu();
+      if (sftpContextTarget && sftpContextTarget.filename) {
+        sftpManager.downloadFile(sftpContextTarget.filename);
+      }
+    });
+  }
+
+  if (sftpCtxEdit) {
+    sftpCtxEdit.addEventListener('click', () => {
+      hideSftpContextMenu();
+      if (sftpContextTarget && sftpContextTarget.filename) {
+        sftpManager.editFile(sftpContextTarget.filename);
+      }
+    });
+  }
+
+  if (sftpCtxRename) {
+    sftpCtxRename.addEventListener('click', () => {
+      hideSftpContextMenu();
+      const targetName = sftpContextTarget ? sftpContextTarget.filename : null;
+      sftpManager.renameItem(targetName);
+    });
+  }
+
+  if (sftpCtxChmod) {
+    sftpCtxChmod.addEventListener('click', () => {
+      hideSftpContextMenu();
+      const targetName = sftpContextTarget ? sftpContextTarget.filename : null;
+      sftpManager.changePermissions(targetName);
+    });
+  }
+
+  if (sftpCtxCopyPath) {
+    sftpCtxCopyPath.addEventListener('click', () => {
+      hideSftpContextMenu();
+      const targetName = sftpContextTarget ? sftpContextTarget.filename : null;
+      sftpManager.copyItemPath(targetName);
+    });
+  }
+
+  if (sftpCtxDelete) {
+    sftpCtxDelete.addEventListener('click', () => {
+      hideSftpContextMenu();
+      if (sftpContextTarget && sftpContextTarget.filename) {
+        sftpManager.deleteItem(sftpContextTarget.filename, sftpContextTarget.isDir);
+      }
+    });
+  }
+
+  if (sftpCtxUpload) {
+    sftpCtxUpload.addEventListener('click', () => {
+      hideSftpContextMenu();
+      if (sftpFileInput) sftpFileInput.click();
+    });
+  }
+
+  if (sftpCtxNewFolder) {
+    sftpCtxNewFolder.addEventListener('click', () => {
+      hideSftpContextMenu();
+      sftpManager.createNewFolder();
+    });
+  }
+
+  if (sftpCtxNewFile) {
+    sftpCtxNewFile.addEventListener('click', () => {
+      hideSftpContextMenu();
+      sftpManager.createNewFile();
+    });
+  }
+
+  if (sftpCtxCopyDir) {
+    sftpCtxCopyDir.addEventListener('click', () => {
+      hideSftpContextMenu();
+      sftpManager.copyCurrentPath();
+    });
+  }
+
+  if (sftpCtxParentDir) {
+    sftpCtxParentDir.addEventListener('click', () => {
+      hideSftpContextMenu();
+      btnSftpUp.click();
+    });
+  }
+
+  if (sftpCtxRefresh) {
+    sftpCtxRefresh.addEventListener('click', () => {
+      hideSftpContextMenu();
+      sftpManager.listDirectory(sftpManager.currentPath);
+    });
+  }
+
+  // Keyboard shortcuts in SFTP view (F2: Rename, Delete: Delete)
+  window.addEventListener('keydown', (e) => {
+    const sftpActive = document.querySelector('.nav-tab[data-view="sftp"].active');
+    if (!sftpActive) return;
+    if (editorModal && editorModal.classList.contains('active')) return;
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+
+    if (e.key === 'F2') {
+      e.preventDefault();
+      sftpManager.renameItem();
+    } else if (e.key === 'Delete' || e.key === 'Del') {
+      e.preventDefault();
+      btnSftpDelete.click();
+    }
+  });
+
   // Editor Modal
   btnEditorSave.addEventListener('click', () => sftpManager.saveEditedFile());
   btnCloseEditorModal.addEventListener('click', () => editorModal.classList.remove('active'));

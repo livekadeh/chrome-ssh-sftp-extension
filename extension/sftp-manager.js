@@ -204,6 +204,30 @@ class SFTPManager {
         this.deleteItem(file.filename, isDir);
       });
 
+      // Context menu on row
+      tr.addEventListener('contextmenu', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+
+        if (!this.selectedFiles.has(file.filename)) {
+          this.selectedFiles.clear();
+          this.tableBodyEl.querySelectorAll('.sftp-row.selected').forEach(r => {
+            r.classList.remove('selected');
+            const c = r.querySelector('.file-chk');
+            if (c) c.checked = false;
+          });
+          this.toggleSelect(file.filename, tr);
+        }
+
+        if (window.showSftpContextMenu) {
+          window.showSftpContextMenu(e.clientX, e.clientY, {
+            filename: file.filename,
+            isDir: isDir,
+            isRow: true
+          });
+        }
+      });
+
       this.tableBodyEl.appendChild(tr);
     });
   }
@@ -477,7 +501,13 @@ class SFTPManager {
   }
 
   async deleteItem(filename, isDir) {
-    if (!confirm(`آیا از حذف "${filename}" اطمینان دارید؟`)) return;
+    if (!filename) {
+      if (this.selectedFiles.size === 0) return;
+      filename = Array.from(this.selectedFiles)[0];
+    }
+    const isPersian = window.i18n && window.i18n.currentLang === 'fa';
+    const confirmMsg = isPersian ? `آیا از حذف "${filename}" اطمینان دارید؟` : `Are you sure you want to delete "${filename}"?`;
+    if (!confirm(confirmMsg)) return;
 
     const targetPath = (this.currentPath.endsWith('/') ? this.currentPath : this.currentPath + '/') + filename;
     try {
@@ -488,14 +518,41 @@ class SFTPManager {
       }
       this.listDirectory(this.currentPath);
     } catch (err) {
-      alert(`خطا در حذف: ${err.message}`);
+      alert(`Error deleting: ${err.message}`);
     }
   }
 
-  async changePermissions() {
-    if (this.selectedFiles.size === 0) return;
-    const filename = Array.from(this.selectedFiles)[0];
-    const newPerm = prompt(`مجوز دسترسی جدید را برای ${filename} وارد کنید (مثلاً 0755 یا 0644):`, '0755');
+  async renameItem(oldFilename) {
+    if (!oldFilename) {
+      if (this.selectedFiles.size === 0) return;
+      oldFilename = Array.from(this.selectedFiles)[0];
+    }
+    const isPersian = window.i18n && window.i18n.currentLang === 'fa';
+    const promptMsg = isPersian ? `نام جدید را برای "${oldFilename}" وارد کنید:` : `Enter new name for "${oldFilename}":`;
+    const newFilename = prompt(promptMsg, oldFilename);
+    if (!newFilename || newFilename === oldFilename) return;
+
+    const base = this.currentPath.endsWith('/') ? this.currentPath : this.currentPath + '/';
+    const oldPath = base + oldFilename;
+    const newPath = base + newFilename;
+
+    try {
+      await this.sendRequest({ type: 'sftp-rename', oldPath, newPath });
+      this.listDirectory(this.currentPath);
+    } catch (err) {
+      alert(`Error renaming: ${err.message}`);
+    }
+  }
+
+  async changePermissions(targetFilename) {
+    const filename = targetFilename || (this.selectedFiles.size > 0 ? Array.from(this.selectedFiles)[0] : null);
+    if (!filename) return;
+
+    const isPersian = window.i18n && window.i18n.currentLang === 'fa';
+    const promptMsg = isPersian 
+      ? `مجوز دسترسی جدید (Octal) را برای "${filename}" وارد کنید (مثلاً 0755 یا 0644):`
+      : `Enter new permission mode (octal) for "${filename}" (e.g. 0755 or 0644):`;
+    const newPerm = prompt(promptMsg, '0755');
     if (!newPerm) return;
 
     const targetPath = (this.currentPath.endsWith('/') ? this.currentPath : this.currentPath + '/') + filename;
@@ -503,7 +560,33 @@ class SFTPManager {
       await this.sendRequest({ type: 'sftp-chmod', path: targetPath, mode: newPerm });
       this.listDirectory(this.currentPath);
     } catch (err) {
-      alert(`خطا: ${err.message}`);
+      alert(`Error changing permissions: ${err.message}`);
+    }
+  }
+
+  async copyItemPath(filename) {
+    if (!filename) {
+      if (this.selectedFiles.size === 0) return;
+      filename = Array.from(this.selectedFiles)[0];
+    }
+    const base = this.currentPath.endsWith('/') ? this.currentPath : this.currentPath + '/';
+    const fullPath = base + filename;
+    try {
+      await navigator.clipboard.writeText(fullPath);
+      const isPersian = window.i18n && window.i18n.currentLang === 'fa';
+      this.updateStatus(isPersian ? `مسیر کپی شد: ${fullPath}` : `Path copied: ${fullPath}`);
+    } catch (e) {
+      console.error('Failed to copy path:', e);
+    }
+  }
+
+  async copyCurrentPath() {
+    try {
+      await navigator.clipboard.writeText(this.currentPath);
+      const isPersian = window.i18n && window.i18n.currentLang === 'fa';
+      this.updateStatus(isPersian ? `مسیر جاری کپی شد: ${this.currentPath}` : `Current path copied: ${this.currentPath}`);
+    } catch (e) {
+      console.error('Failed to copy current path:', e);
     }
   }
 

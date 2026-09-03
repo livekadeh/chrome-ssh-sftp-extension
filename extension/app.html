@@ -252,6 +252,70 @@
               <span id="sftpItemCount">0 مورد</span>
             </div>
           </div>
+
+          <!-- SFTP Right-Click Context Menu -->
+          <div id="sftpContextMenu" class="app-context-menu sftp-context-menu" style="display: none;">
+            <!-- File & Folder Specific Actions -->
+            <div class="context-item" id="sftpCtxOpen">
+              <span class="ctx-icon">📂</span>
+              <span class="ctx-label" data-i18n="sftp_ctx_open">Open</span>
+              <span class="ctx-shortcut">Enter</span>
+            </div>
+            <div class="context-item" id="sftpCtxDownload">
+              <span class="ctx-icon">📥</span>
+              <span class="ctx-label" data-i18n="sftp_ctx_download">Download</span>
+            </div>
+            <div class="context-item" id="sftpCtxEdit">
+              <span class="ctx-icon">✏️</span>
+              <span class="ctx-label" data-i18n="sftp_ctx_edit">Edit File</span>
+            </div>
+            <div class="context-item" id="sftpCtxRename">
+              <span class="ctx-icon">🏷️</span>
+              <span class="ctx-label" data-i18n="sftp_ctx_rename">Rename</span>
+              <span class="ctx-shortcut">F2</span>
+            </div>
+            <div class="context-item" id="sftpCtxChmod">
+              <span class="ctx-icon">🔒</span>
+              <span class="ctx-label" data-i18n="sftp_ctx_chmod">Permissions (Chmod)</span>
+            </div>
+            <div class="context-item" id="sftpCtxCopyPath">
+              <span class="ctx-icon">📋</span>
+              <span class="ctx-label" data-i18n="sftp_ctx_copy_path">Copy Full Path</span>
+            </div>
+            <div class="context-item" id="sftpCtxDelete" style="color: #ef4444;">
+              <span class="ctx-icon">🗑️</span>
+              <span class="ctx-label" data-i18n="sftp_ctx_delete">Delete</span>
+              <span class="ctx-shortcut">Del</span>
+            </div>
+
+            <div class="context-divider" id="sftpCtxDivider"></div>
+
+            <!-- General Directory Actions -->
+            <div class="context-item" id="sftpCtxUpload">
+              <span class="ctx-icon">📤</span>
+              <span class="ctx-label" data-i18n="sftp_ctx_upload">Upload Files...</span>
+            </div>
+            <div class="context-item" id="sftpCtxNewFolder">
+              <span class="ctx-icon">📁</span>
+              <span class="ctx-label" data-i18n="sftp_ctx_new_folder">New Folder</span>
+            </div>
+            <div class="context-item" id="sftpCtxNewFile">
+              <span class="ctx-icon">📄</span>
+              <span class="ctx-label" data-i18n="sftp_ctx_new_file">New File</span>
+            </div>
+            <div class="context-item" id="sftpCtxCopyDir">
+              <span class="ctx-icon">📋</span>
+              <span class="ctx-label" data-i18n="sftp_ctx_copy_dir">Copy Directory Path</span>
+            </div>
+            <div class="context-item" id="sftpCtxParentDir">
+              <span class="ctx-icon">⬆️</span>
+              <span class="ctx-label" data-i18n="sftp_ctx_parent_dir">Parent Directory</span>
+            </div>
+            <div class="context-item" id="sftpCtxRefresh">
+              <span class="ctx-icon">🔄</span>
+              <span class="ctx-label" data-i18n="sftp_ctx_refresh">Refresh Directory</span>
+            </div>
+          </div>
         </div>
       </section>
 

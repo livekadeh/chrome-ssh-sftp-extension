@@ -402,8 +402,10 @@ body {
   box-shadow: 0 0 10px rgba(0, 240, 255, 0.2);
 }
 
-/* ================= TERMINAL CONTEXT MENU ================= */
-.term-context-menu {
+/* ================= CONTEXT MENUS (TERMINAL & SFTP) ================= */
+.app-context-menu,
+.term-context-menu,
+.sftp-context-menu {
   position: fixed;
   z-index: 99999;
   background: rgba(10, 15, 26, 0.96);
@@ -412,9 +414,9 @@ body {
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6), 0 0 15px rgba(0, 240, 255, 0.15);
   border-radius: var(--radius-sm);
   padding: 6px;
-  min-width: 190px;
+  min-width: 200px;
   animation: fadeIn 0.15s ease-out;
-  direction: rtl;
+  direction: inherit;
 }
 
 .context-item {

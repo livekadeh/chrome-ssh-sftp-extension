@@ -51,6 +51,21 @@ const I18N_DICTIONARY = {
     sftp_th_actions: 'Actions',
     sftp_uploading_chunked: 'Uploading file (chunked)...',
 
+    // SFTP Context Menu
+    sftp_ctx_open: 'Open',
+    sftp_ctx_download: 'Download',
+    sftp_ctx_edit: 'Edit File',
+    sftp_ctx_rename: 'Rename',
+    sftp_ctx_chmod: 'Permissions (Chmod)',
+    sftp_ctx_copy_path: 'Copy Full Path',
+    sftp_ctx_delete: 'Delete',
+    sftp_ctx_upload: 'Upload Files...',
+    sftp_ctx_new_folder: 'New Folder',
+    sftp_ctx_new_file: 'New File',
+    sftp_ctx_copy_dir: 'Copy Directory Path',
+    sftp_ctx_parent_dir: 'Parent Directory',
+    sftp_ctx_refresh: 'Refresh Directory',
+
     // Servers View
     servers_title: 'Saved Server Vault',
     servers_desc: 'Securely manage and launch connections to your remote SSH/SFTP servers.',
@@ -140,6 +155,21 @@ const I18N_DICTIONARY = {
     sftp_th_modified: 'تاریخ ویرایش',
     sftp_th_actions: 'عملیات',
     sftp_uploading_chunked: 'در حال آپلود تکه‌ای فایل...',
+
+    // SFTP Context Menu
+    sftp_ctx_open: 'باز کردن',
+    sftp_ctx_download: 'دانلود',
+    sftp_ctx_edit: 'ویرایش فایل',
+    sftp_ctx_rename: 'تغییر نام',
+    sftp_ctx_chmod: 'تغییر سطح دسترسی (Chmod)',
+    sftp_ctx_copy_path: 'کپی مسیر کامل',
+    sftp_ctx_delete: 'حذف',
+    sftp_ctx_upload: 'آپلود فایل‌ها...',
+    sftp_ctx_new_folder: 'پوشه جدید',
+    sftp_ctx_new_file: 'فایل جدید',
+    sftp_ctx_copy_dir: 'کپی آدرس این پوشه',
+    sftp_ctx_parent_dir: 'یک سطح بالاتر',
+    sftp_ctx_refresh: 'بروزرسانی',
 
     // Servers View
     servers_title: 'صندوقچه سرورهای ذخیره‌شده',
