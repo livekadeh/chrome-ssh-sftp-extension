@@ -122,7 +122,7 @@ const I18N_DICTIONARY = {
     about_feat_bridge_title: 'High-Speed Bridge Server',
     about_feat_bridge_desc: 'Node.js ssh2 WebSocket bridge proxying raw SSH and SFTP streams with low latency, portable zero-config runners available.',
     about_checking: 'Checking GitHub for updates...',
-    about_up_to_date: 'You are using the latest version (v1.2.0) ✔',
+    about_up_to_date: 'You are using the latest version (v1.3.0) ✔',
     about_update_available: 'New version available:',
     about_btn_download_update: 'Download New Version 📥',
 
@@ -246,7 +246,7 @@ const I18N_DICTIONARY = {
     about_feat_bridge_title: 'سرور واسط پرسرعت (Bridge)',
     about_feat_bridge_desc: 'ارتباط کم‌تاخیر با سرورها بر بستر WebSocket و لایبرری استاندارد ssh2 بدون نیاز به نصب نرم‌افزار اضافی در نسخه‌های پرتابل.',
     about_checking: 'در حال بررسی گیت‌هاب برای نسخه جدید...',
-    about_up_to_date: 'شما از آخرین نسخه پایدار (v1.2.0) استفاده می‌کنید ✔',
+    about_up_to_date: 'شما از آخرین نسخه پایدار (v1.3.0) استفاده می‌کنید ✔',
     about_update_available: 'نسخه جدید در دسترس است:',
     about_btn_download_update: 'دانلود نسخه جدید 📥',
 

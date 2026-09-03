@@ -987,7 +987,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     const manifestVersion = (chrome.runtime && chrome.runtime.getManifest) 
       ? chrome.runtime.getManifest().version 
-      : '1.2.0';
+      : '1.3.0';
 
     updateResultBox.className = 'update-result-box checking';
     updateResultBox.style.display = 'flex';

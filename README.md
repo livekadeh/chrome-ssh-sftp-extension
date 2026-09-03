@@ -3,7 +3,7 @@
 [![Persian Version / نسخه فارسی](https://img.shields.io/badge/Language-فارسی-green.svg)](README_fa.md)
 [![GitHub Repository](https://img.shields.io/badge/GitHub-livekadeh%2Fchrome--ssh--sftp--extension-00f0ff?style=for-the-badge&logo=github)](https://github.com/livekadeh/chrome-ssh-sftp-extension)
 [![Manifest V3](https://img.shields.io/badge/Chrome_Extension-Manifest_V3-00ff9d?style=for-the-badge&logo=googlechrome)](https://developer.chrome.com/docs/extensions/mv3/)
-[![Release v1.2.0](https://img.shields.io/badge/Release-v1.2.0-orange?style=for-the-badge)](https://github.com/livekadeh/chrome-ssh-sftp-extension/releases/tag/v1.2.0)
+[![Release v1.3.0](https://img.shields.io/badge/Release-v1.3.0-orange?style=for-the-badge)](https://github.com/livekadeh/chrome-ssh-sftp-extension/releases/tag/v1.3.0)
 [![License: MIT](https://img.shields.io/badge/License-MIT-purple?style=for-the-badge)](LICENSE)
 
 A powerful, modern Google Chrome extension (Pro Edition) that delivers a complete interactive **SSH Terminal (xterm.js with Persian/BiDi shaper and right-click Copy/Paste)** and an advanced **SFTP File Manager (live chunked upload progress, drag & drop, in-browser editor)** powered by a high-speed WebSocket bridge server.
@@ -46,7 +46,7 @@ A powerful, modern Google Chrome extension (Pro Edition) that delivers a complet
 
 ### 1. Chrome Extension Installation
 
-1. Download [`chrome-ssh-sftp-extension-v1.2.0.zip`](https://github.com/livekadeh/chrome-ssh-sftp-extension/releases/download/v1.2.0/chrome-ssh-sftp-extension-v1.2.0.zip) from the latest release.
+1. Download [`chrome-ssh-sftp-extension-v1.3.0.zip`](https://github.com/livekadeh/chrome-ssh-sftp-extension/releases/download/v1.3.0/chrome-ssh-sftp-extension-v1.3.0.zip) from the latest release.
 2. Unzip the file to a local folder.
 3. Open Google Chrome and navigate to `chrome://extensions`.
 4. Enable **Developer mode** toggle in the top-right corner.
