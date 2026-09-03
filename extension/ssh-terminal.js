@@ -9,7 +9,7 @@ class SSHTerminalManager {
     this.sessions = new Map();
     this.activeSessionId = null;
     this.fontSize = 14;
-    this.fontFamily = "'JetBrains Mono', 'Vazirmatn', 'Fira Code', 'Courier New', monospace, Tahoma";
+    this.fontFamily = "'JetBrains Mono', 'Fira Code', 'Courier New', monospace";
     this.themeName = 'cyberpunk';
 
     this.themes = {
@@ -141,7 +141,8 @@ class SSHTerminalManager {
         try {
           const msg = JSON.parse(event.data);
           if (msg.type === 'ssh-output') {
-            term.write(msg.data);
+            const text = typeof processBiDiTerminalText === 'function' ? processBiDiTerminalText(msg.data) : msg.data;
+            term.write(text);
           } else if (msg.type === 'ssh-status') {
             if (msg.status === 'connected') {
               session.status = 'connected';
@@ -160,7 +161,8 @@ class SSHTerminalManager {
             }
           }
         } catch (e) {
-          term.write(event.data);
+          const text = typeof processBiDiTerminalText === 'function' ? processBiDiTerminalText(event.data) : event.data;
+          term.write(text);
         }
       };
 

@@ -180,6 +180,31 @@
                 </tbody>
               </table>
 
+              <!-- SFTP Upload Progress Floating Bar -->
+              <div id="sftpUploadProgressContainer" class="sftp-upload-progress" style="display: none;">
+                <div class="upload-progress-card">
+                  <div class="upload-progress-header">
+                    <div class="upload-header-left">
+                      <div class="upload-pulse-icon">⚡</div>
+                      <div>
+                        <div class="upload-file-name" id="uploadProgressFileName">filename.zip</div>
+                        <div class="upload-file-counter" id="uploadProgressCounter">1 / 1 فایل</div>
+                      </div>
+                    </div>
+                    <div class="upload-header-right">
+                      <span class="upload-percent-text" id="uploadProgressPercent">0%</span>
+                    </div>
+                  </div>
+                  <div class="upload-track">
+                    <div class="upload-bar" id="uploadProgressBar" style="width: 0%;"></div>
+                  </div>
+                  <div class="upload-footer">
+                    <span id="uploadProgressSize">0 KB / 0 KB</span>
+                    <span id="uploadProgressSpeed">0 KB/s</span>
+                  </div>
+                </div>
+              </div>
+
               <!-- Drop Overlay -->
               <div id="dragDropOverlay" class="drag-drop-overlay">
                 <div class="drop-badge">📤 رها کنید تا در این مسیر آپلود شود</div>
@@ -354,6 +379,7 @@
 
   <script src="lib/xterm.js"></script>
   <script src="lib/xterm-addon-fit.js"></script>
+  <script src="lib/persian-bidi-shaper.js"></script>
   <script src="ssh-terminal.js"></script>
   <script src="sftp-manager.js"></script>
   <script src="app.js"></script>

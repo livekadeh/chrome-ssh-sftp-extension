@@ -266,6 +266,22 @@ body {
   direction: ltr;
 }
 
+.terminal-container,
+.terminal-container *,
+.xterm,
+.xterm-screen,
+.xterm-rows,
+.xterm-rows span,
+.xterm-instance,
+.xterm-wrapper,
+.xterm-viewport,
+.xterm-screen canvas {
+  font-family: 'JetBrains Mono', 'Fira Code', 'Courier New', monospace !important;
+  letter-spacing: 0px !important;
+  word-spacing: 0px !important;
+  font-feature-settings: normal !important;
+}
+
 .terminal-container {
   flex: 1;
   position: relative;
@@ -929,3 +945,110 @@ input:focus, select:focus, textarea:focus {
   color: var(--text-muted);
   line-height: 1.5;
 }
+
+/* ================= SFTP UPLOAD PROGRESS BAR ================= */
+.sftp-upload-progress {
+  position: absolute;
+  bottom: 35px;
+  left: 20px;
+  right: 20px;
+  z-index: 100;
+  animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.upload-progress-card {
+  background: rgba(12, 18, 29, 0.95);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(0, 240, 255, 0.4);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6), 0 0 20px rgba(0, 240, 255, 0.2);
+  border-radius: var(--radius-md);
+  padding: 14px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.upload-progress-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.upload-header-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.upload-pulse-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: rgba(0, 240, 255, 0.15);
+  border: 1px solid var(--accent-cyan);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  animation: pulseGlow 1.5s infinite alternate;
+}
+
+.upload-file-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-main);
+  max-width: 400px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.upload-file-counter {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.upload-percent-text {
+  font-family: var(--font-mono);
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--accent-cyan);
+  text-shadow: 0 0 8px var(--accent-cyan-glow);
+}
+
+.upload-track {
+  width: 100%;
+  height: 8px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 4px;
+  overflow: hidden;
+  position: relative;
+}
+
+.upload-bar {
+  height: 100%;
+  background: linear-gradient(90deg, #00f0ff, #00ff9d);
+  border-radius: 4px;
+  box-shadow: 0 0 10px #00ff9d;
+  transition: width 0.15s ease-out;
+}
+
+.upload-footer {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  font-family: var(--font-mono);
+  color: var(--text-muted);
+  direction: ltr;
+}
+
+@keyframes pulseGlow {
+  0% { box-shadow: 0 0 5px rgba(0, 240, 255, 0.2); }
+  100% { box-shadow: 0 0 16px rgba(0, 240, 255, 0.6); }
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+

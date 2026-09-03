@@ -53,6 +53,7 @@ wss.on('connection', (ws, req) => {
   let sshStream = null;
   let sftpSession = null;
   let isConnected = false;
+  const uploadHandles = new Map();
 
   const safeSend = (obj) => {
     if (ws.readyState === ws.OPEN) {
@@ -68,6 +69,13 @@ wss.on('connection', (ws, req) => {
   }, 25000);
 
   const cleanupSSH = () => {
+    uploadHandles.forEach((upload) => {
+      if (sftpSession && upload.handle) {
+        try { sftpSession.close(upload.handle, () => {}); } catch (e) {}
+      }
+    });
+    uploadHandles.clear();
+
     if (sshStream) {
       try { sshStream.end(); } catch (e) {}
       sshStream = null;
@@ -390,6 +398,56 @@ wss.on('connection', (ws, req) => {
       });
 
       writeStream.end(buffer);
+      return;
+    }
+
+    // --- SFTP CHUNKED UPLOAD ---
+    if (type === 'sftp-chunk-init') {
+      const { path: filePath, id } = msg;
+      if (!checkSftp(id)) return;
+
+      sftpSession.open(filePath, 'w', (err, handle) => {
+        if (err) {
+          safeSend({ type: 'sftp-chunk-init-res', id, success: false, error: err.message });
+        } else {
+          uploadHandles.set(id, { handle, offset: 0, path: filePath });
+          safeSend({ type: 'sftp-chunk-init-res', id, success: true, uploadId: id });
+        }
+      });
+      return;
+    }
+
+    if (type === 'sftp-chunk-write') {
+      const { uploadId, chunk, offset, id } = msg;
+      const upload = uploadHandles.get(uploadId);
+      if (!upload) {
+        safeSend({ type: 'sftp-chunk-write-res', id, success: false, error: 'Upload handle not found' });
+        return;
+      }
+      const buffer = Buffer.from(chunk, 'base64');
+      const pos = (offset !== undefined) ? offset : upload.offset;
+      sftpSession.write(upload.handle, buffer, 0, buffer.length, pos, (err) => {
+        if (err) {
+          safeSend({ type: 'sftp-chunk-write-res', id, success: false, error: err.message });
+        } else {
+          upload.offset = pos + buffer.length;
+          safeSend({ type: 'sftp-chunk-write-res', id, success: true, written: buffer.length });
+        }
+      });
+      return;
+    }
+
+    if (type === 'sftp-chunk-end') {
+      const { uploadId, id } = msg;
+      const upload = uploadHandles.get(uploadId);
+      if (!upload) {
+        safeSend({ type: 'sftp-chunk-end-res', id, success: false, error: 'Upload handle not found' });
+        return;
+      }
+      sftpSession.close(upload.handle, (err) => {
+        uploadHandles.delete(uploadId);
+        safeSend({ type: 'sftp-chunk-end-res', id, success: !err, path: upload.path, error: err ? err.message : null });
+      });
       return;
     }
 
