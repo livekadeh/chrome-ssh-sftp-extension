@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LiveKadeh SSH & SFTP</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="popup-container">
+    <!-- Header -->
+    <header class="header">
+      <div class="brand">
+        <div class="logo-glow">⚡</div>
+        <div>
+          <h1 class="title">LiveKadeh</h1>
+          <span class="subtitle">SSH & SFTP Manager</span>
+        </div>
+      </div>
+      <button id="btnOpenFull" class="btn-icon" title="باز کردن در تب بزرگ">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+          <polyline points="15 3 21 3 21 9"></polyline>
+          <line x1="10" y1="14" x2="21" y2="3"></line>
+        </svg>
+      </button>
+    </header>
+
+    <!-- Quick Server Connect Bar -->
+    <div class="quick-connect-card">
+      <div class="card-title">اتصال سریع به سرور</div>
+      <div class="form-row">
+        <input type="text" id="quickHost" placeholder="آدرس سرور یا IP (مثلاً nl.livekadeh.com)" dir="ltr">
+      </div>
+      <div class="form-grid">
+        <input type="text" id="quickUser" placeholder="نام کاربری (root)" value="root" dir="ltr">
+        <input type="number" id="quickPort" placeholder="پورت (22)" value="22" dir="ltr">
+      </div>
+      <div class="form-row">
+        <input type="password" id="quickPass" placeholder="رمز عبور یا کلید" dir="ltr">
+      </div>
+      <div class="action-buttons">
+        <button id="btnQuickSSH" class="btn btn-primary">
+          <span>⚡ ترمینال SSH</span>
+        </button>
+        <button id="btnQuickSFTP" class="btn btn-secondary">
+          <span>📁 فایل منیجر SFTP</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Saved Servers List -->
+    <div class="saved-servers-section">
+      <div class="section-header">
+        <span>سرورهای ذخیره‌شده</span>
+        <button id="btnManageServers" class="link-btn">مدیریت +</button>
+      </div>
+      <div id="serversList" class="servers-list">
+        <!-- Injected via JS -->
+      </div>
+    </div>
+
+    <!-- Footer Bridge Status -->
+    <footer class="footer">
+      <div class="bridge-status">
+        <span class="status-dot" id="bridgeDot"></span>
+        <span id="bridgeStatusText">بریج سرور: در حال بررسی...</span>
+      </div>
+      <button id="btnSettings" class="btn-icon" title="تنظیمات">⚙️</button>
+    </footer>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

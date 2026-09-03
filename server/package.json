@@ -1,0 +1,27 @@
+{
+  "name": "chrome-ssh-sftp-bridge",
+  "version": "1.0.0",
+  "description": "High Performance WebSocket SSH & SFTP Bridge Server for Chrome Extension",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "ssh2": "^1.15.0",
+    "ws": "^8.18.0"
+  },
+  "keywords": [
+    "ssh",
+    "sftp",
+    "chrome-extension",
+    "websocket-bridge",
+    "terminal",
+    "xterm"
+  ],
+  "author": "livekadeh",
+  "license": "MIT"
+}

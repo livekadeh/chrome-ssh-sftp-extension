@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LiveKadeh SSH & SFTP Dashboard</title>
+  <link rel="stylesheet" href="lib/xterm.css">
+  <link rel="stylesheet" href="app.css">
+</head>
+<body>
+  <div class="app-layout">
+    
+    <!-- Top Navigation Bar -->
+    <header class="topbar">
+      <div class="brand">
+        <div class="brand-badge">⚡</div>
+        <div class="brand-text">
+          <span class="brand-title">LiveKadeh</span>
+          <span class="brand-sub">SSH & SFTP Pro</span>
+        </div>
+      </div>
+
+      <!-- Navigation Tabs -->
+      <nav class="nav-tabs">
+        <button class="nav-tab active" data-view="ssh">
+          <span class="tab-icon">⚡</span>
+          <span>ترمینال SSH</span>
+        </button>
+        <button class="nav-tab" data-view="sftp">
+          <span class="tab-icon">📁</span>
+          <span>فایل منیجر SFTP</span>
+        </button>
+        <button class="nav-tab" data-view="servers">
+          <span class="tab-icon">🖥️</span>
+          <span>مدیریت سرورها</span>
+        </button>
+        <button class="nav-tab" data-view="settings">
+          <span class="tab-icon">⚙️</span>
+          <span>تنظیمات</span>
+        </button>
+      </nav>
+
+      <!-- Active Connection Status Pill -->
+      <div class="header-right">
+        <div class="server-pill" id="activeServerPill">
+          <span class="status-indicator disconnected" id="globalStatusDot"></span>
+          <span class="server-title" id="globalServerName">اتصال برقرار نیست</span>
+        </div>
+        <button id="btnConnectModal" class="btn btn-sm btn-cyan">اتصال جدید +</button>
+      </div>
+    </header>
+
+    <!-- Main Content Views -->
+    <main class="main-content">
+
+      <!-- ================= SSH TERMINAL VIEW ================= -->
+      <section id="viewSSH" class="view-panel active">
+        <div class="terminal-workspace">
+          <!-- Terminal Tabs Bar -->
+          <div class="terminal-topbar">
+            <div class="terminal-tabs-list" id="terminalTabsList">
+              <!-- Active Tabs injected here -->
+            </div>
+            <button id="btnNewTerminalTab" class="btn-icon-sm" title="تب جدید ترمینال">+</button>
+            <div class="terminal-toolbar">
+              <button id="btnTermReconnect" class="btn-action" title="اتصال مجدد">🔄 اتصال مجدد</button>
+              <button id="btnTermClear" class="btn-action" title="پاکسازی صفحه">🧹 پاکسازی</button>
+              <div class="font-controls">
+                <button id="btnFontMinus" class="btn-action" title="کاهش فونت">A-</button>
+                <button id="btnFontPlus" class="btn-action" title="افزایش فونت">A+</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Terminal Canvas Container -->
+          <div class="terminal-container" id="terminalContainer">
+            <div id="terminalEmptyState" class="empty-state">
+              <div class="empty-icon">⚡</div>
+              <h3>ترمینال SSH فعال نیست</h3>
+              <p>جهت اتصال به سرور و باز کردن خط فرمان، از دکمه اتصال جدید یا لیست سرورها استفاده کنید.</p>
+              <button class="btn btn-cyan btn-open-connect">اتصال به سرور 🚀</button>
+            </div>
+            <div id="xtermWrapper" class="xterm-wrapper" style="display: none;"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= SFTP FILE MANAGER VIEW ================= -->
+      <section id="viewSFTP" class="view-panel">
+        <div class="sftp-workspace">
+          <!-- SFTP Left Sidebar (Quick Paths & Storage) -->
+          <aside class="sftp-sidebar">
+            <div class="sidebar-block">
+              <div class="sidebar-title">مسیرهای سریع</div>
+              <div class="quick-nav-list">
+                <button class="quick-nav-item" data-path="/root"><span>👑</span> /root</button>
+                <button class="quick-nav-item" data-path="/var/www"><span>🌐</span> /var/www</button>
+                <button class="quick-nav-item" data-path="/home"><span>🏠</span> /home</button>
+                <button class="quick-nav-item" data-path="/etc"><span>⚙️</span> /etc</button>
+                <button class="quick-nav-item" data-path="/var/log"><span>📜</span> /var/log</button>
+                <button class="quick-nav-item" data-path="/tmp"><span>📦</span> /tmp</button>
+              </div>
+            </div>
+
+            <div class="sidebar-block">
+              <div class="sidebar-title">راهنمای کلیدها</div>
+              <div class="shortcuts-guide">
+                <div><kbd>Enter</kbd> باز کردن پوشه / فایل</div>
+                <div><kbd>Del</kbd> حذف فایل</div>
+                <div><kbd>F2</kbd> تغییر نام</div>
+                <div><kbd>Ctrl+S</kbd> ذخیره در ادیتور</div>
+              </div>
+            </div>
+          </aside>
+
+          <!-- SFTP Main Browser -->
+          <div class="sftp-main">
+            <!-- Breadcrumb & Search Bar -->
+            <div class="sftp-nav-bar">
+              <div class="nav-buttons">
+                <button id="btnSftpUp" class="btn-icon-sm" title="یک سطح بالاتر">⬆️</button>
+                <button id="btnSftpRefresh" class="btn-icon-sm" title="بروزرسانی">🔄</button>
+              </div>
+              <div class="breadcrumb-container">
+                <input type="text" id="sftpCurrentPath" value="/root" dir="ltr" class="path-input">
+                <button id="btnGoPath" class="btn-sm btn-cyan">برو</button>
+              </div>
+              <div class="sftp-search">
+                <input type="text" id="sftpSearchInput" placeholder="🔍 فیلتر و جستجوی فایل...">
+              </div>
+            </div>
+
+            <!-- SFTP Action Toolbar -->
+            <div class="sftp-actions-bar">
+              <div class="action-group">
+                <label class="btn btn-sm btn-cyan file-upload-label">
+                  <span>📤 آپلود فایل</span>
+                  <input type="file" id="sftpFileInput" style="display: none;" multiple>
+                </label>
+                <button id="btnSftpNewFile" class="btn btn-sm btn-secondary">📄 فایل جدید</button>
+                <button id="btnSftpNewFolder" class="btn btn-sm btn-secondary">📁 پوشه جدید</button>
+              </div>
+              <div class="action-group">
+                <button id="btnSftpDownload" class="btn btn-sm btn-secondary" disabled>📥 دانلود</button>
+                <button id="btnSftpEdit" class="btn btn-sm btn-secondary" disabled>✏️ ویرایش</button>
+                <button id="btnSftpChmod" class="btn btn-sm btn-secondary" disabled>🔒 مجوزها</button>
+                <button id="btnSftpDelete" class="btn btn-sm btn-danger" disabled>🗑️ حذف</button>
+              </div>
+            </div>
+
+            <!-- SFTP File Table / Drop Zone -->
+            <div class="sftp-table-container" id="sftpDropZone">
+              <div id="sftpEmptyState" class="empty-state">
+                <div class="empty-icon">📁</div>
+                <h3>اتصال SFTP برقرار نیست</h3>
+                <p>جهت مشاهده و مدیریت فایل‌های سرور، لطفاً ابتدا متصل شوید.</p>
+                <button class="btn btn-cyan btn-open-connect">اتصال به SFTP 🚀</button>
+              </div>
+              
+              <table class="sftp-table" id="sftpTable" style="display: none;">
+                <thead>
+                  <tr>
+                    <th style="width: 40px;"><input type="checkbox" id="selectAllFiles"></th>
+                    <th>نام فایل / پوشه</th>
+                    <th style="width: 120px;">حجم</th>
+                    <th style="width: 110px;">مجوزها</th>
+                    <th style="width: 180px;">آخرین تغییرات</th>
+                    <th style="width: 120px; text-align: center;">عملیات</th>
+                  </tr>
+                </thead>
+                <tbody id="sftpTableBody">
+                  <!-- Injected via JS -->
+                </tbody>
+              </table>
+
+              <!-- Drop Overlay -->
+              <div id="dragDropOverlay" class="drag-drop-overlay">
+                <div class="drop-badge">📤 رها کنید تا در این مسیر آپلود شود</div>
+              </div>
+            </div>
+
+            <!-- SFTP Status Bar -->
+            <div class="sftp-status-bar">
+              <span id="sftpItemCount">۰ آیتم</span>
+              <span id="sftpSelectedInfo">هیچ فایلی انتخاب نشده</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= SERVERS MANAGEMENT VIEW ================= -->
+      <section id="viewServers" class="view-panel">
+        <div class="servers-workspace">
+          <div class="servers-header">
+            <div>
+              <h2>مدیریت سرورها و اتصالات</h2>
+              <p class="subtitle-text">سرورهای خود را ذخیره کرده و با یک کلیک به خط فرمان و مدیریت فایل متصل شوید.</p>
+            </div>
+            <div class="header-actions">
+              <button id="btnImportServers" class="btn btn-secondary">📥 درون‌ریزی (Import)</button>
+              <button id="btnExportServers" class="btn btn-secondary">📤 برون‌بری (Export)</button>
+              <button id="btnAddServerCard" class="btn btn-cyan">سرور جدید +</button>
+            </div>
+          </div>
+
+          <div class="servers-grid" id="serversGrid">
+            <!-- Injected via JS -->
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= SETTINGS VIEW ================= -->
+      <section id="viewSettings" class="view-panel">
+        <div class="settings-workspace">
+          <h2>تنظیمات اکستنشن و ارتباطات</h2>
+          
+          <div class="settings-card">
+            <h3>تنظیمات بریج سرور (WebSocket Bridge Server)</h3>
+            <p class="help-text">آدرس وب‌سوکت سرور واسط Node.js جهت برقراری نشست‌های SSH و استریم‌های SFTP:</p>
+            <div class="form-row">
+              <label>آدرس WebSocket بریج:</label>
+              <input type="text" id="settingBridgeUrl" dir="ltr" value="ws://nl.livekadeh.com:3000/ws">
+            </div>
+            <button id="btnTestBridge" class="btn btn-sm btn-cyan">تست اتصال بریج ⚡</button>
+            <span id="bridgeTestResult" class="test-result"></span>
+          </div>
+
+          <div class="settings-card">
+            <h3>تنظیمات ترمینال (xterm.js)</h3>
+            <div class="form-grid-2">
+              <div class="form-row">
+                <label>فونت ترمینال:</label>
+                <select id="settingFontFamily">
+                  <option value="'JetBrains Mono', 'Courier New', monospace">JetBrains Mono</option>
+                  <option value="'Fira Code', monospace">Fira Code</option>
+                  <option value="'Cascadia Code', monospace">Cascadia Code</option>
+                  <option value="monospace">Standard Monospace</option>
+                </select>
+              </div>
+              <div class="form-row">
+                <label>اندازه فونت (px):</label>
+                <input type="number" id="settingFontSize" value="14" min="10" max="28">
+              </div>
+            </div>
+            <div class="form-row">
+              <label>تم رنگی ترمینال:</label>
+              <select id="settingTerminalTheme">
+                <option value="cyberpunk">Cyberpunk Neon (پیش‌فرض LiveKadeh)</option>
+                <option value="dracula">Dracula Dark</option>
+                <option value="tokyoNight">Tokyo Night</option>
+                <option value="monokai">Monokai Pro</option>
+                <option value="matrix">Matrix Green</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="settings-card">
+            <h3>ذخیره و بازیابی</h3>
+            <button id="btnSaveSettings" class="btn btn-cyan">ذخیره تنظیمات 💾</button>
+          </div>
+        </div>
+      </section>
+
+    </main>
+
+    <!-- ================= CONNECT / SERVER MODAL ================= -->
+    <div id="connectModal" class="modal-backdrop">
+      <div class="modal-box">
+        <div class="modal-header">
+          <h3 id="modalTitle">اتصال به سرور</h3>
+          <button class="modal-close" id="btnCloseConnectModal">✕</button>
+        </div>
+        <form id="connectForm" class="modal-body">
+          <input type="hidden" id="modalServerId">
+          <div class="form-row">
+            <label>نام نمایشی سرور:</label>
+            <input type="text" id="serverName" placeholder="مثلاً: سرور هلند LiveKadeh">
+          </div>
+          <div class="form-grid-2">
+            <div class="form-row">
+              <label>آدرس سرور / IP:</label>
+              <input type="text" id="serverHost" placeholder="nl.livekadeh.com" dir="ltr" required>
+            </div>
+            <div class="form-row">
+              <label>پورت SSH:</label>
+              <input type="number" id="serverPort" value="22" dir="ltr" required>
+            </div>
+          </div>
+          <div class="form-grid-2">
+            <div class="form-row">
+              <label>نام کاربری:</label>
+              <input type="text" id="serverUser" value="root" dir="ltr" required>
+            </div>
+            <div class="form-row">
+              <label>رنگ برچسب:</label>
+              <input type="color" id="serverColor" value="#00f0ff">
+            </div>
+          </div>
+          <div class="form-row">
+            <label>نوع احراز هویت:</label>
+            <select id="serverAuthType">
+              <option value="password">رمز عبور (Password)</option>
+              <option value="privateKey">کلید خصوصی (SSH Key)</option>
+            </select>
+          </div>
+          <div class="form-row" id="passAuthRow">
+            <label>رمز عبور:</label>
+            <input type="password" id="serverPass" placeholder="رمز عبور سرور" dir="ltr">
+          </div>
+          <div class="form-row" id="keyAuthRow" style="display: none;">
+            <label>محتوای کلید خصوصی (RSA/Ed25519):</label>
+            <textarea id="serverPrivateKey" rows="4" placeholder="-----BEGIN OPENSSH PRIVATE KEY-----..." dir="ltr"></textarea>
+          </div>
+          <div class="modal-footer">
+            <label class="checkbox-label">
+              <input type="checkbox" id="saveServerCheck" checked> ذخیره در لیست سرورها
+            </label>
+            <div class="modal-btns">
+              <button type="button" id="btnLaunchSSH" class="btn btn-cyan">⚡ اتصال SSH</button>
+              <button type="button" id="btnLaunchSFTP" class="btn btn-secondary">📁 اتصال SFTP</button>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- ================= SFTP CODE EDITOR MODAL ================= -->
+    <div id="editorModal" class="modal-backdrop">
+      <div class="modal-box modal-lg">
+        <div class="modal-header">
+          <div class="editor-title-group">
+            <span class="editor-icon">✏️</span>
+            <span id="editorFilePath">/root/example.txt</span>
+          </div>
+          <div class="editor-header-actions">
+            <button id="btnEditorSave" class="btn btn-sm btn-cyan">ذخیره (Ctrl+S) 💾</button>
+            <button class="modal-close" id="btnCloseEditorModal">✕</button>
+          </div>
+        </div>
+        <div class="modal-body editor-body">
+          <textarea id="editorTextarea" dir="ltr" spellcheck="false"></textarea>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <script src="lib/xterm.js"></script>
+  <script src="lib/xterm-addon-fit.js"></script>
+  <script src="ssh-terminal.js"></script>
+  <script src="sftp-manager.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
