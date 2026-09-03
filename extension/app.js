@@ -271,6 +271,95 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
   }
 
+  // Terminal Context Menu (Right-Click Copy / Paste)
+  const terminalContextMenu = document.getElementById('terminalContextMenu');
+  const ctxCopy = document.getElementById('ctxCopy');
+  const ctxPaste = document.getElementById('ctxPaste');
+  const ctxSelectAll = document.getElementById('ctxSelectAll');
+  const ctxClear = document.getElementById('ctxClear');
+
+  window.showTerminalContextMenu = (e, session) => {
+    if (!terminalContextMenu) return;
+
+    const hasSel = session && session.term && session.term.hasSelection();
+    if (ctxCopy) {
+      if (hasSel) {
+        ctxCopy.classList.remove('disabled');
+      } else {
+        ctxCopy.classList.add('disabled');
+      }
+    }
+
+    terminalContextMenu.style.display = 'block';
+    const menuWidth = terminalContextMenu.offsetWidth || 200;
+    const menuHeight = terminalContextMenu.offsetHeight || 150;
+    let x = e.clientX;
+    let y = e.clientY;
+
+    if (x + menuWidth > window.innerWidth) x = window.innerWidth - menuWidth - 10;
+    if (y + menuHeight > window.innerHeight) y = window.innerHeight - menuHeight - 10;
+
+    terminalContextMenu.style.left = `${Math.max(10, x)}px`;
+    terminalContextMenu.style.top = `${Math.max(10, y)}px`;
+  };
+
+  function hideTerminalContextMenu() {
+    if (terminalContextMenu) {
+      terminalContextMenu.style.display = 'none';
+    }
+  }
+
+  document.addEventListener('click', hideTerminalContextMenu);
+  document.addEventListener('contextmenu', (e) => {
+    if (!e.target.closest('.xterm') && !e.target.closest('#terminalContainer')) {
+      hideTerminalContextMenu();
+    }
+  });
+
+  if (ctxCopy) {
+    ctxCopy.addEventListener('click', () => {
+      termManager.copySelection();
+      hideTerminalContextMenu();
+    });
+  }
+
+  if (ctxPaste) {
+    ctxPaste.addEventListener('click', async () => {
+      await termManager.pasteFromClipboard();
+      hideTerminalContextMenu();
+    });
+  }
+
+  if (ctxSelectAll) {
+    ctxSelectAll.addEventListener('click', () => {
+      termManager.selectAllActive();
+      hideTerminalContextMenu();
+    });
+  }
+
+  if (ctxClear) {
+    ctxClear.addEventListener('click', () => {
+      termManager.clearActive();
+      hideTerminalContextMenu();
+    });
+  }
+
+  // Keyboard shortcuts: Ctrl+Shift+C / Ctrl+Shift+V
+  document.addEventListener('keydown', async (e) => {
+    if (e.ctrlKey && e.shiftKey && (e.key === 'C' || e.key === 'c')) {
+      if (termManager.hasSelection()) {
+        e.preventDefault();
+        termManager.copySelection();
+      }
+    } else if (e.ctrlKey && e.shiftKey && (e.key === 'V' || e.key === 'v')) {
+      const activeTerm = document.querySelector('#viewTerminal.active');
+      if (activeTerm) {
+        e.preventDefault();
+        await termManager.pasteFromClipboard();
+      }
+    }
+  });
+
   // SFTP Navigation Controls
   btnSftpUp.addEventListener('click', () => {
     let p = sftpManager.currentPath.replace(/\/$/, '');

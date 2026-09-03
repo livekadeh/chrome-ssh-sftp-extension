@@ -114,6 +114,13 @@ class SSHTerminalManager {
       status: 'disconnected'
     };
 
+    termDiv.addEventListener('contextmenu', (e) => {
+      e.preventDefault();
+      if (typeof window.showTerminalContextMenu === 'function') {
+        window.showTerminalContextMenu(e, session);
+      }
+    });
+
     this.sessions.set(sessionId, session);
     this.renderTabs();
     this.switchSession(sessionId);
@@ -392,6 +399,46 @@ class SSHTerminalManager {
       return true;
     }
     return false;
+  }
+
+  copySelection() {
+    if (!this.activeSessionId) return false;
+    const session = this.sessions.get(this.activeSessionId);
+    if (session && session.term) {
+      const sel = session.term.getSelection();
+      if (sel) {
+        navigator.clipboard.writeText(sel);
+        return true;
+      }
+    }
+    return false;
+  }
+
+  async pasteFromClipboard() {
+    if (!this.activeSessionId) return false;
+    try {
+      const text = await navigator.clipboard.readText();
+      if (text) {
+        return this.sendData(text);
+      }
+    } catch (e) {
+      console.warn('Clipboard read failed:', e);
+    }
+    return false;
+  }
+
+  selectAllActive() {
+    if (!this.activeSessionId) return;
+    const session = this.sessions.get(this.activeSessionId);
+    if (session && session.term) {
+      session.term.selectAll();
+    }
+  }
+
+  hasSelection() {
+    if (!this.activeSessionId) return false;
+    const session = this.sessions.get(this.activeSessionId);
+    return session && session.term ? session.term.hasSelection() : false;
   }
 }
 

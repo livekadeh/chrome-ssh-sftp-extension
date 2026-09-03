@@ -96,6 +96,29 @@
             <input type="text" id="terminalPersianInput" placeholder="تایپ مستقیم دستور یا پیام به زبان فارسی (با زدن Enter ارسال می‌شود)..." dir="rtl">
             <button id="btnSendPersianInput" class="btn btn-sm btn-cyan">ارسال ↵</button>
           </div>
+
+          <!-- Terminal Right-Click Context Menu -->
+          <div id="terminalContextMenu" class="term-context-menu" style="display: none;">
+            <div class="context-item" id="ctxCopy">
+              <span class="ctx-icon">📋</span>
+              <span class="ctx-label">کپی (Copy)</span>
+              <span class="ctx-shortcut">Ctrl+Shift+C</span>
+            </div>
+            <div class="context-item" id="ctxPaste">
+              <span class="ctx-icon">📥</span>
+              <span class="ctx-label">پیست (Paste)</span>
+              <span class="ctx-shortcut">Ctrl+Shift+V</span>
+            </div>
+            <div class="context-divider"></div>
+            <div class="context-item" id="ctxSelectAll">
+              <span class="ctx-icon">🔍</span>
+              <span class="ctx-label">انتخاب همه</span>
+            </div>
+            <div class="context-item" id="ctxClear">
+              <span class="ctx-icon">🧹</span>
+              <span class="ctx-label">پاک‌سازی صفحه</span>
+            </div>
+          </div>
         </div>
       </section>
 

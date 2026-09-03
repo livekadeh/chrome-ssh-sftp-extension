@@ -25,7 +25,9 @@
     "storage",
     "unlimitedStorage",
     "tabs",
-    "notifications"
+    "notifications",
+    "clipboardRead",
+    "clipboardWrite"
   ],
   "host_permissions": [
     "http://*/*",

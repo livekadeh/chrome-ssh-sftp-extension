@@ -380,6 +380,68 @@ body {
   box-shadow: 0 0 10px rgba(0, 240, 255, 0.2);
 }
 
+/* ================= TERMINAL CONTEXT MENU ================= */
+.term-context-menu {
+  position: fixed;
+  z-index: 99999;
+  background: rgba(10, 15, 26, 0.96);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(0, 240, 255, 0.3);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6), 0 0 15px rgba(0, 240, 255, 0.15);
+  border-radius: var(--radius-sm);
+  padding: 6px;
+  min-width: 190px;
+  animation: fadeIn 0.15s ease-out;
+  direction: rtl;
+}
+
+.context-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 12px;
+  border-radius: var(--radius-xs);
+  cursor: pointer;
+  font-size: 12px;
+  color: var(--text-main);
+  transition: var(--transition);
+  user-select: none;
+}
+
+.context-item:hover {
+  background: rgba(0, 240, 255, 0.12);
+  color: #00f0ff;
+}
+
+.context-item.disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.ctx-icon {
+  font-size: 14px;
+}
+
+.ctx-label {
+  flex: 1;
+}
+
+.ctx-shortcut {
+  font-size: 10px;
+  color: var(--text-muted);
+  background: rgba(255, 255, 255, 0.05);
+  padding: 2px 6px;
+  border-radius: 4px;
+  direction: ltr;
+}
+
+.context-divider {
+  height: 1px;
+  background: var(--border-glass);
+  margin: 4px 6px;
+}
+
 /* ================= SFTP FILE MANAGER VIEW ================= */
 .sftp-workspace {
   display: flex;
