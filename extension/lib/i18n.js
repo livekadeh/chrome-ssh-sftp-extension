@@ -70,11 +70,15 @@ const I18N_DICTIONARY = {
     sftp_ctx_refresh: 'Refresh Directory',
     sftp_compress_btn: '🗜️ Compress',
     sftp_ctx_compress: 'Compress (Zip / Tar)',
+    sftp_preview_btn: '👁️ Preview / Play',
+    sftp_ctx_preview: 'Preview / Play Media',
     sftp_view_list: 'List View',
     sftp_view_grid: 'Grid View',
     sftp_items_count: 'items',
     sftp_selected_count: 'item(s) selected',
     sftp_no_selection: 'No files selected',
+    media_modal_title: 'Media Viewer',
+    media_loading: 'Loading media file...',
 
     // Servers View
     servers_title: 'Saved Server Vault',
@@ -221,11 +225,15 @@ const I18N_DICTIONARY = {
     sftp_ctx_refresh: 'بروزرسانی',
     sftp_compress_btn: '🗜️ فشرده‌سازی',
     sftp_ctx_compress: 'فشرده‌سازی فایل‌ها (Compress)',
+    sftp_preview_btn: '👁️ نمایش / پخش',
+    sftp_ctx_preview: 'پخش و نمایش مدیا (Preview)',
     sftp_view_list: 'نمای جدولی',
     sftp_view_grid: 'نمای شبکه‌ای',
     sftp_items_count: 'آیتم',
     sftp_selected_count: 'آیتم انتخاب شده',
     sftp_no_selection: 'هیچ فایلی انتخاب نشده',
+    media_modal_title: 'نمایشگر و پخش‌کننده رسانه',
+    media_loading: 'در حال دریافت و آماده‌سازی فایل رسانه...',
 
     // Servers View
     servers_title: 'صندوقچه سرورهای ذخیره‌شده',

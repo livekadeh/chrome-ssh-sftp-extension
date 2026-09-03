@@ -523,6 +523,15 @@ document.addEventListener('DOMContentLoaded', async () => {
       sftpManager.compressSelected('zip');
     });
   }
+  const btnSftpPreview = document.getElementById('btnSftpPreview');
+  if (btnSftpPreview) {
+    btnSftpPreview.addEventListener('click', () => {
+      const selected = Array.from(sftpManager.selectedFiles);
+      if (selected.length === 1) {
+        sftpManager.previewMedia(selected[0]);
+      }
+    });
+  }
   const btnSftpViewList = document.getElementById('btnSftpViewList');
   const btnSftpViewGrid = document.getElementById('btnSftpViewGrid');
   if (btnSftpViewList) {
@@ -547,6 +556,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const sftpContextMenu = document.getElementById('sftpContextMenu');
   const sftpCtxOpen = document.getElementById('sftpCtxOpen');
   const sftpCtxDownload = document.getElementById('sftpCtxDownload');
+  const sftpCtxPreview = document.getElementById('sftpCtxPreview');
   const sftpCtxEdit = document.getElementById('sftpCtxEdit');
   const sftpCtxExtract = document.getElementById('sftpCtxExtract');
   const sftpCtxCompress = document.getElementById('sftpCtxCompress');
@@ -571,10 +581,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     const isRow = target && target.isRow;
     const isDir = target && target.isDir;
     const isArchive = !isDir && target && target.filename && sftpManager.isArchiveFile(target.filename);
+    const isMedia = !isDir && target && target.filename && !!sftpManager.isMediaFile(target.filename);
 
     if (isRow) {
       if (sftpCtxOpen) sftpCtxOpen.style.display = isDir ? 'flex' : 'none';
       if (sftpCtxDownload) sftpCtxDownload.style.display = 'flex';
+      if (sftpCtxPreview) sftpCtxPreview.style.display = isMedia ? 'flex' : 'none';
       if (sftpCtxEdit) sftpCtxEdit.style.display = isDir ? 'none' : 'flex';
       if (sftpCtxExtract) sftpCtxExtract.style.display = isArchive ? 'flex' : 'none';
       if (sftpCtxCompress) sftpCtxCompress.style.display = 'flex';
@@ -586,6 +598,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     } else {
       if (sftpCtxOpen) sftpCtxOpen.style.display = 'none';
       if (sftpCtxDownload) sftpCtxDownload.style.display = 'none';
+      if (sftpCtxPreview) sftpCtxPreview.style.display = 'none';
       if (sftpCtxEdit) sftpCtxEdit.style.display = 'none';
       if (sftpCtxExtract) sftpCtxExtract.style.display = 'none';
       if (sftpCtxCompress) sftpCtxCompress.style.display = sftpManager.selectedFiles.size > 0 ? 'flex' : 'none';
@@ -652,6 +665,16 @@ document.addEventListener('DOMContentLoaded', async () => {
       hideSftpContextMenu();
       if (sftpContextTarget && sftpContextTarget.filename) {
         sftpManager.downloadFile(sftpContextTarget.filename);
+      }
+    });
+  }
+
+  if (sftpCtxPreview) {
+    sftpCtxPreview.addEventListener('click', () => {
+      hideSftpContextMenu();
+      const filename = sftpContextTarget ? sftpContextTarget.filename : Array.from(sftpManager.selectedFiles)[0];
+      if (filename) {
+        sftpManager.previewMedia(filename);
       }
     });
   }
@@ -776,12 +799,30 @@ document.addEventListener('DOMContentLoaded', async () => {
   btnEditorSave.addEventListener('click', () => sftpManager.saveEditedFile());
   btnCloseEditorModal.addEventListener('click', () => editorModal.classList.remove('active'));
 
-  // Keyboard shortcut for Editor Save (Ctrl+S)
+  // Media Preview Modal
+  const mediaModal = document.getElementById('mediaModal');
+  const btnCloseMediaModal = document.getElementById('btnCloseMediaModal');
+  if (btnCloseMediaModal) {
+    btnCloseMediaModal.addEventListener('click', () => sftpManager.closeMediaModal());
+  }
+  if (mediaModal) {
+    mediaModal.addEventListener('click', (e) => {
+      if (e.target === mediaModal) sftpManager.closeMediaModal();
+    });
+  }
+
+  // Keyboard shortcut for Editor Save (Ctrl+S) and Modal Close (Escape)
   window.addEventListener('keydown', (e) => {
     if ((e.ctrlKey || e.metaKey) && e.key === 's') {
       if (editorModal.classList.contains('active')) {
         e.preventDefault();
         sftpManager.saveEditedFile();
+      }
+    } else if (e.key === 'Escape') {
+      if (mediaModal && mediaModal.classList.contains('active')) {
+        sftpManager.closeMediaModal();
+      } else if (editorModal && editorModal.classList.contains('active')) {
+        editorModal.classList.remove('active');
       }
     }
   });

@@ -339,7 +339,9 @@ wss.on('connection', (ws, req) => {
 
     // --- SFTP READ FILE ---
     if (type === 'sftp-read') {
-      const { path: filePath, id, maxBytes = 10 * 1024 * 1024 } = msg;
+      const { path: filePath, id } = msg;
+      const requestedMax = Number(msg.maxBytes) || (50 * 1024 * 1024);
+      const maxLimit = Math.min(requestedMax, 150 * 1024 * 1024);
       if (!checkSftp(id)) return;
 
       sftpSession.stat(filePath, (sErr, stats) => {
@@ -348,8 +350,8 @@ wss.on('connection', (ws, req) => {
           return;
         }
 
-        if (stats.size > maxBytes) {
-          safeSend({ type: 'sftp-read-res', id, success: false, error: `File too large (${(stats.size / 1024 / 1024).toFixed(2)} MB). Max limit is 10 MB.` });
+        if (stats.size > maxLimit) {
+          safeSend({ type: 'sftp-read-res', id, success: false, error: `File too large (${(stats.size / 1024 / 1024).toFixed(2)} MB). Max limit is ${(maxLimit / 1024 / 1024).toFixed(0)} MB.` });
           return;
         }
 

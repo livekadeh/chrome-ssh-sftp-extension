@@ -199,6 +199,7 @@
               </div>
               <div class="action-group">
                 <button id="btnSftpDownload" class="btn btn-sm btn-secondary" disabled>📥 Download</button>
+                <button id="btnSftpPreview" class="btn btn-sm btn-cyan" disabled title="Play or View Media file"><span data-i18n="sftp_preview_btn">👁️ Preview / Play</span></button>
                 <button id="btnSftpEdit" class="btn btn-sm btn-secondary" disabled>✏️ Edit</button>
                 <button id="btnSftpExtract" class="btn btn-sm btn-secondary" disabled title="Extract archive on remote server"><span data-i18n="sftp_extract_btn">📦 Extract</span></button>
                 <button id="btnSftpCompress" class="btn btn-sm btn-secondary" disabled title="Compress selected files"><span data-i18n="sftp_compress_btn">🗜️ Compress</span></button>
@@ -307,6 +308,10 @@
             <div class="context-item" id="sftpCtxDownload">
               <span class="ctx-icon">📥</span>
               <span class="ctx-label" data-i18n="sftp_ctx_download">Download</span>
+            </div>
+            <div class="context-item" id="sftpCtxPreview" style="display: none;">
+              <span class="ctx-icon">👁️</span>
+              <span class="ctx-label" data-i18n="sftp_ctx_preview">Preview / Play</span>
             </div>
             <div class="context-item" id="sftpCtxEdit">
               <span class="ctx-icon">✏️</span>
@@ -658,6 +663,26 @@
         </div>
         <div class="modal-body editor-body">
           <textarea id="editorTextarea" dir="ltr" spellcheck="false"></textarea>
+        </div>
+      </div>
+    </div>
+
+    <!-- ================= MEDIA PREVIEW MODAL (IMAGE / VIDEO / AUDIO) ================= -->
+    <div id="mediaModal" class="modal-backdrop">
+      <div class="modal-box modal-media">
+        <div class="modal-header">
+          <div class="media-title-group">
+            <span class="media-type-icon" id="mediaTypeIcon">🖼️</span>
+            <span id="mediaFilePath" class="media-file-path">preview</span>
+            <span id="mediaFileSize" class="media-file-size">0 B</span>
+          </div>
+          <div class="media-header-actions">
+            <button id="btnMediaDownload" class="btn btn-sm btn-cyan">📥 Download</button>
+            <button class="modal-close" id="btnCloseMediaModal">✕</button>
+          </div>
+        </div>
+        <div class="modal-body media-modal-body" id="mediaContainer">
+          <!-- Dynamic Image / Video / Audio content -->
         </div>
       </div>
     </div>

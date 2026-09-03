@@ -22,6 +22,7 @@ class SFTPManager {
     this.pendingCallbacks = new Map();
     this.callbackSeq = 1;
     this.isUploadCancelled = false;
+    this.currentMediaUrl = null;
 
     if (chrome && chrome.storage && chrome.storage.local) {
       chrome.storage.local.get('sftpViewMode', (res) => {
@@ -224,6 +225,7 @@ class SFTPManager {
         <td class="mono-cell" style="font-size: 11px;">${mtimeStr}</td>
         <td style="text-align: center;">
           <button class="btn-action btn-quick-dl" title="${isPersian ? 'دانلود' : 'Download'}">📥</button>
+          ${!isDir && this.isMediaFile(file.filename) ? `<button class="btn-action btn-quick-prev" title="${isPersian ? 'نمایش / پخش' : 'Preview / Play'}">${this.isMediaFile(file.filename).type === 'image' ? '🖼️' : (this.isMediaFile(file.filename).type === 'video' ? '🎬' : '🎵')}</button>` : ''}
           <button class="btn-action btn-quick-edit" title="${isPersian ? 'ویرایش' : 'Edit'}">✏️</button>
           <button class="btn-action btn-quick-del" title="${isPersian ? 'حذف' : 'Delete'}" style="color: #ef4444;">🗑️</button>
         </td>
@@ -238,6 +240,8 @@ class SFTPManager {
         if (isDir) {
           const next = this.currentPath.endsWith('/') ? this.currentPath + file.filename : this.currentPath + '/' + file.filename;
           this.listDirectory(next);
+        } else if (this.isMediaFile(file.filename)) {
+          this.previewMedia(file.filename);
         } else {
           this.editFile(file.filename);
         }
@@ -247,6 +251,14 @@ class SFTPManager {
         e.stopPropagation();
         this.downloadFile(file.filename);
       });
+
+      const btnQuickPrev = tr.querySelector('.btn-quick-prev');
+      if (btnQuickPrev) {
+        btnQuickPrev.addEventListener('click', (e) => {
+          e.stopPropagation();
+          this.previewMedia(file.filename);
+        });
+      }
 
       tr.querySelector('.btn-quick-edit').addEventListener('click', (e) => {
         e.stopPropagation();
@@ -303,6 +315,8 @@ class SFTPManager {
           if (isDir) {
             const next = this.currentPath.endsWith('/') ? this.currentPath + file.filename : this.currentPath + '/' + file.filename;
             this.listDirectory(next);
+          } else if (this.isMediaFile(file.filename)) {
+            this.previewMedia(file.filename);
           } else {
             this.editFile(file.filename);
           }
@@ -353,6 +367,28 @@ class SFTPManager {
     this.updateSelectionUI();
   }
 
+  isMediaFile(filename) {
+    if (!filename) return null;
+    const ext = filename.split('.').pop().toLowerCase();
+    const imageExts = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'bmp', 'ico'];
+    const videoExts = ['mp4', 'webm', 'ogg', 'mov', 'mkv', 'avi'];
+    const audioExts = ['mp3', 'wav', 'ogg', 'm4a', 'aac', 'flac', 'wma'];
+
+    if (imageExts.includes(ext)) {
+      const mime = ext === 'svg' ? 'image/svg+xml' : (ext === 'jpg' ? 'image/jpeg' : `image/${ext}`);
+      return { type: 'image', mime };
+    }
+    if (videoExts.includes(ext)) {
+      const mime = ext === 'mov' ? 'video/quicktime' : (ext === 'mkv' ? 'video/x-matroska' : `video/${ext}`);
+      return { type: 'video', mime };
+    }
+    if (audioExts.includes(ext)) {
+      const mime = ext === 'mp3' ? 'audio/mpeg' : (ext === 'm4a' ? 'audio/mp4' : `audio/${ext}`);
+      return { type: 'audio', mime };
+    }
+    return null;
+  }
+
   isArchiveFile(filename) {
     if (!filename) return false;
     const lower = filename.toLowerCase();
@@ -381,6 +417,12 @@ class SFTPManager {
     document.getElementById('btnSftpEdit').disabled = count !== 1;
     document.getElementById('btnSftpChmod').disabled = disabled;
     document.getElementById('btnSftpDelete').disabled = disabled;
+
+    const btnSftpPreview = document.getElementById('btnSftpPreview');
+    if (btnSftpPreview) {
+      const isSingleMedia = count === 1 && !!this.isMediaFile(Array.from(this.selectedFiles)[0]);
+      btnSftpPreview.disabled = !isSingleMedia;
+    }
 
     const btnSftpExtract = document.getElementById('btnSftpExtract');
     if (btnSftpExtract) {
@@ -728,6 +770,10 @@ class SFTPManager {
     try {
       const res = await this.sendRequest({ type: 'sftp-read', path: targetPath });
       if (res.isBinary) {
+        if (this.isMediaFile(filename)) {
+          this.previewMedia(filename);
+          return;
+        }
         alert(isPersian ? 'این فایل باینری است و امکان ویرایش متنی آن وجود ندارد.' : 'This file is binary and cannot be edited in text editor.');
         return;
       }
@@ -737,6 +783,105 @@ class SFTPManager {
       document.getElementById('editorModal').classList.add('active');
     } catch (err) {
       alert((isPersian ? 'خطا در باز کردن فایل: ' : 'Error opening file: ') + err.message);
+    }
+  }
+
+  async previewMedia(filename) {
+    if (!filename) return;
+    const media = this.isMediaFile(filename);
+    if (!media) return;
+
+    const isPersian = window.i18n && window.i18n.currentLang === 'fa';
+    const targetPath = (this.currentPath.endsWith('/') ? this.currentPath : this.currentPath + '/') + filename;
+
+    const modal = document.getElementById('mediaModal');
+    const container = document.getElementById('mediaContainer');
+    const pathEl = document.getElementById('mediaFilePath');
+    const sizeEl = document.getElementById('mediaFileSize');
+    const iconEl = document.getElementById('mediaTypeIcon');
+    const btnDl = document.getElementById('btnMediaDownload');
+
+    if (pathEl) pathEl.textContent = filename;
+    if (iconEl) iconEl.textContent = media.type === 'image' ? '🖼️' : (media.type === 'video' ? '🎬' : '🎵');
+
+    const fileObj = this.currentFiles.find(f => f.filename === filename);
+    if (sizeEl) sizeEl.textContent = fileObj ? this.formatBytes(fileObj.attrs.size) : '';
+
+    if (container) {
+      container.innerHTML = `
+        <div class="media-loading-spinner">
+          <div style="font-size: 36px; animation: spinAudio 2s linear infinite;">⏳</div>
+          <div>${isPersian ? 'در حال دریافت و آماده‌سازی فایل رسانه...' : 'Loading media file...'}</div>
+        </div>
+      `;
+    }
+
+    if (modal) modal.classList.add('active');
+
+    if (btnDl) {
+      btnDl.onclick = () => this.downloadFile(filename);
+    }
+
+    this.updateStatus(isPersian ? `در حال بارگذاری ${filename}...` : `Loading media ${filename}...`);
+
+    try {
+      const res = await this.sendRequest({
+        type: 'sftp-read',
+        path: targetPath,
+        maxBytes: 100 * 1024 * 1024
+      });
+
+      if (!res || !res.content) {
+        throw new Error(res && res.error ? res.error : 'Empty response');
+      }
+
+      let blob;
+      if (res.isBinary) {
+        const byteCharacters = atob(res.content);
+        const byteNumbers = new Array(byteCharacters.length);
+        for (let i = 0; i < byteCharacters.length; i++) {
+          byteNumbers[i] = byteCharacters.charCodeAt(i);
+        }
+        blob = new Blob([new Uint8Array(byteNumbers)], { type: media.mime });
+      } else {
+        blob = new Blob([res.content], { type: media.mime });
+      }
+
+      if (this.currentMediaUrl) {
+        URL.revokeObjectURL(this.currentMediaUrl);
+      }
+      this.currentMediaUrl = URL.createObjectURL(blob);
+
+      if (media.type === 'image') {
+        container.innerHTML = `<img src="${this.currentMediaUrl}" class="media-preview-img" alt="${filename}">`;
+      } else if (media.type === 'video') {
+        container.innerHTML = `<video src="${this.currentMediaUrl}" class="media-preview-video" controls autoplay playsinline></video>`;
+      } else if (media.type === 'audio') {
+        container.innerHTML = `
+          <div class="media-audio-card">
+            <div class="media-audio-disc">🎵</div>
+            <div style="font-weight: 600; color: #f8fafc; font-size: 15px; margin-bottom: 4px;">${filename}</div>
+            <div style="color: #64748b; font-size: 12px; margin-bottom: 14px;">${fileObj ? this.formatBytes(fileObj.attrs.size) : ''}</div>
+            <audio src="${this.currentMediaUrl}" controls autoplay></audio>
+          </div>
+        `;
+      }
+
+      this.updateStatus(isPersian ? `نمایش ${filename} ✔` : `Previewing ${filename} ✔`);
+    } catch (err) {
+      alert((isPersian ? 'خطا در بارگذاری رسانه: ' : 'Error loading media: ') + err.message);
+      this.closeMediaModal();
+    }
+  }
+
+  closeMediaModal() {
+    const modal = document.getElementById('mediaModal');
+    const container = document.getElementById('mediaContainer');
+    if (modal) modal.classList.remove('active');
+    if (container) container.innerHTML = '';
+    if (this.currentMediaUrl) {
+      URL.revokeObjectURL(this.currentMediaUrl);
+      this.currentMediaUrl = null;
     }
   }
 
