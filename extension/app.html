@@ -57,6 +57,12 @@
           <span data-i18n="nav_standalone_btn">App Window ⤢</span>
         </button>
 
+        <button id="btnHeaderSessions" class="btn-sessions-trigger" title="Active Servers & Sessions (مدیریت سرورهای باز)">
+          <span class="pulse-indicator"></span>
+          <span data-i18n="drawer_active_btn">Active</span>
+          <span id="headerSessionsBadge" class="sessions-badge">0</span>
+        </button>
+
         <button id="btnLangToggle" class="btn-lang-switcher" title="Switch Language / تغییر زبان">
           <span id="langCurrentText">🌐 English</span>
         </button>
@@ -685,7 +691,79 @@
           <!-- Dynamic Image / Video / Audio content -->
         </div>
       </div>
-    </div>
+    <!-- Floating Sessions Tab on Right Edge -->
+    <button id="btnFloatingSessions" class="floating-sessions-tab" title="Active Servers Drawer / مدیریت سرورهای باز">
+      <span class="pulse-indicator"></span>
+      <span class="floating-tab-icon">⚡📁</span>
+      <span class="floating-tab-label" data-i18n="drawer_open_servers">Open Servers</span>
+      <span id="floatingSessionsBadge" class="sessions-badge">0</span>
+    </button>
+
+    <!-- Sessions Drawer Backdrop -->
+    <div id="sessionsDrawerBackdrop" class="drawer-backdrop"></div>
+
+    <!-- Active Sessions Slide-Out Drawer -->
+    <aside id="sessionsDrawer" class="sessions-drawer" dir="rtl">
+      <div class="drawer-header">
+        <div class="drawer-title-group">
+          <span class="drawer-title-icon">🖥️</span>
+          <div>
+            <h3 class="drawer-title" data-i18n="drawer_title">مدیریت سرورهای فعال</h3>
+            <span class="drawer-subtitle" id="drawerActiveSubtitle">۰ نشست فعال</span>
+          </div>
+        </div>
+        <button id="btnCloseSessionsDrawer" class="drawer-close-btn" title="بستن">✕</button>
+      </div>
+
+      <div class="drawer-body">
+        <!-- SFTP Active Sessions Section -->
+        <div class="drawer-section">
+          <div class="drawer-section-header">
+            <span class="section-title">
+              <span>📁</span>
+              <span data-i18n="drawer_sftp_sessions">نشست‌های فعال SFTP</span>
+            </span>
+            <span id="sftpSessionsCountBadge" class="badge-pill">0</span>
+          </div>
+          <div id="drawerSftpList" class="drawer-items-list">
+            <div class="drawer-empty-hint" data-i18n="drawer_no_sftp">هیچ نشست فعال SFTP وجود ندارد</div>
+          </div>
+        </div>
+
+        <!-- SSH Terminal Active Sessions Section -->
+        <div class="drawer-section">
+          <div class="drawer-section-header">
+            <span class="section-title">
+              <span>⚡</span>
+              <span data-i18n="drawer_ssh_sessions">نشست‌های ترمینال SSH</span>
+            </span>
+            <span id="sshSessionsCountBadge" class="badge-pill">0</span>
+          </div>
+          <div id="drawerSshList" class="drawer-items-list">
+            <div class="drawer-empty-hint" data-i18n="drawer_no_ssh">هیچ ترمینال SSH باز نیست</div>
+          </div>
+        </div>
+
+        <!-- Quick Connect Saved Servers Section -->
+        <div class="drawer-section">
+          <div class="drawer-section-header">
+            <span class="section-title">
+              <span>⭐</span>
+              <span data-i18n="drawer_quick_servers">اتصال سریع به سرورهای ذخیره‌شده</span>
+            </span>
+          </div>
+          <div id="drawerSavedServersList" class="drawer-saved-list">
+            <!-- Dynamically populated from saved servers -->
+          </div>
+        </div>
+      </div>
+
+      <div class="drawer-footer">
+        <button id="btnDrawerNewConn" class="btn btn-cyan btn-block" data-i18n="drawer_new_conn">
+          <span>+ اتصال جدید</span>
+        </button>
+      </div>
+    </aside>
 
   </div>
 

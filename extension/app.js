@@ -1172,8 +1172,249 @@ document.addEventListener('DOMContentLoaded', async () => {
     btnCheckUpdate.addEventListener('click', checkForUpdates);
   }
 
+  function escapeHtml(str) {
+    if (!str) return '';
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+  }
+
+  // ================= ACTIVE SESSIONS DRAWER CONTROLLER =================
+  const btnFloatingSessions = document.getElementById('btnFloatingSessions');
+  const btnHeaderSessions = document.getElementById('btnHeaderSessions');
+  const sessionsDrawerBackdrop = document.getElementById('sessionsDrawerBackdrop');
+  const sessionsDrawer = document.getElementById('sessionsDrawer');
+  const btnCloseSessionsDrawer = document.getElementById('btnCloseSessionsDrawer');
+  const drawerActiveSubtitle = document.getElementById('drawerActiveSubtitle');
+  const floatingSessionsBadge = document.getElementById('floatingSessionsBadge');
+  const headerSessionsBadge = document.getElementById('headerSessionsBadge');
+  const sftpSessionsCountBadge = document.getElementById('sftpSessionsCountBadge');
+  const sshSessionsCountBadge = document.getElementById('sshSessionsCountBadge');
+  const drawerSftpList = document.getElementById('drawerSftpList');
+  const drawerSshList = document.getElementById('drawerSshList');
+  const drawerSavedServersList = document.getElementById('drawerSavedServersList');
+  const btnDrawerNewConn = document.getElementById('btnDrawerNewConn');
+
+  function openSessionsDrawer() {
+    if (!sessionsDrawer) return;
+    sessionsDrawer.classList.add('active');
+    if (sessionsDrawerBackdrop) sessionsDrawerBackdrop.classList.add('active');
+    renderSessionsDrawer();
+  }
+
+  function closeSessionsDrawer() {
+    if (!sessionsDrawer) return;
+    sessionsDrawer.classList.remove('active');
+    if (sessionsDrawerBackdrop) sessionsDrawerBackdrop.classList.remove('active');
+  }
+
+  if (btnFloatingSessions) btnFloatingSessions.addEventListener('click', openSessionsDrawer);
+  if (btnHeaderSessions) btnHeaderSessions.addEventListener('click', openSessionsDrawer);
+  if (btnCloseSessionsDrawer) btnCloseSessionsDrawer.addEventListener('click', closeSessionsDrawer);
+  if (sessionsDrawerBackdrop) sessionsDrawerBackdrop.addEventListener('click', closeSessionsDrawer);
+  if (btnDrawerNewConn) {
+    btnDrawerNewConn.addEventListener('click', () => {
+      closeSessionsDrawer();
+      openConnectModal();
+    });
+  }
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      if (sessionsDrawer && sessionsDrawer.classList.contains('active')) {
+        closeSessionsDrawer();
+      }
+    }
+  });
+
+  async function renderSessionsDrawer() {
+    const isPersian = window.i18n && window.i18n.currentLang === 'fa';
+    const sftpSessions = sftpManager ? Array.from(sftpManager.sessions.values()) : [];
+    const sshSessions = termManager ? Array.from(termManager.sessions.values()) : [];
+    const totalCount = sftpSessions.length + sshSessions.length;
+
+    // Update badges
+    if (floatingSessionsBadge) floatingSessionsBadge.textContent = totalCount;
+    if (headerSessionsBadge) headerSessionsBadge.textContent = totalCount;
+    if (sftpSessionsCountBadge) sftpSessionsCountBadge.textContent = sftpSessions.length;
+    if (sshSessionsCountBadge) sshSessionsCountBadge.textContent = sshSessions.length;
+    if (drawerActiveSubtitle) {
+      drawerActiveSubtitle.textContent = isPersian 
+        ? `${totalCount} نشست سرور فعال` 
+        : `${totalCount} active session(s)`;
+    }
+
+    // Render SFTP List
+    if (drawerSftpList) {
+      if (sftpSessions.length === 0) {
+        drawerSftpList.innerHTML = `<div class="drawer-empty-hint">${isPersian ? 'هیچ نشست فعال SFTP وجود ندارد' : 'No active SFTP session connected'}</div>`;
+      } else {
+        drawerSftpList.innerHTML = '';
+        sftpSessions.forEach(session => {
+          const isActive = (sftpManager.activeSessionId === session.id);
+          const color = (session.serverConfig && session.serverConfig.color) || '#00f0ff';
+          const card = document.createElement('div');
+          card.className = `drawer-session-card ${isActive ? 'active' : ''}`;
+          card.innerHTML = `
+            <div class="session-card-main">
+              <span class="session-card-badge" style="background: ${color};"></span>
+              <div class="session-card-details">
+                <div class="session-card-name">${escapeHtml(session.name)}</div>
+                <div class="session-card-host">${escapeHtml(session.serverConfig ? session.serverConfig.username : '')}@${escapeHtml(session.serverConfig ? session.serverConfig.host : '')}</div>
+                <div class="session-card-path">📂 ${escapeHtml(session.currentPath || '/root')}</div>
+              </div>
+              <span class="session-status-dot ${session.isConnected ? 'online' : 'offline'}" title="${session.isConnected ? 'Connected' : 'Disconnected'}"></span>
+            </div>
+            <div class="session-card-actions">
+              <button class="btn btn-xs btn-cyan btn-switch-sftp">${isPersian ? 'ورود به SFTP 📁' : 'Open SFTP 📁'}</button>
+              <button class="btn btn-xs btn-secondary btn-switch-ssh">${isPersian ? 'ترمینال ⚡' : 'Terminal ⚡'}</button>
+              <button class="btn btn-xs btn-danger-icon btn-close-sftp" title="${isPersian ? 'قطع اتصال' : 'Disconnect'}">✕</button>
+            </div>
+          `;
+
+          // Switch to this SFTP session
+          card.querySelector('.btn-switch-sftp').addEventListener('click', () => {
+            sftpManager.switchSession(session.id);
+            switchView('sftp');
+            closeSessionsDrawer();
+          });
+
+          // Connect / Switch to SSH for this server
+          card.querySelector('.btn-switch-ssh').addEventListener('click', async () => {
+            const hostKey = `${session.serverConfig.username}@${session.serverConfig.host}:${session.serverConfig.port || 22}`;
+            let existingSSH = null;
+            for (const [id, s] of termManager.sessions) {
+              const sKey = `${s.serverConfig.username}@${s.serverConfig.host}:${s.serverConfig.port || 22}`;
+              if (sKey === hostKey) {
+                existingSSH = s;
+                break;
+              }
+            }
+            if (existingSSH) {
+              termManager.switchSession(existingSSH.id);
+            } else {
+              const bridgeUrl = (await chrome.storage.local.get('bridgeUrl')).bridgeUrl || 'ws://localhost:3000/ws';
+              termManager.createSession(session.serverConfig, bridgeUrl);
+            }
+            switchView('ssh');
+            closeSessionsDrawer();
+          });
+
+          // Close this SFTP session
+          card.querySelector('.btn-close-sftp').addEventListener('click', (e) => {
+            e.stopPropagation();
+            sftpManager.closeSession(session.id);
+            renderSessionsDrawer();
+          });
+
+          drawerSftpList.appendChild(card);
+        });
+      }
+    }
+
+    // Render SSH List
+    if (drawerSshList) {
+      if (sshSessions.length === 0) {
+        drawerSshList.innerHTML = `<div class="drawer-empty-hint">${isPersian ? 'هیچ ترمینال SSH باز نیست' : 'No active SSH terminal open'}</div>`;
+      } else {
+        drawerSshList.innerHTML = '';
+        sshSessions.forEach(session => {
+          const isActive = (termManager.activeSessionId === session.id);
+          const color = (session.serverConfig && session.serverConfig.color) || '#00f0ff';
+          const card = document.createElement('div');
+          card.className = `drawer-session-card ${isActive ? 'active' : ''}`;
+          card.innerHTML = `
+            <div class="session-card-main">
+              <span class="session-card-badge" style="background: ${color};"></span>
+              <div class="session-card-details">
+                <div class="session-card-name">${escapeHtml(session.name)}</div>
+                <div class="session-card-host">${escapeHtml(session.serverConfig ? session.serverConfig.username : '')}@${escapeHtml(session.serverConfig ? session.serverConfig.host : '')}</div>
+              </div>
+              <span class="session-status-dot ${session.status === 'connected' ? 'online' : 'offline'}" title="${session.status}"></span>
+            </div>
+            <div class="session-card-actions">
+              <button class="btn btn-xs btn-cyan btn-switch-ssh">${isPersian ? 'نمایش ترمینال ⚡' : 'Open Terminal ⚡'}</button>
+              <button class="btn btn-xs btn-secondary btn-switch-sftp">${isPersian ? 'فایل SFTP 📁' : 'SFTP Files 📁'}</button>
+              <button class="btn btn-xs btn-danger-icon btn-close-ssh" title="${isPersian ? 'بستن نشست' : 'Close Tab'}">✕</button>
+            </div>
+          `;
+
+          // Switch to this SSH terminal
+          card.querySelector('.btn-switch-ssh').addEventListener('click', () => {
+            termManager.switchSession(session.id);
+            switchView('ssh');
+            closeSessionsDrawer();
+          });
+
+          // Connect / Switch to SFTP for this server
+          card.querySelector('.btn-switch-sftp').addEventListener('click', async () => {
+            const bridgeUrl = (await chrome.storage.local.get('bridgeUrl')).bridgeUrl || 'ws://localhost:3000/ws';
+            sftpManager.connect(session.serverConfig, bridgeUrl);
+            switchView('sftp');
+            closeSessionsDrawer();
+          });
+
+          // Close this SSH session
+          card.querySelector('.btn-close-ssh').addEventListener('click', (e) => {
+            e.stopPropagation();
+            termManager.closeSession(session.id);
+            renderSessionsDrawer();
+          });
+
+          drawerSshList.appendChild(card);
+        });
+      }
+    }
+
+    // Render Saved Servers Quick Connect List
+    if (drawerSavedServersList) {
+      const { servers = [] } = await chrome.storage.local.get('servers');
+      if (servers.length === 0) {
+        drawerSavedServersList.innerHTML = `<div class="drawer-empty-hint">${isPersian ? 'سروری ذخیره نشده است' : 'No saved servers'}</div>`;
+      } else {
+        drawerSavedServersList.innerHTML = '';
+        servers.slice(0, 8).forEach(srv => {
+          const item = document.createElement('div');
+          item.className = 'drawer-saved-item';
+          item.innerHTML = `
+            <div class="drawer-saved-info">
+              <span class="session-card-badge" style="background: ${srv.color || '#00f0ff'};"></span>
+              <span class="drawer-saved-name">${escapeHtml(srv.name || srv.host)}</span>
+            </div>
+            <div style="display: flex; gap: 4px;">
+              <button class="btn btn-xs btn-cyan btn-launch-drawer-ssh" title="SSH">⚡</button>
+              <button class="btn btn-xs btn-secondary btn-launch-drawer-sftp" title="SFTP">📁</button>
+            </div>
+          `;
+
+          item.querySelector('.btn-launch-drawer-ssh').addEventListener('click', async () => {
+            const bridgeUrl = (await chrome.storage.local.get('bridgeUrl')).bridgeUrl || 'ws://localhost:3000/ws';
+            termManager.createSession(srv, bridgeUrl);
+            switchView('ssh');
+            closeSessionsDrawer();
+          });
+
+          item.querySelector('.btn-launch-drawer-sftp').addEventListener('click', async () => {
+            const bridgeUrl = (await chrome.storage.local.get('bridgeUrl')).bridgeUrl || 'ws://localhost:3000/ws';
+            sftpManager.connect(srv, bridgeUrl);
+            switchView('sftp');
+            closeSessionsDrawer();
+          });
+
+          drawerSavedServersList.appendChild(item);
+        });
+      }
+    }
+  }
+
+  window.updateSessionsDrawer = renderSessionsDrawer;
+
   // Initial loads
   await loadSettings();
   await loadServersList();
   await loadPublicBridges();
+  await renderSessionsDrawer();
 });

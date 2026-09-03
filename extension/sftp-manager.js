@@ -19,6 +19,9 @@ class SFTPManager {
     this.serverConfig = null;
     this.bridgeUrl = null;
 
+    this.sessions = new Map();
+    this.activeSessionId = null;
+
     this.pendingCallbacks = new Map();
     this.callbackSeq = 1;
     this.isUploadCancelled = false;
@@ -62,23 +65,54 @@ class SFTPManager {
   }
 
   connect(serverConfig, bridgeUrl, onReady) {
-    this.serverConfig = serverConfig;
-    this.bridgeUrl = bridgeUrl;
-    this.currentPath = serverConfig.defaultPath || '/root';
+    const isPersian = window.i18n && window.i18n.currentLang === 'fa';
+    const hostKey = `${serverConfig.username}@${serverConfig.host}:${serverConfig.port || 22}`;
 
-    if (this.ws) {
-      try { this.ws.close(); } catch (e) {}
+    // Check if session for this server already exists and is alive
+    for (const [id, s] of this.sessions) {
+      if (s.hostKey === hostKey && s.isConnected && s.ws && s.ws.readyState === WebSocket.OPEN) {
+        this.switchSession(id);
+        if (onReady) onReady();
+        return;
+      }
     }
 
-    const isPersian = window.i18n && window.i18n.currentLang === 'fa';
-    this.updateStatus(isPersian ? 'در حال اتصال به سرور SFTP...' : 'Connecting to SFTP server...');
+    const sessionId = 'sftp-' + Date.now() + '-' + Math.random().toString(36).substr(2, 4);
+    const sessionName = serverConfig.name || `${serverConfig.username}@${serverConfig.host}`;
+
+    const session = {
+      id: sessionId,
+      name: sessionName,
+      hostKey,
+      serverConfig,
+      bridgeUrl,
+      ws: null,
+      isConnected: false,
+      currentPath: serverConfig.defaultPath || '/root',
+      currentFiles: [],
+      selectedFiles: new Set(),
+      pendingCallbacks: new Map(),
+      callbackSeq: 1
+    };
+
+    this.sessions.set(sessionId, session);
+    this.activeSessionId = sessionId;
+    this.serverConfig = serverConfig;
+    this.bridgeUrl = bridgeUrl;
+    this.currentPath = session.currentPath;
+    this.currentFiles = [];
+    this.selectedFiles = session.selectedFiles;
+
+    this.updateStatus(isPersian ? `در حال اتصال به SFTP (${sessionName})...` : `Connecting to SFTP (${sessionName})...`);
 
     try {
-      this.ws = new WebSocket(bridgeUrl);
+      const ws = new WebSocket(bridgeUrl);
+      session.ws = ws;
+      this.ws = ws;
 
-      this.ws.onopen = () => {
-        this.updateStatus(isPersian ? 'در حال احراز هویت SFTP...' : 'Authenticating SFTP...');
-        this.ws.send(JSON.stringify({
+      ws.onopen = () => {
+        this.updateStatus(isPersian ? `در حال احراز هویت (${sessionName})...` : `Authenticating (${sessionName})...`);
+        ws.send(JSON.stringify({
           type: 'sftp-init',
           host: serverConfig.host,
           port: serverConfig.port || 22,
@@ -89,74 +123,177 @@ class SFTPManager {
         }));
       };
 
-      this.ws.onmessage = (event) => {
+      ws.onmessage = (event) => {
         try {
           const msg = JSON.parse(event.data);
-          this.handleMessage(msg, onReady);
+          this.handleSessionMessage(session, msg, onReady);
         } catch (e) {
           console.error('[SFTP] Parse error:', e);
         }
       };
 
-      this.ws.onclose = () => {
-        this.isConnected = false;
-        this.updateStatus(isPersian ? 'اتصال SFTP قطع شد' : 'SFTP connection closed');
-        document.getElementById('sftpEmptyState').style.display = 'flex';
-        document.getElementById('sftpTable').style.display = 'none';
-        if (this.gridContainerEl) this.gridContainerEl.style.display = 'none';
+      ws.onclose = () => {
+        session.isConnected = false;
+        if (this.activeSessionId === session.id) {
+          this.isConnected = false;
+          this.updateStatus(isPersian ? `اتصال SFTP قطع شد: ${sessionName}` : `SFTP connection closed: ${sessionName}`);
+          document.getElementById('sftpEmptyState').style.display = 'flex';
+          document.getElementById('sftpTable').style.display = 'none';
+          if (this.gridContainerEl) this.gridContainerEl.style.display = 'none';
+        }
+        if (typeof window.updateSessionsDrawer === 'function') {
+          window.updateSessionsDrawer();
+        }
       };
 
-      this.ws.onerror = (err) => {
-        this.isConnected = false;
-        this.updateStatus(isPersian ? 'خطا در ارتباط با بریج SFTP' : 'Error connecting to SFTP bridge');
+      ws.onerror = (err) => {
+        session.isConnected = false;
+        if (this.activeSessionId === session.id) {
+          this.isConnected = false;
+          this.updateStatus(isPersian ? 'خطا در ارتباط با بریج SFTP' : 'Error connecting to SFTP bridge');
+        }
+        if (typeof window.updateSessionsDrawer === 'function') {
+          window.updateSessionsDrawer();
+        }
       };
 
     } catch (e) {
       this.updateStatus((isPersian ? 'خطای اتصال: ' : 'Connection error: ') + e.message);
     }
+
+    if (typeof window.updateSessionsDrawer === 'function') {
+      window.updateSessionsDrawer();
+    }
+  }
+
+  switchSession(sessionId) {
+    if (!this.sessions.has(sessionId)) return;
+    this.activeSessionId = sessionId;
+    const session = this.sessions.get(sessionId);
+
+    this.serverConfig = session.serverConfig;
+    this.bridgeUrl = session.bridgeUrl;
+    this.currentPath = session.currentPath;
+    this.currentFiles = session.currentFiles;
+    this.selectedFiles = session.selectedFiles;
+    this.ws = session.ws;
+    this.isConnected = session.isConnected;
+    this.pendingCallbacks = session.pendingCallbacks;
+    this.callbackSeq = session.callbackSeq;
+
+    this.pathInputEl.value = this.currentPath;
+
+    const isPersian = window.i18n && window.i18n.currentLang === 'fa';
+    if (this.isConnected) {
+      document.getElementById('sftpEmptyState').style.display = 'none';
+      this.applyViewMode();
+      this.renderFiles(this.currentFiles);
+      this.updateSelectionUI();
+      this.updateStatus(isPersian ? `نشست فعال SFTP: ${session.name}` : `Active SFTP: ${session.name}`);
+    } else {
+      document.getElementById('sftpEmptyState').style.display = 'flex';
+      document.getElementById('sftpTable').style.display = 'none';
+      if (this.gridContainerEl) this.gridContainerEl.style.display = 'none';
+    }
+
+    if (window.onGlobalConnectionChange) {
+      window.onGlobalConnectionChange(session.isConnected ? 'connected' : 'disconnected', session.name);
+    }
+    if (typeof window.updateSessionsDrawer === 'function') {
+      window.updateSessionsDrawer();
+    }
+  }
+
+  closeSession(sessionId) {
+    const session = this.sessions.get(sessionId);
+    if (!session) return;
+
+    if (session.ws) {
+      try { session.ws.close(); } catch (e) {}
+    }
+    this.sessions.delete(sessionId);
+
+    const isPersian = window.i18n && window.i18n.currentLang === 'fa';
+    if (this.activeSessionId === sessionId) {
+      const remaining = Array.from(this.sessions.keys());
+      if (remaining.length > 0) {
+        this.switchSession(remaining[remaining.length - 1]);
+      } else {
+        this.activeSessionId = null;
+        this.isConnected = false;
+        this.ws = null;
+        this.currentFiles = [];
+        this.selectedFiles.clear();
+        document.getElementById('sftpEmptyState').style.display = 'flex';
+        document.getElementById('sftpTable').style.display = 'none';
+        if (this.gridContainerEl) this.gridContainerEl.style.display = 'none';
+        this.updateStatus(isPersian ? 'اتصال SFTP قطع شد' : 'SFTP connection closed');
+        if (window.onGlobalConnectionChange) {
+          window.onGlobalConnectionChange('disconnected', isPersian ? 'متصل نیست' : 'Not Connected');
+        }
+      }
+    }
+
+    if (typeof window.updateSessionsDrawer === 'function') {
+      window.updateSessionsDrawer();
+    }
   }
 
   sendRequest(payload) {
     return new Promise((resolve, reject) => {
-      if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
+      const activeSession = this.sessions.get(this.activeSessionId);
+      const ws = activeSession ? activeSession.ws : this.ws;
+
+      if (!ws || ws.readyState !== WebSocket.OPEN) {
         reject(new Error('SFTP connection is not open'));
         return;
       }
-      const id = 'req-' + (this.callbackSeq++);
+
+      const callbacks = activeSession ? activeSession.pendingCallbacks : this.pendingCallbacks;
+      const id = 'req-' + (activeSession ? (activeSession.callbackSeq++) : (this.callbackSeq++));
       payload.id = id;
 
-      this.pendingCallbacks.set(id, { resolve, reject });
-      this.ws.send(JSON.stringify(payload));
+      callbacks.set(id, { resolve, reject });
+      ws.send(JSON.stringify(payload));
 
       // Timeout after 30s
       setTimeout(() => {
-        if (this.pendingCallbacks.has(id)) {
-          this.pendingCallbacks.delete(id);
+        if (callbacks.has(id)) {
+          callbacks.delete(id);
           reject(new Error('Request timed out'));
         }
       }, 30000);
     });
   }
 
-  handleMessage(msg, onReady) {
+  handleSessionMessage(session, msg, onReady) {
     const isPersian = window.i18n && window.i18n.currentLang === 'fa';
     if (msg.type === 'sftp-status') {
       if (msg.status === 'connected') {
-        this.isConnected = true;
-        document.getElementById('sftpEmptyState').style.display = 'none';
-        this.applyViewMode();
-        this.updateStatus(isPersian ? 'متصل به SFTP ✔' : 'SFTP Connected ✔');
-        this.listDirectory(this.currentPath);
-        if (onReady) onReady();
+        session.isConnected = true;
+        if (this.activeSessionId === session.id) {
+          this.isConnected = true;
+          document.getElementById('sftpEmptyState').style.display = 'none';
+          this.applyViewMode();
+          this.updateStatus(isPersian ? `متصل به SFTP (${session.name}) ✔` : `SFTP Connected (${session.name}) ✔`);
+          this.listDirectory(session.currentPath);
+          if (onReady) onReady();
+        }
       } else {
-        this.updateStatus(msg.message);
+        session.isConnected = false;
+        if (this.activeSessionId === session.id) {
+          this.updateStatus(msg.message);
+        }
+      }
+      if (typeof window.updateSessionsDrawer === 'function') {
+        window.updateSessionsDrawer();
       }
       return;
     }
 
-    if (msg.id && this.pendingCallbacks.has(msg.id)) {
-      const { resolve, reject } = this.pendingCallbacks.get(msg.id);
-      this.pendingCallbacks.delete(msg.id);
+    if (msg.id && session.pendingCallbacks.has(msg.id)) {
+      const { resolve, reject } = session.pendingCallbacks.get(msg.id);
+      session.pendingCallbacks.delete(msg.id);
       if (msg.success === false) {
         reject(new Error(msg.error || 'SFTP operation failed'));
       } else {
@@ -174,9 +311,21 @@ class SFTPManager {
       this.pathInputEl.value = this.currentPath;
       this.currentFiles = res.files || [];
       this.selectedFiles.clear();
+
+      const activeSession = this.sessions.get(this.activeSessionId);
+      if (activeSession) {
+        activeSession.currentPath = this.currentPath;
+        activeSession.currentFiles = this.currentFiles;
+        activeSession.selectedFiles = this.selectedFiles;
+      }
+
       this.renderFiles(this.currentFiles);
       this.updateStatus(isPersian ? `مسیر فعلی: ${this.currentPath}` : `Current directory: ${this.currentPath}`);
       this.updateSelectionUI();
+
+      if (typeof window.updateSessionsDrawer === 'function') {
+        window.updateSessionsDrawer();
+      }
     } catch (err) {
       alert((isPersian ? 'خطا در باز کردن پوشه: ' : 'Error opening directory: ') + err.message);
       this.updateStatus((isPersian ? 'خطا: ' : 'Error: ') + err.message);

@@ -202,14 +202,23 @@ class SSHTerminalManager {
               if (window.onGlobalConnectionChange) {
                 window.onGlobalConnectionChange('connected', session.name);
               }
+              if (typeof window.updateSessionsDrawer === 'function') {
+                window.updateSessionsDrawer();
+              }
             } else if (msg.status === 'error') {
               term.writeln(`\r\n\x1b[31m✖ [SSH Error] ${msg.message}\x1b[0m\r\n`);
               session.status = 'error';
               this.updateTabUI(session.id);
+              if (typeof window.updateSessionsDrawer === 'function') {
+                window.updateSessionsDrawer();
+              }
             } else if (msg.status === 'disconnected') {
               term.writeln(`\r\n\x1b[33m⚡ [LiveKadeh] SSH Session disconnected.\x1b[0m\r\n`);
               session.status = 'disconnected';
               this.updateTabUI(session.id);
+              if (typeof window.updateSessionsDrawer === 'function') {
+                window.updateSessionsDrawer();
+              }
             }
           }
         } catch (e) {
@@ -224,6 +233,9 @@ class SSHTerminalManager {
         this.updateTabUI(session.id);
         if (window.onGlobalConnectionChange) {
           window.onGlobalConnectionChange('disconnected', 'اتصال قطع شد');
+        }
+        if (typeof window.updateSessionsDrawer === 'function') {
+          window.updateSessionsDrawer();
         }
       };
 
@@ -275,6 +287,10 @@ class SSHTerminalManager {
         window.onGlobalConnectionChange(active.status, active.name);
       }
     }
+
+    if (typeof window.updateSessionsDrawer === 'function') {
+      window.updateSessionsDrawer();
+    }
   }
 
   closeSession(sessionId) {
@@ -306,6 +322,10 @@ class SSHTerminalManager {
     }
 
     this.renderTabs();
+
+    if (typeof window.updateSessionsDrawer === 'function') {
+      window.updateSessionsDrawer();
+    }
   }
 
   reconnectActive() {

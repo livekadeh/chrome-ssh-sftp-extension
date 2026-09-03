@@ -80,6 +80,20 @@ const I18N_DICTIONARY = {
     media_modal_title: 'Media Viewer',
     media_loading: 'Loading media file...',
 
+    // Active Sessions Drawer
+    drawer_title: 'Active Servers & Sessions',
+    drawer_open_servers: 'Open Servers',
+    drawer_active_btn: 'Active Servers',
+    drawer_sftp_sessions: 'Active SFTP Managers',
+    drawer_ssh_sessions: 'Active SSH Terminals',
+    drawer_quick_servers: 'Quick Connect Saved Servers',
+    drawer_switch_sftp: 'Switch SFTP 📁',
+    drawer_switch_ssh: 'Terminal ⚡',
+    drawer_close_session: 'Disconnect',
+    drawer_no_sftp: 'No active SFTP session connected',
+    drawer_no_ssh: 'No active SSH terminal open',
+    drawer_new_conn: '+ New Connection',
+
     // Servers View
     servers_title: 'Saved Server Vault',
     servers_desc: 'Securely manage and launch connections to your remote SSH/SFTP servers.',
@@ -234,6 +248,20 @@ const I18N_DICTIONARY = {
     sftp_no_selection: 'هیچ فایلی انتخاب نشده',
     media_modal_title: 'نمایشگر و پخش‌کننده رسانه',
     media_loading: 'در حال دریافت و آماده‌سازی فایل رسانه...',
+
+    // Active Sessions Drawer
+    drawer_title: 'مدیریت سرورها و نشست‌های فعال',
+    drawer_open_servers: 'سرورهای باز',
+    drawer_active_btn: 'سرورهای فعال',
+    drawer_sftp_sessions: 'نشست‌های فعال فایل منیجر (SFTP)',
+    drawer_ssh_sessions: 'نشست‌های فعال ترمینال (SSH)',
+    drawer_quick_servers: 'اتصال سریع به سرورهای ذخیره‌شده',
+    drawer_switch_sftp: 'ورود به SFTP 📁',
+    drawer_switch_ssh: 'ترمینال ⚡',
+    drawer_close_session: 'قطع اتصال',
+    drawer_no_sftp: 'هیچ نشست فعال SFTP وجود ندارد',
+    drawer_no_ssh: 'هیچ ترمینال SSH باز نیست',
+    drawer_new_conn: '+ اتصال جدید',
 
     // Servers View
     servers_title: 'صندوقچه سرورهای ذخیره‌شده',
