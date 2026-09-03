@@ -9,7 +9,7 @@ class SSHTerminalManager {
     this.sessions = new Map();
     this.activeSessionId = null;
     this.fontSize = 14;
-    this.fontFamily = "'JetBrains Mono', 'Courier New', monospace";
+    this.fontFamily = "'JetBrains Mono', 'Vazirmatn', 'Fira Code', 'Courier New', monospace, Tahoma";
     this.themeName = 'cyberpunk';
 
     this.themes = {

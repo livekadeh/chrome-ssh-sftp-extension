@@ -118,7 +118,6 @@
             <!-- Breadcrumb & Search Bar -->
             <div class="sftp-nav-bar">
               <div class="nav-buttons">
-                <button id="btnSftpUp" class="btn-icon-sm" title="یک سطح بالاتر">⬆️</button>
                 <button id="btnSftpRefresh" class="btn-icon-sm" title="بروزرسانی">🔄</button>
               </div>
               <div class="breadcrumb-container">
@@ -139,6 +138,14 @@
                 </label>
                 <button id="btnSftpNewFile" class="btn btn-sm btn-secondary">📄 فایل جدید</button>
                 <button id="btnSftpNewFolder" class="btn btn-sm btn-secondary">📁 پوشه جدید</button>
+                <button id="btnSftpUp" class="btn btn-sm btn-secondary" title="یک سطح بالاتر">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: middle; margin-left: 5px;">
+                    <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+                    <line x1="12" y1="11" x2="12" y2="17"></line>
+                    <polyline points="9 14 12 11 15 14"></polyline>
+                  </svg>
+                  <span>یک سطح بالاتر</span>
+                </button>
               </div>
               <div class="action-group">
                 <button id="btnSftpDownload" class="btn btn-sm btn-secondary" disabled>📥 دانلود</button>
@@ -231,8 +238,8 @@
               <div class="form-row">
                 <label>فونت ترمینال:</label>
                 <select id="settingFontFamily">
-                  <option value="'JetBrains Mono', 'Courier New', monospace">JetBrains Mono</option>
-                  <option value="'Fira Code', monospace">Fira Code</option>
+                  <option value="'JetBrains Mono', 'Vazirmatn', 'Fira Code', monospace">JetBrains Mono & Vazirmatn (پیش‌فرض)</option>
+                  <option value="'Fira Code', 'Vazirmatn', monospace">Fira Code</option>
                   <option value="'Cascadia Code', monospace">Cascadia Code</option>
                   <option value="monospace">Standard Monospace</option>
                 </select>

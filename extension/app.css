@@ -205,6 +205,7 @@ body {
   flex-direction: column;
   height: 100%;
   background: #080c14;
+  direction: ltr;
 }
 
 .terminal-topbar {
@@ -215,12 +216,14 @@ body {
   align-items: center;
   justify-content: space-between;
   padding: 0 12px;
+  direction: rtl;
 }
 
 .terminal-tabs-list {
   display: flex;
   gap: 4px;
   overflow-x: auto;
+  direction: rtl;
 }
 
 .term-tab {
@@ -236,6 +239,8 @@ body {
   font-family: var(--font-mono);
   cursor: pointer;
   transition: var(--transition);
+  direction: ltr;
+  unicode-bidi: plaintext;
 }
 
 .term-tab.active {
@@ -258,6 +263,7 @@ body {
   display: flex;
   align-items: center;
   gap: 8px;
+  direction: ltr;
 }
 
 .terminal-container {
@@ -265,16 +271,45 @@ body {
   position: relative;
   overflow: hidden;
   background: #05080f;
+  direction: ltr !important;
+  text-align: left !important;
+  unicode-bidi: isolate !important;
 }
 
 .xterm-wrapper {
   width: 100%;
   height: 100%;
   padding: 10px;
+  direction: ltr !important;
+  text-align: left !important;
+  unicode-bidi: isolate !important;
+}
+
+.xterm-instance {
+  width: 100%;
+  height: 100%;
+  direction: ltr !important;
+  text-align: left !important;
+  unicode-bidi: isolate !important;
 }
 
 .xterm-wrapper .xterm {
   height: 100%;
+  direction: ltr !important;
+  text-align: left !important;
+  unicode-bidi: isolate !important;
+}
+
+.xterm-wrapper .xterm .xterm-screen,
+.xterm-wrapper .xterm .xterm-rows,
+.xterm-wrapper .xterm .xterm-helpers {
+  direction: ltr !important;
+  text-align: left !important;
+}
+
+.xterm-wrapper .xterm .xterm-helper-textarea {
+  direction: ltr !important;
+  unicode-bidi: plaintext !important;
 }
 
 /* ================= SFTP FILE MANAGER VIEW ================= */
