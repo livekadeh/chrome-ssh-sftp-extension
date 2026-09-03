@@ -498,7 +498,91 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   }
 
+  // Public Bridges List
+  const btnFetchPublicBridges = document.getElementById('btnFetchPublicBridges');
+  const publicBridgesContainer = document.getElementById('publicBridgesContainer');
+
+  const FALLBACK_PUBLIC_BRIDGES = [
+    {
+      id: "nl-official",
+      name: "LiveKadeh Netherlands Core (Official)",
+      url: "wss://nl.livekadeh.com/ws",
+      region: "🇳🇱 Netherlands (Europe)",
+      status: "online",
+      speed: "Ultra Fast",
+      verified: true,
+      maintainer: "@livekadeh"
+    },
+    {
+      id: "local-dev",
+      name: "Localhost Development Bridge",
+      url: "ws://localhost:3000/ws",
+      region: "💻 Local Machine",
+      status: "online",
+      speed: "Instant (0ms)",
+      verified: true,
+      maintainer: "Local User"
+    }
+  ];
+
+  async function loadPublicBridges() {
+    if (!publicBridgesContainer) return;
+    publicBridgesContainer.innerHTML = '<div style="color: #94a3b8; font-size: 12px; text-align: center; padding: 12px;">در حال دریافت آخرین لیست از گیت‌هاب...</div>';
+
+    let bridges = FALLBACK_PUBLIC_BRIDGES;
+    try {
+      const res = await fetch('https://raw.githubusercontent.com/livekadeh/chrome-ssh-sftp-extension/main/public_bridges.json?t=' + Date.now());
+      if (res.ok) {
+        bridges = await res.json();
+      }
+    } catch (e) {
+      console.warn('Using fallback public bridges:', e);
+    }
+
+    renderPublicBridges(bridges);
+  }
+
+  function renderPublicBridges(bridges) {
+    if (!publicBridgesContainer) return;
+    publicBridgesContainer.innerHTML = '';
+
+    bridges.forEach(b => {
+      const item = document.createElement('div');
+      item.className = 'public-bridge-item';
+      item.innerHTML = `
+        <div class="public-bridge-info">
+          <div class="public-bridge-name">
+            <span>${b.name}</span>
+            ${b.verified ? '<span class="badge-verified">تأیید شده ✔</span>' : ''}
+          </div>
+          <div class="public-bridge-url">${b.url}</div>
+          <div class="public-bridge-meta">
+            <span>📍 ${b.region || 'نامشخص'}</span>
+            <span>⚡ ${b.speed || 'عادی'}</span>
+            <span>👤 ${b.maintainer || 'Community'}</span>
+          </div>
+        </div>
+        <div class="public-bridge-actions">
+          <button class="btn btn-sm btn-cyan btn-select-bridge" data-url="${b.url}">انتخاب و تنظیم ⚡</button>
+        </div>
+      `;
+
+      item.querySelector('.btn-select-bridge').addEventListener('click', async () => {
+        settingBridgeUrl.value = b.url;
+        await chrome.storage.local.set({ bridgeUrl: b.url });
+        btnTestBridge.click();
+      });
+
+      publicBridgesContainer.appendChild(item);
+    });
+  }
+
+  if (btnFetchPublicBridges) {
+    btnFetchPublicBridges.addEventListener('click', () => loadPublicBridges());
+  }
+
   // Initial loads
   await loadSettings();
   await loadServersList();
+  await loadPublicBridges();
 });

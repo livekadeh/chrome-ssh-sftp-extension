@@ -679,6 +679,89 @@ kbd {
   padding-bottom: 8px;
 }
 
+.card-header-flex {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  border-bottom: 1px solid var(--border-glass);
+  padding-bottom: 10px;
+}
+
+.card-header-flex h3 {
+  border-bottom: none !important;
+  padding-bottom: 0 !important;
+  margin-bottom: 4px;
+}
+
+.public-bridges-container {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 6px;
+}
+
+.public-bridge-item {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--border-glass);
+  border-radius: var(--radius-sm);
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  transition: var(--transition);
+}
+
+.public-bridge-item:hover {
+  background: rgba(0, 240, 255, 0.04);
+  border-color: rgba(0, 240, 255, 0.3);
+}
+
+.public-bridge-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.public-bridge-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-main);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.public-bridge-url {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--accent-cyan);
+  direction: ltr;
+}
+
+.public-bridge-meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.badge-verified {
+  background: rgba(0, 255, 157, 0.15);
+  color: var(--accent-emerald);
+  border: 1px solid rgba(0, 255, 157, 0.3);
+  padding: 2px 6px;
+  border-radius: 10px;
+  font-size: 10px;
+}
+
+.public-bridge-actions {
+  display: flex;
+  gap: 8px;
+}
+
 .help-text {
   font-size: 12px;
   color: var(--text-muted);

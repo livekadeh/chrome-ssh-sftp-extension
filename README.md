@@ -1,10 +1,10 @@
-# ⚡ LiveKadeh Chrome SSH & SFTP Manager
+# ⚡ LiveKadeh SSH & SFTP Pro
 
 [![GitHub Repository](https://img.shields.io/badge/GitHub-livekadeh%2Fchrome--ssh--sftp--extension-00f0ff?style=for-the-badge&logo=github)](https://github.com/livekadeh/chrome-ssh-sftp-extension)
 [![Manifest V3](https://img.shields.io/badge/Chrome_Extension-Manifest_V3-00ff9d?style=for-the-badge&logo=googlechrome)](https://developer.chrome.com/docs/extensions/mv3/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-purple?style=for-the-badge)](LICENSE)
 
-اکستنشن حرفه‌ای و مدرن گوگل کروم برای اتصال مستقیم به خط فرمان **SSH (با شبیه‌ساز xterm.js)** و **مدیریت فایل پیشرفته SFTP (Dual-Pane Explorer)** همراه با سرور واسط پرسرعت (WebSocket Bridge Server) نودجی‌اس.
+اکستنشن حرفه‌ای و مدرن گوگل کروم (نسخه Pro) برای اتصال مستقیم به خط فرمان **SSH (با شبیه‌ساز xterm.js و پشتیبانی کامل فارسی/BiDi)** و **مدیریت فایل پیشرفته SFTP (با پروسس‌بار زنده و Chunked Upload)** همراه با سرور واسط پرسرعت (WebSocket Bridge Server).
 
 ---
 

@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>LiveKadeh SSH & SFTP Dashboard</title>
+  <title>LiveKadeh SSH & SFTP Pro</title>
   <link rel="stylesheet" href="lib/xterm.css">
   <link rel="stylesheet" href="app.css">
 </head>
@@ -32,7 +32,7 @@
         </button>
         <button class="nav-tab" data-view="servers">
           <span class="tab-icon">🖥️</span>
-          <span>مدیریت سرورها</span>
+          <span>سرورهای ذخیره‌شده</span>
         </button>
         <button class="nav-tab" data-view="settings">
           <span class="tab-icon">⚙️</span>
@@ -46,7 +46,7 @@
           <span class="status-indicator disconnected" id="globalStatusDot"></span>
           <span class="server-title" id="globalServerName">اتصال برقرار نیست</span>
         </div>
-        <button id="btnConnectModal" class="btn btn-sm btn-cyan">اتصال جدید +</button>
+        <button id="btnConnectModal" class="btn btn-primary"><span>+ اتصال جدید</span></button>
       </div>
     </header>
 
@@ -61,10 +61,14 @@
             <div class="terminal-tabs-list" id="terminalTabsList">
               <!-- Active Tabs injected here -->
             </div>
-            <button id="btnNewTerminalTab" class="btn-icon-sm" title="تب جدید ترمینال">+</button>
             <div class="terminal-toolbar">
-              <button id="btnTermReconnect" class="btn-action" title="اتصال مجدد">🔄 اتصال مجدد</button>
-              <button id="btnTermClear" class="btn-action" title="پاکسازی صفحه">🧹 پاکسازی</button>
+              <button id="btnNewTerminalTab" class="btn-action" title="ترمینال جدید">+</button>
+              <button id="btnTermReconnect" class="btn-action" title="اتصال مجدد">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle;">
+                  <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/>
+                </svg>
+              </button>
+              <button id="btnTermClear" class="btn-action" title="پاک کردن ترمینال">🧹</button>
               <div class="font-controls">
                 <button id="btnFontMinus" class="btn-action" title="کاهش فونت">A-</button>
                 <button id="btnFontPlus" class="btn-action" title="افزایش فونت">A+</button>
@@ -118,7 +122,11 @@
             <!-- Breadcrumb & Search Bar -->
             <div class="sftp-nav-bar">
               <div class="nav-buttons">
-                <button id="btnSftpRefresh" class="btn-icon-sm" title="بروزرسانی">🔄</button>
+                <button id="btnSftpRefresh" class="btn-icon-sm" title="بروزرسانی">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle;">
+                    <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/>
+                  </svg>
+                </button>
               </div>
               <div class="breadcrumb-container">
                 <input type="text" id="sftpCurrentPath" value="/root" dir="ltr" class="path-input">
@@ -213,25 +221,22 @@
 
             <!-- SFTP Status Bar -->
             <div class="sftp-status-bar">
-              <span id="sftpItemCount">۰ آیتم</span>
               <span id="sftpSelectedInfo">هیچ فایلی انتخاب نشده</span>
+              <span id="sftpItemCount">0 مورد</span>
             </div>
           </div>
         </div>
       </section>
 
-      <!-- ================= SERVERS MANAGEMENT VIEW ================= -->
-      <section id="viewServers" class="view-panel">
+      <!-- ================= SERVERS VIEW ================= -->
+      <section id="viewSERVERS" class="view-panel">
         <div class="servers-workspace">
-          <div class="servers-header">
-            <div>
-              <h2>مدیریت سرورها و اتصالات</h2>
-              <p class="subtitle-text">سرورهای خود را ذخیره کرده و با یک کلیک به خط فرمان و مدیریت فایل متصل شوید.</p>
-            </div>
-            <div class="header-actions">
-              <button id="btnImportServers" class="btn btn-secondary">📥 درون‌ریزی (Import)</button>
-              <button id="btnExportServers" class="btn btn-secondary">📤 برون‌بری (Export)</button>
-              <button id="btnAddServerCard" class="btn btn-cyan">سرور جدید +</button>
+          <div class="section-top-bar">
+            <h2>مدیریت سرورهای ذخیره‌شده</h2>
+            <div class="actions">
+              <button id="btnExportServers" class="btn btn-sm btn-secondary">خروجی بکاپ 📤</button>
+              <button id="btnImportServers" class="btn btn-sm btn-secondary">ورود اطلاعات 📥</button>
+              <button id="btnAddServerCard" class="btn btn-sm btn-cyan">افزودن سرور جدید +</button>
             </div>
           </div>
 
@@ -242,7 +247,7 @@
       </section>
 
       <!-- ================= SETTINGS VIEW ================= -->
-      <section id="viewSettings" class="view-panel">
+      <section id="viewSETTINGS" class="view-panel">
         <div class="settings-workspace">
           <h2>تنظیمات اکستنشن و ارتباطات</h2>
           
@@ -250,11 +255,31 @@
             <h3>تنظیمات بریج سرور (WebSocket Bridge Server)</h3>
             <p class="help-text">آدرس وب‌سوکت سرور واسط Node.js جهت برقراری نشست‌های SSH و استریم‌های SFTP:</p>
             <div class="form-row">
-              <label>آدرس WebSocket بریج:</label>
-              <input type="text" id="settingBridgeUrl" dir="ltr" value="ws://localhost:3000/ws">
+              <label>آدرس WebSocket بریج فعال:</label>
+              <input type="text" id="settingBridgeUrl" dir="ltr" value="wss://nl.livekadeh.com/ws">
             </div>
             <button id="btnTestBridge" class="btn btn-sm btn-cyan">تست اتصال بریج ⚡</button>
             <span id="bridgeTestResult" class="test-result"></span>
+          </div>
+
+          <!-- Public Bridges Section -->
+          <div class="settings-card">
+            <div class="card-header-flex">
+              <div>
+                <h3>سرورهای عمومی بریج (Public Bridges) 🌐</h3>
+                <p class="help-text">لیست سرورهای عمومی واسط که مستقیماً از مخزن گیت‌هاب پروژه همگام‌سازی می‌شوند:</p>
+              </div>
+              <button id="btnFetchPublicBridges" class="btn btn-sm btn-secondary" title="بروزرسانی از گیت‌هاب">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; margin-left: 4px;">
+                  <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/>
+                </svg>
+                دریافت آخرین لیست از گیت‌هاب 🔄
+              </button>
+            </div>
+            
+            <div class="public-bridges-container" id="publicBridgesContainer">
+              <!-- Injected via JS -->
+            </div>
           </div>
 
           <div class="settings-card">

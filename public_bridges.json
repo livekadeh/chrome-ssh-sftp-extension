@@ -1,0 +1,22 @@
+[
+  {
+    "id": "nl-official",
+    "name": "LiveKadeh Netherlands Core (Official)",
+    "url": "wss://nl.livekadeh.com/ws",
+    "region": "🇳🇱 Netherlands (Europe)",
+    "status": "online",
+    "speed": "Ultra Fast",
+    "verified": true,
+    "maintainer": "@livekadeh"
+  },
+  {
+    "id": "local-dev",
+    "name": "Localhost Development Bridge",
+    "url": "ws://localhost:3000/ws",
+    "region": "💻 Local Machine",
+    "status": "online",
+    "speed": "Instant (0ms)",
+    "verified": true,
+    "maintainer": "Local User"
+  }
+]
