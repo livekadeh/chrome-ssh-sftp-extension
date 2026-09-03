@@ -20,9 +20,10 @@ app.use(express.json({ limit: '50mb' }));
 
 app.get('/', (req, res) => {
   res.json({
-    name: 'Chrome SSH & SFTP Bridge Server',
-    version: '1.0.0',
     status: 'online',
+    service: 'LiveKadeh SSH & SFTP Bridge Server',
+    version: '1.1.0',
+    uptime: process.uptime(),
     timestamp: new Date().toISOString(),
     endpoints: {
       health: '/health',
