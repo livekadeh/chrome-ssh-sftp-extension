@@ -359,7 +359,7 @@ class SFTPManager {
     }
   }
 
-  sendRequest(payload) {
+  sendRequest(payload, options = {}) {
     return new Promise((resolve, reject) => {
       const activeSession = this.sessions.get(this.activeSessionId);
       const ws = activeSession ? activeSession.ws : this.ws;
@@ -369,20 +369,47 @@ class SFTPManager {
         return;
       }
 
+      let timeoutDuration = 60000;
+      let onMessage = null;
+
+      if (typeof options === 'number') {
+        timeoutDuration = options;
+      } else if (typeof options === 'object' && options !== null) {
+        if (typeof options.timeout === 'number') timeoutDuration = options.timeout;
+        if (typeof options.onMessage === 'function') onMessage = options.onMessage;
+      }
+
       const callbacks = activeSession ? activeSession.pendingCallbacks : this.pendingCallbacks;
       const id = 'req-' + (activeSession ? (activeSession.callbackSeq++) : (this.callbackSeq++));
       payload.id = id;
 
-      callbacks.set(id, { resolve, reject });
-      ws.send(JSON.stringify(payload));
+      const callbackEntry = {
+        resolve,
+        reject,
+        onMessage,
+        timeoutDuration,
+        timeoutTimer: null
+      };
 
-      // Timeout after 30s
-      setTimeout(() => {
-        if (callbacks.has(id)) {
-          callbacks.delete(id);
-          reject(new Error('Request timed out'));
+      const armTimeout = () => {
+        if (timeoutDuration > 0) {
+          callbackEntry.timeoutTimer = setTimeout(() => {
+            if (callbacks.has(id)) {
+              callbacks.delete(id);
+              reject(new Error('Request timed out'));
+            }
+          }, timeoutDuration);
         }
-      }, 30000);
+      };
+
+      callbackEntry.resetTimeout = () => {
+        if (callbackEntry.timeoutTimer) clearTimeout(callbackEntry.timeoutTimer);
+        armTimeout();
+      };
+
+      armTimeout();
+      callbacks.set(id, callbackEntry);
+      ws.send(JSON.stringify(payload));
     });
   }
 
@@ -412,12 +439,28 @@ class SFTPManager {
     }
 
     if (msg.id && session.pendingCallbacks.has(msg.id)) {
-      const { resolve, reject } = session.pendingCallbacks.get(msg.id);
+      const entry = session.pendingCallbacks.get(msg.id);
+
+      // Handle intermediate streaming messages and heartbeats
+      const isIntermediate = msg.type === 'sftp-download-dir-chunk' ||
+                             msg.type === 'sftp-download-dir-progress' ||
+                             msg.type === 'sftp-download-dir-start';
+
+      if (isIntermediate) {
+        if (entry.resetTimeout) entry.resetTimeout();
+        if (entry.onMessage) entry.onMessage(msg);
+        return;
+      }
+
+      // Final response completion
+      if (entry.timeoutTimer) clearTimeout(entry.timeoutTimer);
       session.pendingCallbacks.delete(msg.id);
+
       if (msg.success === false) {
-        reject(new Error(msg.error || 'SFTP operation failed'));
+        entry.reject(new Error(msg.error || 'SFTP operation failed'));
       } else {
-        resolve(msg);
+        if (entry.onMessage) entry.onMessage(msg);
+        entry.resolve(msg);
       }
     }
   }
@@ -1031,7 +1074,7 @@ class SFTPManager {
     this.updateStatus(isPersian ? `در حال دریافت ${filename}...` : `Downloading ${filename}...`);
 
     try {
-      const res = await this.sendRequest({ type: 'sftp-read', path: targetPath });
+      const res = await this.sendRequest({ type: 'sftp-read', path: targetPath }, 180000);
       let blob;
       if (res.isBinary) {
         const byteCharacters = atob(res.content);
@@ -1061,35 +1104,65 @@ class SFTPManager {
   async downloadDirectory(folderName) {
     const targetPath = (this.currentPath.endsWith('/') ? this.currentPath : this.currentPath + '/') + folderName;
     const isPersian = window.i18n && window.i18n.currentLang === 'fa';
-    this.updateStatus(isPersian ? `در حال فشرده‌سازی و آماده‌سازی پوشه "${folderName}"...` : `Archiving & preparing folder "${folderName}"...`);
+    this.updateStatus(isPersian ? `در حال آماده‌سازی و فشرده‌سازی پوشه "${folderName}" در سرور...` : `Archiving folder "${folderName}" on server...`);
+
+    const chunks = [];
+    let totalBytes = 0;
+    let downloadFilename = `${folderName}.zip`;
 
     try {
-      const res = await this.sendRequest({ type: 'sftp-download-dir', path: targetPath });
-      if (!res.content) {
-        throw new Error(res.error || 'Empty archive content received');
+      await this.sendRequest(
+        { type: 'sftp-download-dir', path: targetPath },
+        {
+          timeout: 300000,
+          onMessage: (msg) => {
+            if (msg.type === 'sftp-download-dir-progress') {
+              this.updateStatus(isPersian ? `در حال فشرده‌سازی پوشه "${folderName}"...` : `Compressing folder "${folderName}" on server...`);
+            } else if (msg.type === 'sftp-download-dir-start') {
+              totalBytes = msg.totalSize || 0;
+              if (msg.filename) downloadFilename = msg.filename;
+              this.updateStatus(isPersian 
+                ? `دانلود پوشه "${folderName}" (${this.formatBytes(totalBytes)})...` 
+                : `Downloading folder "${folderName}" (${this.formatBytes(totalBytes)})...`);
+            } else if (msg.type === 'sftp-download-dir-chunk') {
+              const binaryString = atob(msg.chunk);
+              const len = binaryString.length;
+              const bytes = new Uint8Array(len);
+              for (let i = 0; i < len; i++) {
+                bytes[i] = binaryString.charCodeAt(i);
+              }
+              chunks.push(bytes);
+
+              const current = msg.streamedBytes || 0;
+              const pct = totalBytes > 0 ? Math.min(100, Math.round((current / totalBytes) * 100)) : 0;
+              this.updateStatus(isPersian 
+                ? `در حال دریافت "${folderName}": %${pct} (${this.formatBytes(current)} از ${this.formatBytes(totalBytes)})` 
+                : `Downloading "${folderName}": ${pct}% (${this.formatBytes(current)} of ${this.formatBytes(totalBytes)})`);
+            }
+          }
+        }
+      );
+
+      if (chunks.length === 0) {
+        throw new Error('No data received for folder archive');
       }
 
-      const byteCharacters = atob(res.content);
-      const byteNumbers = new Array(byteCharacters.length);
-      for (let i = 0; i < byteCharacters.length; i++) {
-        byteNumbers[i] = byteCharacters.charCodeAt(i);
-      }
-      const mimeType = (res.filename && res.filename.endsWith('.tar.gz')) ? 'application/gzip' : 'application/zip';
-      const blob = new Blob([new Uint8Array(byteNumbers)], { type: mimeType });
+      const mimeType = downloadFilename.endsWith('.tar.gz') ? 'application/gzip' : 'application/zip';
+      const blob = new Blob(chunks, { type: mimeType });
 
-      const dlFilename = res.filename || (folderName + '.zip');
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = dlFilename;
+      a.download = downloadFilename;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
 
-      const sizeStr = res.size ? ` (${this.formatBytes(res.size)})` : '';
-      this.updateStatus(isPersian ? `پوشه "${folderName}" با موفقیت دانلود شد${sizeStr} ✔` : `Folder "${folderName}" downloaded successfully${sizeStr} ✔`);
+      const sizeStr = totalBytes > 0 ? ` (${this.formatBytes(totalBytes)})` : '';
+      this.updateStatus(isPersian ? `دانلود پوشه "${folderName}" با موفقیت تکمیل شد${sizeStr} ✔` : `Folder "${folderName}" downloaded successfully${sizeStr} ✔`);
     } catch (err) {
+      console.error('Directory download failed:', err);
       alert((isPersian ? 'خطا در دانلود پوشه: ' : 'Error downloading folder: ') + err.message);
       this.updateStatus(isPersian ? 'خطا در دانلود پوشه' : 'Error downloading folder');
     }

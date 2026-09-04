@@ -795,7 +795,7 @@ fi`;
       return;
     }
 
-    // --- SFTP DOWNLOAD DIRECTORY (AUTO ZIP & DOWNLOAD) ---
+    // --- SFTP DOWNLOAD DIRECTORY (AUTO ZIP & STREAM CHUNKS) ---
     if (type === 'sftp-download-dir') {
       const { path: dirPath, id } = msg;
       if (!checkSftp(id)) return;
@@ -816,6 +816,8 @@ fi`;
       const escapedFolder = escapeShell(folderName);
       const escapedZip = escapeShell(tempZipPath);
 
+      safeSend({ type: 'sftp-download-dir-progress', id, message: 'Initiating compression...' });
+
       const cmd = `if command -v zip >/dev/null 2>&1; then
   cd ${escapedParent} && zip -r -q ${escapedZip} ${escapedFolder} && echo "zip"
 elif command -v python3 >/dev/null 2>&1; then
@@ -826,8 +828,13 @@ else
   cd ${escapedParent} && tar -czf ${escapedZip}.tar.gz ${escapedFolder} && echo "tar"
 fi`;
 
+      const compressHeartbeat = setInterval(() => {
+        safeSend({ type: 'sftp-download-dir-progress', id, message: 'Compressing directory...' });
+      }, 3500);
+
       sshClient.exec(cmd, (execErr, stream) => {
         if (execErr) {
+          clearInterval(compressHeartbeat);
           safeSend({ type: 'sftp-download-dir-res', id, success: false, error: execErr.message });
           return;
         }
@@ -838,6 +845,8 @@ fi`;
         stream.stderr.on('data', d => { stderr += d.toString(); });
 
         stream.on('close', code => {
+          clearInterval(compressHeartbeat);
+
           if (code !== 0) {
             safeSend({ type: 'sftp-download-dir-res', id, success: false, error: stderr.trim() || `Archiving failed with code ${code}` });
             return;
@@ -853,34 +862,47 @@ fi`;
               return;
             }
 
-            const maxLimit = 200 * 1024 * 1024; // 200MB limit
+            const maxLimit = 500 * 1024 * 1024; // 500MB limit
             if (stats.size > maxLimit) {
               sftpSession.unlink(finalArchivePath, () => {});
-              safeSend({ type: 'sftp-download-dir-res', id, success: false, error: `Folder archive exceeds maximum download limit (${(stats.size / 1024 / 1024).toFixed(1)} MB > 200 MB)` });
+              safeSend({ type: 'sftp-download-dir-res', id, success: false, error: `Folder archive exceeds maximum download limit (${(stats.size / 1024 / 1024).toFixed(1)} MB > 500 MB)` });
               return;
             }
 
-            const chunks = [];
-            const readStream = sftpSession.createReadStream(finalArchivePath);
+            safeSend({
+              type: 'sftp-download-dir-start',
+              id,
+              filename: downloadFilename,
+              totalSize: stats.size
+            });
 
-            readStream.on('data', chunk => chunks.push(chunk));
+            let streamedBytes = 0;
+            const readStream = sftpSession.createReadStream(finalArchivePath, { chunkSize: 256 * 1024 });
+
+            readStream.on('data', chunk => {
+              streamedBytes += chunk.length;
+              safeSend({
+                type: 'sftp-download-dir-chunk',
+                id,
+                chunk: chunk.toString('base64'),
+                streamedBytes,
+                totalBytes: stats.size
+              });
+            });
+
             readStream.on('error', readErr => {
               sftpSession.unlink(finalArchivePath, () => {});
               safeSend({ type: 'sftp-download-dir-res', id, success: false, error: readErr.message });
             });
 
             readStream.on('end', () => {
-              const buffer = Buffer.concat(chunks);
-              // Clean up temporary archive file
               sftpSession.unlink(finalArchivePath, () => {});
-
               safeSend({
-                type: 'sftp-download-dir-res',
+                type: 'sftp-download-dir-end',
                 id,
                 success: true,
                 filename: downloadFilename,
-                size: stats.size,
-                content: buffer.toString('base64')
+                totalSize: stats.size
               });
             });
           });
