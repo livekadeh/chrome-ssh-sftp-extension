@@ -687,8 +687,17 @@ class SFTPManager {
     const disabled = count === 0;
     document.getElementById('btnSftpDownload').disabled = disabled;
     document.getElementById('btnSftpEdit').disabled = count !== 1;
-    document.getElementById('btnSftpChmod').disabled = disabled;
-    document.getElementById('btnSftpDelete').disabled = disabled;
+    const btnDelete = document.getElementById('btnSftpDelete');
+    if (btnDelete) {
+      btnDelete.disabled = disabled;
+      if (count > 1) {
+        btnDelete.innerHTML = isPersian ? `🗑️ حذف همه (${count})` : `🗑️ Delete All (${count})`;
+        btnDelete.title = isPersian ? `حذف تمام ${count} مورد انتخاب‌شده` : `Delete all ${count} selected items`;
+      } else {
+        btnDelete.innerHTML = isPersian ? `🗑️ حذف` : `🗑️ Delete`;
+        btnDelete.title = isPersian ? `حذف مورد انتخاب‌شده` : `Delete selected item`;
+      }
+    }
 
     const btnSftpPreview = document.getElementById('btnSftpPreview');
     if (btnSftpPreview) {
@@ -1212,10 +1221,34 @@ class SFTPManager {
     }
   }
 
+  async removeDirectoryRecursive(dirPath) {
+    try {
+      await this.sendRequest({ type: 'sftp-rmdir', path: dirPath });
+    } catch (err) {
+      // Client-side fallback: traverse and delete child contents
+      try {
+        const res = await this.sendRequest({ type: 'sftp-list', path: dirPath });
+        const files = res.files || [];
+        const base = dirPath.endsWith('/') ? dirPath : dirPath + '/';
+        for (const f of files) {
+          const childPath = base + f.filename;
+          const isDir = f.attrs && f.attrs.isDirectory;
+          if (isDir) {
+            await this.removeDirectoryRecursive(childPath);
+          } else {
+            await this.sendRequest({ type: 'sftp-unlink', path: childPath });
+          }
+        }
+        await this.sendRequest({ type: 'sftp-rmdir', path: dirPath });
+      } catch (nestedErr) {
+        throw new Error(nestedErr.message || err.message);
+      }
+    }
+  }
+
   async deleteItem(filename, isDir) {
     if (!filename) {
-      if (this.selectedFiles.size === 0) return;
-      filename = Array.from(this.selectedFiles)[0];
+      return this.deleteSelected();
     }
     const isPersian = window.i18n && window.i18n.currentLang === 'fa';
     const confirmMsg = isPersian ? `آیا از حذف "${filename}" اطمینان دارید؟` : `Are you sure you want to delete "${filename}"?`;
@@ -1223,14 +1256,72 @@ class SFTPManager {
 
     const targetPath = (this.currentPath.endsWith('/') ? this.currentPath : this.currentPath + '/') + filename;
     try {
+      this.updateStatus(isPersian ? `در حال حذف "${filename}"...` : `Deleting "${filename}"...`);
       if (isDir) {
-        await this.sendRequest({ type: 'sftp-rmdir', path: targetPath });
+        await this.removeDirectoryRecursive(targetPath);
       } else {
         await this.sendRequest({ type: 'sftp-unlink', path: targetPath });
       }
+      this.selectedFiles.delete(filename);
       this.listDirectory(this.currentPath);
     } catch (err) {
-      alert(`Error deleting: ${err.message}`);
+      alert((isPersian ? 'خطا در حذف: ' : 'Error deleting: ') + err.message);
+      this.updateStatus((isPersian ? 'خطا: ' : 'Error: ') + err.message);
+    }
+  }
+
+  async deleteSelected() {
+    if (this.selectedFiles.size === 0) return;
+
+    const count = this.selectedFiles.size;
+    const isPersian = window.i18n && window.i18n.currentLang === 'fa';
+    
+    let confirmMsg = '';
+    if (count === 1) {
+      const fname = Array.from(this.selectedFiles)[0];
+      confirmMsg = isPersian ? `آیا از حذف "${fname}" اطمینان دارید؟` : `Are you sure you want to delete "${fname}"?`;
+    } else {
+      confirmMsg = isPersian 
+        ? `آیا از حذف تمام ${count} مورد انتخاب‌شده اطمینان دارید؟` 
+        : `Are you sure you want to delete all ${count} selected items?`;
+    }
+
+    if (!confirm(confirmMsg)) return;
+
+    const itemsToDelete = Array.from(this.selectedFiles).map(name => {
+      const found = this.currentFiles.find(f => f.filename === name);
+      return {
+        filename: name,
+        isDir: found && found.attrs ? !!found.attrs.isDirectory : false
+      };
+    });
+
+    this.updateStatus(isPersian ? `در حال حذف ${count} مورد...` : `Deleting ${count} item(s)...`);
+
+    let failedCount = 0;
+    const base = this.currentPath.endsWith('/') ? this.currentPath : this.currentPath + '/';
+
+    for (const item of itemsToDelete) {
+      const targetPath = base + item.filename;
+      try {
+        if (item.isDir) {
+          await this.removeDirectoryRecursive(targetPath);
+        } else {
+          await this.sendRequest({ type: 'sftp-unlink', path: targetPath });
+        }
+        this.selectedFiles.delete(item.filename);
+      } catch (err) {
+        console.error(`Failed to delete ${item.filename}:`, err);
+        failedCount++;
+      }
+    }
+
+    this.listDirectory(this.currentPath);
+
+    if (failedCount > 0) {
+      alert(isPersian 
+        ? `خطا: ${failedCount} مورد به دلیل مشکل دسترسی یا خطا حذف نشدند.` 
+        : `Warning: ${failedCount} item(s) could not be deleted.`);
     }
   }
 

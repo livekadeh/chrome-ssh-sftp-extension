@@ -547,10 +547,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
   btnSftpChmod.addEventListener('click', () => sftpManager.changePermissions());
   btnSftpDelete.addEventListener('click', () => {
-    sftpManager.selectedFiles.forEach(f => {
-      const item = sftpManager.currentFiles.find(x => x.filename === f);
-      sftpManager.deleteItem(f, item ? item.attrs.isDirectory : false);
-    });
+    sftpManager.deleteSelected();
   });
 
   // ================= SFTP CONTEXT MENU =================
@@ -594,7 +591,19 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (sftpCtxRename) sftpCtxRename.style.display = 'flex';
       if (sftpCtxChmod) sftpCtxChmod.style.display = 'flex';
       if (sftpCtxCopyPath) sftpCtxCopyPath.style.display = 'flex';
-      if (sftpCtxDelete) sftpCtxDelete.style.display = 'flex';
+      if (sftpCtxDelete) {
+        sftpCtxDelete.style.display = 'flex';
+        const isPersian = window.i18n && window.i18n.currentLang === 'fa';
+        const lbl = sftpCtxDelete.querySelector('.ctx-label');
+        if (lbl) {
+          const count = sftpManager.selectedFiles.size;
+          if (count > 1) {
+            lbl.textContent = isPersian ? `حذف همه (${count} مورد)` : `Delete All (${count} items)`;
+          } else {
+            lbl.textContent = isPersian ? 'حذف' : 'Delete';
+          }
+        }
+      }
       if (sftpCtxDivider) sftpCtxDivider.style.display = 'block';
     } else {
       if (sftpCtxOpen) sftpCtxOpen.style.display = 'none';
@@ -732,8 +741,12 @@ document.addEventListener('DOMContentLoaded', async () => {
   if (sftpCtxDelete) {
     sftpCtxDelete.addEventListener('click', () => {
       hideSftpContextMenu();
-      if (sftpContextTarget && sftpContextTarget.filename) {
+      if (sftpManager.selectedFiles.size > 1) {
+        sftpManager.deleteSelected();
+      } else if (sftpContextTarget && sftpContextTarget.filename) {
         sftpManager.deleteItem(sftpContextTarget.filename, sftpContextTarget.isDir);
+      } else {
+        sftpManager.deleteSelected();
       }
     });
   }

@@ -465,14 +465,74 @@ wss.on('connection', (ws, req) => {
       return;
     }
 
-    // --- SFTP RMDIR ---
+    // --- SFTP RMDIR (RECURSIVE DIRECTORY DELETION) ---
     if (type === 'sftp-rmdir') {
       const { path: dirPath, id } = msg;
       if (!checkSftp(id)) return;
 
-      sftpSession.rmdir(dirPath, err => {
-        safeSend({ type: 'sftp-rmdir-res', id, success: !err, path: dirPath, error: err ? err.message : null });
-      });
+      const escapeShell = (str) => "'" + str.replace(/'/g, "'\\''") + "'";
+
+      const sftpRmdirRecursive = (targetDir, cb) => {
+        sftpSession.readdir(targetDir, (err, list) => {
+          if (err) {
+            return sftpSession.rmdir(targetDir, cb);
+          }
+
+          const items = (list || []).filter(item => item.filename !== '.' && item.filename !== '..');
+          if (items.length === 0) {
+            return sftpSession.rmdir(targetDir, cb);
+          }
+
+          let remaining = items.length;
+          let encounteredError = null;
+
+          for (const item of items) {
+            const itemPath = (targetDir.endsWith('/') ? targetDir : targetDir + '/') + item.filename;
+            const isDir = item.attrs ? ((item.attrs.mode & 0o170000) === 0o040000) : false;
+
+            const onDone = (delErr) => {
+              if (delErr && !encounteredError) encounteredError = delErr;
+              remaining--;
+              if (remaining === 0) {
+                if (encounteredError) return cb(encounteredError);
+                sftpSession.rmdir(targetDir, cb);
+              }
+            };
+
+            if (isDir) {
+              sftpRmdirRecursive(itemPath, onDone);
+            } else {
+              sftpSession.unlink(itemPath, onDone);
+            }
+          }
+        });
+      };
+
+      if (sshClient && isConnected) {
+        const cmd = `rm -rf -- ${escapeShell(dirPath)}`;
+        sshClient.exec(cmd, (execErr, stream) => {
+          if (execErr) {
+            return sftpRmdirRecursive(dirPath, (err) => {
+              safeSend({ type: 'sftp-rmdir-res', id, success: !err, path: dirPath, error: err ? err.message : null });
+            });
+          }
+          let stderr = '';
+          stream.stderr.on('data', d => { stderr += d.toString(); });
+          stream.on('close', code => {
+            if (code === 0) {
+              safeSend({ type: 'sftp-rmdir-res', id, success: true, path: dirPath, error: null });
+            } else {
+              sftpRmdirRecursive(dirPath, (err) => {
+                safeSend({ type: 'sftp-rmdir-res', id, success: !err, path: dirPath, error: err ? (stderr || err.message) : null });
+              });
+            }
+          });
+        });
+      } else {
+        sftpRmdirRecursive(dirPath, (err) => {
+          safeSend({ type: 'sftp-rmdir-res', id, success: !err, path: dirPath, error: err ? err.message : null });
+        });
+      }
       return;
     }
 
