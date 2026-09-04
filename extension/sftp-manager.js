@@ -1016,7 +1016,16 @@ class SFTPManager {
     }, 1500);
   }
 
-  async downloadFile(filename) {
+  async downloadFile(filename, isDir) {
+    if (isDir === undefined) {
+      const fileObj = this.currentFiles.find(f => f.filename === filename);
+      isDir = fileObj ? (fileObj.attrs && fileObj.attrs.isDirectory) : false;
+    }
+
+    if (isDir) {
+      return this.downloadDirectory(filename);
+    }
+
     const targetPath = (this.currentPath.endsWith('/') ? this.currentPath : this.currentPath + '/') + filename;
     const isPersian = window.i18n && window.i18n.currentLang === 'fa';
     this.updateStatus(isPersian ? `در حال دریافت ${filename}...` : `Downloading ${filename}...`);
@@ -1046,6 +1055,43 @@ class SFTPManager {
       this.updateStatus(isPersian ? `دانلود ${filename} انجام شد ✔` : `Downloaded ${filename} successfully ✔`);
     } catch (err) {
       alert((isPersian ? 'خطا در دانلود فایل: ' : 'Error downloading file: ') + err.message);
+    }
+  }
+
+  async downloadDirectory(folderName) {
+    const targetPath = (this.currentPath.endsWith('/') ? this.currentPath : this.currentPath + '/') + folderName;
+    const isPersian = window.i18n && window.i18n.currentLang === 'fa';
+    this.updateStatus(isPersian ? `در حال فشرده‌سازی و آماده‌سازی پوشه "${folderName}"...` : `Archiving & preparing folder "${folderName}"...`);
+
+    try {
+      const res = await this.sendRequest({ type: 'sftp-download-dir', path: targetPath });
+      if (!res.content) {
+        throw new Error(res.error || 'Empty archive content received');
+      }
+
+      const byteCharacters = atob(res.content);
+      const byteNumbers = new Array(byteCharacters.length);
+      for (let i = 0; i < byteCharacters.length; i++) {
+        byteNumbers[i] = byteCharacters.charCodeAt(i);
+      }
+      const mimeType = (res.filename && res.filename.endsWith('.tar.gz')) ? 'application/gzip' : 'application/zip';
+      const blob = new Blob([new Uint8Array(byteNumbers)], { type: mimeType });
+
+      const dlFilename = res.filename || (folderName + '.zip');
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = dlFilename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      const sizeStr = res.size ? ` (${this.formatBytes(res.size)})` : '';
+      this.updateStatus(isPersian ? `پوشه "${folderName}" با موفقیت دانلود شد${sizeStr} ✔` : `Folder "${folderName}" downloaded successfully${sizeStr} ✔`);
+    } catch (err) {
+      alert((isPersian ? 'خطا در دانلود پوشه: ' : 'Error downloading folder: ') + err.message);
+      this.updateStatus(isPersian ? 'خطا در دانلود پوشه' : 'Error downloading folder');
     }
   }
 

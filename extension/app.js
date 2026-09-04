@@ -585,7 +585,18 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     if (isRow) {
       if (sftpCtxOpen) sftpCtxOpen.style.display = isDir ? 'flex' : 'none';
-      if (sftpCtxDownload) sftpCtxDownload.style.display = 'flex';
+      if (sftpCtxDownload) {
+        sftpCtxDownload.style.display = 'flex';
+        const isPersian = window.i18n && window.i18n.currentLang === 'fa';
+        const dlLabel = sftpCtxDownload.querySelector('.ctx-label');
+        if (dlLabel) {
+          if (isDir) {
+            dlLabel.textContent = isPersian ? 'دانلود پوشه (Zip)' : 'Download Folder (Zip)';
+          } else {
+            dlLabel.textContent = isPersian ? 'دانلود' : 'Download';
+          }
+        }
+      }
       if (sftpCtxPreview) sftpCtxPreview.style.display = isMedia ? 'flex' : 'none';
       if (sftpCtxEdit) sftpCtxEdit.style.display = isDir ? 'none' : 'flex';
       if (sftpCtxExtract) sftpCtxExtract.style.display = isArchive ? 'flex' : 'none';
@@ -680,7 +691,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     sftpCtxDownload.addEventListener('click', () => {
       hideSftpContextMenu();
       if (sftpContextTarget && sftpContextTarget.filename) {
-        sftpManager.downloadFile(sftpContextTarget.filename);
+        sftpManager.downloadFile(sftpContextTarget.filename, sftpContextTarget.isDir);
       }
     });
   }
