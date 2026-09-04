@@ -570,6 +570,118 @@ wss.on('connection', (ws, req) => {
       return;
     }
 
+    // --- SFTP DISK USAGE & STATS (DU) ---
+    if (type === 'sftp-du') {
+      const { path: targetPath, id } = msg;
+      if (!checkSftp(id)) return;
+
+      const escapeShell = (str) => "'" + str.replace(/'/g, "'\\''") + "'";
+
+      const sftpDuRecursive = (targetDir, cb) => {
+        let totalBytes = 0;
+        let fileCount = 0;
+        let dirCount = 0;
+        let pending = 1;
+        let hasError = null;
+
+        function walk(currentDir) {
+          sftpSession.readdir(currentDir, (err, list) => {
+            if (err) {
+              if (!hasError) hasError = err;
+              pending--;
+              if (pending === 0) cb(hasError, { size: totalBytes, files: fileCount, dirs: dirCount, isDir: true });
+              return;
+            }
+            const items = (list || []).filter(item => item.filename !== '.' && item.filename !== '..');
+            for (const item of items) {
+              const itemPath = (currentDir.endsWith('/') ? currentDir : currentDir + '/') + item.filename;
+              const isDir = item.attrs ? ((item.attrs.mode & 0o170000) === 0o040000) : false;
+              if (isDir) {
+                dirCount++;
+                pending++;
+                walk(itemPath);
+              } else {
+                fileCount++;
+                totalBytes += (item.attrs && item.attrs.size) ? item.attrs.size : 0;
+              }
+            }
+            pending--;
+            if (pending === 0) {
+              cb(hasError, { size: totalBytes, files: fileCount, dirs: dirCount, isDir: true });
+            }
+          });
+        }
+
+        walk(targetDir);
+      };
+
+      if (sshClient && isConnected) {
+        const escaped = escapeShell(targetPath);
+        const cmd = `if [ -d ${escaped} ]; then
+  SIZE=$(du -sb -- ${escaped} 2>/dev/null | cut -f1)
+  [ -z "$SIZE" ] && SIZE=$(( $(du -sk -- ${escaped} 2>/dev/null | cut -f1) * 1024 ))
+  FILES=$(find ${escaped} -type f 2>/dev/null | wc -l)
+  DIRS=$(find ${escaped} -mindepth 1 -type d 2>/dev/null | wc -l)
+  echo "{\\"size\\":\${SIZE:-0},\\"files\\":\${FILES:-0},\\"dirs\\":\${DIRS:-0},\\"isDir\\":true}"
+else
+  SIZE=$(du -sb -- ${escaped} 2>/dev/null | cut -f1)
+  [ -z "$SIZE" ] && SIZE=$(stat -c %s ${escaped} 2>/dev/null)
+  [ -z "$SIZE" ] && SIZE=0
+  echo "{\\"size\\":\${SIZE:-0},\\"files\\":1,\\"dirs\\":0,\\"isDir\\":false}"
+fi`;
+        sshClient.exec(cmd, (execErr, stream) => {
+          if (execErr) {
+            return sftpDuRecursive(targetPath, (err, stats) => {
+              safeSend({ type: 'sftp-du-res', id, success: !err, path: targetPath, data: stats, error: err ? err.message : null });
+            });
+          }
+          let stdout = '';
+          let stderr = '';
+          stream.on('data', d => { stdout += d.toString(); });
+          stream.stderr.on('data', d => { stderr += d.toString(); });
+          stream.on('close', code => {
+            if (code === 0 && stdout.trim()) {
+              try {
+                const data = JSON.parse(stdout.trim());
+                safeSend({ type: 'sftp-du-res', id, success: true, path: targetPath, data, error: null });
+              } catch (e) {
+                sftpDuRecursive(targetPath, (err, stats) => {
+                  safeSend({ type: 'sftp-du-res', id, success: !err, path: targetPath, data: stats, error: err ? err.message : null });
+                });
+              }
+            } else {
+              sftpDuRecursive(targetPath, (err, stats) => {
+                safeSend({ type: 'sftp-du-res', id, success: !err, path: targetPath, data: stats, error: err ? err.message : null });
+              });
+            }
+          });
+        });
+      } else {
+        sftpSession.stat(targetPath, (sErr, stats) => {
+          if (sErr) {
+            safeSend({ type: 'sftp-du-res', id, success: false, path: targetPath, error: sErr.message });
+            return;
+          }
+          const isDir = (stats.mode & 0o170000) === 0o040000;
+          if (isDir) {
+            sftpDuRecursive(targetPath, (err, duStats) => {
+              safeSend({ type: 'sftp-du-res', id, success: !err, path: targetPath, data: duStats, error: err ? err.message : null });
+            });
+          } else {
+            safeSend({
+              type: 'sftp-du-res',
+              id,
+              success: true,
+              path: targetPath,
+              data: { size: stats.size, files: 1, dirs: 0, isDir: false },
+              error: null
+            });
+          }
+        });
+      }
+      return;
+    }
+
     // --- SFTP EXTRACT ARCHIVE ---
     if (type === 'sftp-extract') {
       const { path: archivePath, dir: destDir, id } = msg;

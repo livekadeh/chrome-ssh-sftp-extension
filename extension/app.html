@@ -349,6 +349,11 @@
               <span class="ctx-icon">🔒</span>
               <span class="ctx-label" data-i18n="sftp_ctx_chmod">Permissions (Chmod)</span>
             </div>
+            <div class="context-item" id="sftpCtxInfo">
+              <span class="ctx-icon">ℹ️</span>
+              <span class="ctx-label" data-i18n="sftp_ctx_info">Information</span>
+              <span class="ctx-shortcut">Alt+I</span>
+            </div>
             <div class="context-item" id="sftpCtxCopyPath">
               <span class="ctx-icon">📋</span>
               <span class="ctx-label" data-i18n="sftp_ctx_copy_path">Copy Full Path</span>
@@ -362,6 +367,10 @@
             <div class="context-divider" id="sftpCtxDivider"></div>
 
             <!-- General Directory Actions -->
+            <div class="context-item" id="sftpCtxDirInfo">
+              <span class="ctx-icon">ℹ️</span>
+              <span class="ctx-label" data-i18n="sftp_ctx_dir_info">Folder Information</span>
+            </div>
             <div class="context-item" id="sftpCtxUpload">
               <span class="ctx-icon">📤</span>
               <span class="ctx-label" data-i18n="sftp_ctx_upload">Upload Files...</span>
@@ -698,6 +707,66 @@
         </div>
         <div class="modal-body media-modal-body" id="mediaContainer">
           <!-- Dynamic Image / Video / Audio content -->
+        </div>
+      </div>
+    </div>
+
+    <!-- ================= SFTP INFORMATION / PROPERTIES MODAL ================= -->
+    <div id="sftpInfoModal" class="modal-backdrop">
+      <div class="modal-box modal-info">
+        <div class="modal-header">
+          <div class="info-title-group">
+            <span class="info-title-icon" id="infoItemIcon">📁</span>
+            <span id="infoItemTitle" class="info-item-title" data-i18n="info_modal_title">Information & Properties</span>
+          </div>
+          <button class="modal-close" id="btnCloseInfoModal">✕</button>
+        </div>
+        <div class="modal-body info-modal-body">
+          <div class="info-props-table">
+            <div class="info-prop-row">
+              <span class="info-prop-label" data-i18n="info_lbl_name">Name:</span>
+              <span class="info-prop-value" id="infoPropName">—</span>
+            </div>
+            <div class="info-prop-row">
+              <span class="info-prop-label" data-i18n="info_lbl_type">Type:</span>
+              <span class="info-prop-value" id="infoTypeVal">Folder (Directory)</span>
+            </div>
+            <div class="info-prop-row">
+              <span class="info-prop-label" data-i18n="info_lbl_path">Full Path:</span>
+              <div class="info-prop-path-wrap">
+                <span class="info-prop-value info-path-text" id="infoPathVal">/root</span>
+                <button type="button" class="btn btn-xs btn-secondary" id="btnInfoCopyPath" title="Copy Path">📋</button>
+              </div>
+            </div>
+            <div class="info-prop-row highlight-row">
+              <span class="info-prop-label" data-i18n="info_lbl_size">Total Size:</span>
+              <div class="info-prop-size-wrap">
+                <span class="info-prop-value size-primary" id="infoSizeVal">
+                  <span class="spinner-inline"></span> <span data-i18n="info_calculating">Calculating size...</span>
+                </span>
+                <span class="info-size-bytes" id="infoSizeBytes"></span>
+              </div>
+            </div>
+            <div class="info-prop-row" id="infoContainsRow">
+              <span class="info-prop-label" data-i18n="info_lbl_contains">Contains:</span>
+              <span class="info-prop-value" id="infoContainsVal">—</span>
+            </div>
+            <div class="info-prop-row">
+              <span class="info-prop-label" data-i18n="info_lbl_permissions">Permissions:</span>
+              <span class="info-prop-value" id="infoPermsVal">0755 (drwxr-xr-x)</span>
+            </div>
+            <div class="info-prop-row">
+              <span class="info-prop-label" data-i18n="info_lbl_owner">Owner / Group:</span>
+              <span class="info-prop-value" id="infoOwnerVal">root / root</span>
+            </div>
+            <div class="info-prop-row">
+              <span class="info-prop-label" data-i18n="info_lbl_modified">Last Modified:</span>
+              <span class="info-prop-value" id="infoModifiedVal">—</span>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer info-modal-footer">
+          <button type="button" class="btn btn-secondary" id="btnInfoClose" data-i18n="info_btn_close">Close</button>
         </div>
       </div>
     </div>

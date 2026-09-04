@@ -560,9 +560,11 @@ document.addEventListener('DOMContentLoaded', async () => {
   const sftpCtxCompress = document.getElementById('sftpCtxCompress');
   const sftpCtxRename = document.getElementById('sftpCtxRename');
   const sftpCtxChmod = document.getElementById('sftpCtxChmod');
+  const sftpCtxInfo = document.getElementById('sftpCtxInfo');
   const sftpCtxCopyPath = document.getElementById('sftpCtxCopyPath');
   const sftpCtxDelete = document.getElementById('sftpCtxDelete');
   const sftpCtxDivider = document.getElementById('sftpCtxDivider');
+  const sftpCtxDirInfo = document.getElementById('sftpCtxDirInfo');
   const sftpCtxUpload = document.getElementById('sftpCtxUpload');
   const sftpCtxNewFolder = document.getElementById('sftpCtxNewFolder');
   const sftpCtxNewFile = document.getElementById('sftpCtxNewFile');
@@ -590,6 +592,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (sftpCtxCompress) sftpCtxCompress.style.display = 'flex';
       if (sftpCtxRename) sftpCtxRename.style.display = 'flex';
       if (sftpCtxChmod) sftpCtxChmod.style.display = 'flex';
+      if (sftpCtxInfo) sftpCtxInfo.style.display = 'flex';
       if (sftpCtxCopyPath) sftpCtxCopyPath.style.display = 'flex';
       if (sftpCtxDelete) {
         sftpCtxDelete.style.display = 'flex';
@@ -605,6 +608,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
       }
       if (sftpCtxDivider) sftpCtxDivider.style.display = 'block';
+      if (sftpCtxDirInfo) sftpCtxDirInfo.style.display = 'none';
     } else {
       if (sftpCtxOpen) sftpCtxOpen.style.display = 'none';
       if (sftpCtxDownload) sftpCtxDownload.style.display = 'none';
@@ -614,9 +618,11 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (sftpCtxCompress) sftpCtxCompress.style.display = sftpManager.selectedFiles.size > 0 ? 'flex' : 'none';
       if (sftpCtxRename) sftpCtxRename.style.display = 'none';
       if (sftpCtxChmod) sftpCtxChmod.style.display = 'none';
+      if (sftpCtxInfo) sftpCtxInfo.style.display = 'none';
       if (sftpCtxCopyPath) sftpCtxCopyPath.style.display = 'none';
       if (sftpCtxDelete) sftpCtxDelete.style.display = 'none';
       if (sftpCtxDivider) sftpCtxDivider.style.display = 'none';
+      if (sftpCtxDirInfo) sftpCtxDirInfo.style.display = 'flex';
     }
 
     sftpContextMenu.style.display = 'block';
@@ -730,6 +736,22 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
   }
 
+  if (sftpCtxInfo) {
+    sftpCtxInfo.addEventListener('click', () => {
+      hideSftpContextMenu();
+      const targetName = sftpContextTarget ? sftpContextTarget.filename : null;
+      const targetIsDir = sftpContextTarget ? sftpContextTarget.isDir : false;
+      sftpManager.showInformation(targetName, targetIsDir);
+    });
+  }
+
+  if (sftpCtxDirInfo) {
+    sftpCtxDirInfo.addEventListener('click', () => {
+      hideSftpContextMenu();
+      sftpManager.showInformation(null, true);
+    });
+  }
+
   if (sftpCtxCopyPath) {
     sftpCtxCopyPath.addEventListener('click', () => {
       hideSftpContextMenu();
@@ -793,7 +815,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
   }
 
-  // Keyboard shortcuts in SFTP view (F2: Rename, Delete: Delete)
+  // Keyboard shortcuts in SFTP view (F2: Rename, Delete: Delete, Alt+I: Info)
   window.addEventListener('keydown', (e) => {
     const sftpActive = document.querySelector('.nav-tab[data-view="sftp"].active');
     if (!sftpActive) return;
@@ -806,6 +828,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     } else if (e.key === 'Delete' || e.key === 'Del') {
       e.preventDefault();
       btnSftpDelete.click();
+    } else if (e.altKey && (e.key === 'i' || e.key === 'I')) {
+      e.preventDefault();
+      const targetName = sftpManager.selectedFiles.size > 0 ? Array.from(sftpManager.selectedFiles)[0] : null;
+      sftpManager.showInformation(targetName);
     }
   });
 
@@ -825,6 +851,42 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
   }
 
+  // Information Modal
+  const sftpInfoModal = document.getElementById('sftpInfoModal');
+  const btnCloseInfoModal = document.getElementById('btnCloseInfoModal');
+  const btnInfoClose = document.getElementById('btnInfoClose');
+  const btnInfoCopyPath = document.getElementById('btnInfoCopyPath');
+  if (btnCloseInfoModal) {
+    btnCloseInfoModal.addEventListener('click', () => {
+      if (sftpInfoModal) sftpInfoModal.classList.remove('active');
+    });
+  }
+  if (btnInfoClose) {
+    btnInfoClose.addEventListener('click', () => {
+      if (sftpInfoModal) sftpInfoModal.classList.remove('active');
+    });
+  }
+  if (sftpInfoModal) {
+    sftpInfoModal.addEventListener('click', (e) => {
+      if (e.target === sftpInfoModal) sftpInfoModal.classList.remove('active');
+    });
+  }
+  if (btnInfoCopyPath) {
+    btnInfoCopyPath.addEventListener('click', async () => {
+      const pathEl = document.getElementById('infoPathVal');
+      if (pathEl && pathEl.textContent) {
+        try {
+          await navigator.clipboard.writeText(pathEl.textContent);
+          const originalText = btnInfoCopyPath.textContent;
+          btnInfoCopyPath.textContent = '✔';
+          setTimeout(() => { btnInfoCopyPath.textContent = originalText; }, 1500);
+        } catch (err) {
+          console.error('Failed to copy path from info modal:', err);
+        }
+      }
+    });
+  }
+
   // Keyboard shortcut for Editor Save (Ctrl+S) and Modal Close (Escape)
   window.addEventListener('keydown', (e) => {
     if ((e.ctrlKey || e.metaKey) && e.key === 's') {
@@ -833,7 +895,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         sftpManager.saveEditedFile();
       }
     } else if (e.key === 'Escape') {
-      if (mediaModal && mediaModal.classList.contains('active')) {
+      if (sftpInfoModal && sftpInfoModal.classList.contains('active')) {
+        sftpInfoModal.classList.remove('active');
+      } else if (mediaModal && mediaModal.classList.contains('active')) {
         sftpManager.closeMediaModal();
       } else if (editorModal && editorModal.classList.contains('active')) {
         editorModal.classList.remove('active');

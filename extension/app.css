@@ -2363,4 +2363,143 @@ html[dir="rtl"] .btn-danger-icon {
   font-weight: 600;
 }
 
+/* ================= SFTP INFORMATION / PROPERTIES MODAL ================= */
+.modal-info {
+  max-width: 540px;
+  width: 90vw;
+  background: rgba(13, 17, 27, 0.96);
+  border: 1px solid rgba(0, 240, 255, 0.35);
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.8), 0 0 25px rgba(0, 240, 255, 0.15);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.info-title-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.info-title-icon {
+  font-size: 22px;
+}
+
+.info-item-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: #f8fafc;
+}
+
+.info-modal-body {
+  padding: 16px 20px;
+  background: rgba(8, 12, 20, 0.6);
+}
+
+.info-props-table {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.info-prop-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 9px 12px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 6px;
+  gap: 14px;
+}
+
+.info-prop-row.highlight-row {
+  background: rgba(0, 240, 255, 0.08);
+  border-color: rgba(0, 240, 255, 0.3);
+}
+
+.info-prop-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted, #94a3b8);
+  white-space: nowrap;
+  min-width: 90px;
+}
+
+.info-prop-value {
+  font-size: 13px;
+  color: #f8fafc;
+  word-break: break-all;
+  text-align: right;
+}
+
+[dir="rtl"] .info-prop-value {
+  text-align: left;
+}
+
+.info-prop-path-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 72%;
+}
+
+.info-path-text {
+  font-family: var(--font-mono, monospace);
+  font-size: 12px;
+  color: #38bdf8;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  direction: ltr;
+  text-align: left;
+}
+
+.info-prop-size-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+}
+
+[dir="rtl"] .info-prop-size-wrap {
+  align-items: flex-start;
+}
+
+.size-primary {
+  font-family: var(--font-mono, monospace);
+  font-size: 14px;
+  font-weight: 700;
+  color: #00f0ff;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.info-size-bytes {
+  font-size: 11px;
+  color: var(--text-muted, #94a3b8);
+  font-family: var(--font-mono, monospace);
+}
+
+.spinner-inline {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(0, 240, 255, 0.2);
+  border-top-color: #00f0ff;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+.info-modal-footer {
+  padding: 12px 20px;
+  display: flex;
+  justify-content: flex-end;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(10, 14, 23, 0.9);
+}
+
+[dir="rtl"] .info-modal-footer {
+  justify-content: flex-start;
+}
+
 

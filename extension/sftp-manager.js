@@ -1413,6 +1413,155 @@ class SFTPManager {
     return map[ext] || '📄';
   }
 
+  formatPermissions(mode) {
+    if (typeof mode !== 'number') return '—';
+    const octal = '0' + (mode & 0o777).toString(8);
+    const isDir = (mode & 0o170000) === 0o040000;
+    const isLink = (mode & 0o170000) === 0o120000;
+    let typeChar = '-';
+    if (isDir) typeChar = 'd';
+    else if (isLink) typeChar = 'l';
+
+    const rwx = [
+      (mode & 0o400) ? 'r' : '-',
+      (mode & 0o200) ? 'w' : '-',
+      (mode & 0o100) ? ((mode & 0o4000) ? 's' : 'x') : ((mode & 0o4000) ? 'S' : '-'),
+      (mode & 0o040) ? 'r' : '-',
+      (mode & 0o020) ? 'w' : '-',
+      (mode & 0o010) ? ((mode & 0o2000) ? 's' : 'x') : ((mode & 0o2000) ? 'S' : '-'),
+      (mode & 0o004) ? 'r' : '-',
+      (mode & 0o002) ? 'w' : '-',
+      (mode & 0o001) ? ((mode & 0o1000) ? 't' : 'x') : ((mode & 0o1000) ? 'T' : '-')
+    ].join('');
+
+    return `${octal} (${typeChar}${rwx})`;
+  }
+
+  async showInformation(targetFilename, targetIsDir) {
+    const isPersian = window.i18n && window.i18n.currentLang === 'fa';
+    let filename = targetFilename;
+    let isDir = targetIsDir;
+    let fileObj = null;
+
+    if (filename) {
+      fileObj = this.currentFiles.find(f => f.filename === filename);
+      if (fileObj && fileObj.attrs) {
+        isDir = fileObj.attrs.isDirectory;
+      }
+    } else if (this.selectedFiles.size === 1) {
+      filename = Array.from(this.selectedFiles)[0];
+      fileObj = this.currentFiles.find(f => f.filename === filename);
+      if (fileObj && fileObj.attrs) {
+        isDir = fileObj.attrs.isDirectory;
+      }
+    }
+
+    const modal = document.getElementById('sftpInfoModal');
+    if (!modal) return;
+
+    const iconEl = document.getElementById('infoItemIcon');
+    const nameEl = document.getElementById('infoPropName');
+    const typeEl = document.getElementById('infoTypeVal');
+    const pathEl = document.getElementById('infoPathVal');
+    const sizeEl = document.getElementById('infoSizeVal');
+    const sizeBytesEl = document.getElementById('infoSizeBytes');
+    const containsRow = document.getElementById('infoContainsRow');
+    const containsEl = document.getElementById('infoContainsVal');
+    const permsEl = document.getElementById('infoPermsVal');
+    const ownerEl = document.getElementById('infoOwnerVal');
+    const modEl = document.getElementById('infoModifiedVal');
+
+    let fullPath = '';
+    let displayName = '';
+
+    if (filename) {
+      displayName = filename;
+      const base = this.currentPath.endsWith('/') ? this.currentPath : this.currentPath + '/';
+      fullPath = base + filename;
+    } else {
+      fullPath = this.currentPath || '/';
+      displayName = fullPath === '/' ? '/' : fullPath.split('/').filter(Boolean).pop() || '/';
+      isDir = true;
+    }
+
+    if (iconEl) iconEl.textContent = isDir ? '📁' : this.getFileIcon(displayName);
+    if (nameEl) nameEl.textContent = displayName;
+    if (typeEl) {
+      typeEl.textContent = isDir 
+        ? (isPersian ? 'پوشه (Directory)' : 'Folder (Directory)')
+        : (isPersian ? 'فایل (File)' : 'File');
+    }
+    if (pathEl) pathEl.textContent = fullPath;
+
+    const attrs = fileObj ? fileObj.attrs : null;
+
+    if (permsEl) {
+      if (attrs && typeof attrs.mode === 'number') {
+        permsEl.textContent = this.formatPermissions(attrs.mode);
+      } else {
+        permsEl.textContent = isDir ? '0755 (drwxr-xr-x)' : '0644 (-rw-r--r--)';
+      }
+    }
+
+    if (ownerEl) {
+      if (attrs && (attrs.uid !== undefined || attrs.gid !== undefined)) {
+        ownerEl.textContent = `UID: ${attrs.uid ?? 0} | GID: ${attrs.gid ?? 0}`;
+      } else {
+        ownerEl.textContent = '—';
+      }
+    }
+
+    if (modEl) {
+      if (attrs && attrs.mtime) {
+        modEl.textContent = new Date(attrs.mtime * 1000).toLocaleString();
+      } else {
+        modEl.textContent = '—';
+      }
+    }
+
+    modal.classList.add('active');
+
+    if (!isDir && attrs && typeof attrs.size === 'number') {
+      if (sizeEl) sizeEl.textContent = this.formatBytes(attrs.size);
+      if (sizeBytesEl) sizeBytesEl.textContent = `(${attrs.size.toLocaleString()} bytes)`;
+      if (containsRow) containsRow.style.display = 'none';
+    } else {
+      if (containsRow) {
+        containsRow.style.display = 'flex';
+        if (containsEl) containsEl.textContent = '...';
+      }
+      if (sizeEl) {
+        sizeEl.innerHTML = `<span class="spinner-inline"></span> <span>${isPersian ? 'در حال محاسبه حجم...' : 'Calculating size...'}</span>`;
+      }
+      if (sizeBytesEl) sizeBytesEl.textContent = '';
+
+      try {
+        const res = await this.sendRequest({ type: 'sftp-du', path: fullPath });
+        if (res && res.data) {
+          const sz = res.data.size || 0;
+          if (sizeEl) sizeEl.textContent = this.formatBytes(sz);
+          if (sizeBytesEl) sizeBytesEl.textContent = `(${sz.toLocaleString()} bytes)`;
+          if (containsEl) {
+            const fCount = (res.data.files || 0).toLocaleString();
+            const dCount = (res.data.dirs || 0).toLocaleString();
+            containsEl.textContent = isPersian 
+              ? `${fCount} فایل، ${dCount} پوشه`
+              : `${fCount} files, ${dCount} folders`;
+          }
+        }
+      } catch (err) {
+        console.warn('Failed to calculate directory size:', err);
+        if (sizeEl) {
+          sizeEl.textContent = attrs ? this.formatBytes(attrs.size) : '4 KB';
+        }
+        if (sizeBytesEl) {
+          sizeBytesEl.textContent = isPersian ? '(خطا در محاسبه عمیق)' : '(Recursive scan unavailable)';
+        }
+        if (containsEl) containsEl.textContent = '—';
+      }
+    }
+  }
+
   updateStatus(text) {
     this.statusEl.textContent = text;
   }
