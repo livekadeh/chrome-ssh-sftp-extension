@@ -22,6 +22,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const onLanguageChanged = () => {
     loadServersList();
     if (sftpManager && sftpManager.currentFiles && sftpManager.currentFiles.length > 0) {
+      sftpManager.updateSortHeaders();
       sftpManager.renderFiles(sftpManager.currentFiles);
     }
   };

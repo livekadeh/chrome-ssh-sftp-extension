@@ -27,6 +27,9 @@ class SFTPManager {
     this.isUploadCancelled = false;
     this.currentMediaUrl = null;
 
+    this.sortColumn = 'name';
+    this.sortDirection = 'asc';
+
     if (chrome && chrome.storage && chrome.storage.local) {
       chrome.storage.local.get('sftpViewMode', (res) => {
         if (res && res.sftpViewMode) {
@@ -35,6 +38,9 @@ class SFTPManager {
         }
       });
     }
+
+    this.initSorting();
+    this.initSelectAll();
   }
 
   setViewMode(mode) {
@@ -62,6 +68,118 @@ class SFTPManager {
       if (btnList) btnList.classList.add('active');
       if (btnGrid) btnGrid.classList.remove('active');
     }
+  }
+
+  initSorting() {
+    const ths = document.querySelectorAll('#sftpTable thead th[data-sort]');
+    ths.forEach(th => {
+      th.addEventListener('click', () => {
+        const col = th.dataset.sort;
+        if (col) this.sortFiles(col);
+      });
+    });
+    this.updateSortHeaders();
+  }
+
+  initSelectAll() {
+    const chkSelectAll = document.getElementById('selectAllFiles');
+    if (chkSelectAll) {
+      chkSelectAll.addEventListener('change', () => {
+        const isChecked = chkSelectAll.checked;
+        if (isChecked) {
+          this.currentFiles.forEach(f => this.selectedFiles.add(f.filename));
+        } else {
+          this.selectedFiles.clear();
+        }
+        this.updateSelectionUI();
+        document.querySelectorAll('.file-chk').forEach(c => c.checked = isChecked);
+        document.querySelectorAll('.sftp-row, .sftp-grid-card').forEach(el => el.classList.toggle('selected', isChecked));
+      });
+    }
+  }
+
+  sortFiles(column) {
+    if (this.sortColumn === column) {
+      this.sortDirection = this.sortDirection === 'asc' ? 'desc' : 'asc';
+    } else {
+      this.sortColumn = column;
+      this.sortDirection = (column === 'mtime' || column === 'size') ? 'desc' : 'asc';
+    }
+
+    this.applySort();
+    this.updateSortHeaders();
+
+    const searchInput = document.getElementById('sftpSearchInput');
+    const q = searchInput ? searchInput.value.toLowerCase().trim() : '';
+    if (q) {
+      const filtered = this.currentFiles.filter(f => f.filename.toLowerCase().includes(q));
+      this.renderFiles(filtered);
+    } else {
+      this.renderFiles(this.currentFiles);
+    }
+  }
+
+  applySort() {
+    const col = this.sortColumn || 'name';
+    const dir = this.sortDirection === 'desc' ? -1 : 1;
+
+    this.currentFiles.sort((a, b) => {
+      const isDirA = !!(a.attrs && a.attrs.isDirectory);
+      const isDirB = !!(b.attrs && b.attrs.isDirectory);
+
+      // Keep directories grouped at top
+      if (isDirA && !isDirB) return -1;
+      if (!isDirA && isDirB) return 1;
+
+      let res = 0;
+      if (col === 'name') {
+        res = a.filename.localeCompare(b.filename, undefined, { numeric: true, sensitivity: 'base' });
+      } else if (col === 'size') {
+        const sizeA = (a.attrs && a.attrs.size) || 0;
+        const sizeB = (b.attrs && b.attrs.size) || 0;
+        res = sizeA - sizeB;
+        if (res === 0) {
+          res = a.filename.localeCompare(b.filename, undefined, { numeric: true, sensitivity: 'base' });
+        }
+      } else if (col === 'mtime') {
+        const mtimeA = (a.attrs && a.attrs.mtime) || 0;
+        const mtimeB = (b.attrs && b.attrs.mtime) || 0;
+        res = mtimeA - mtimeB;
+        if (res === 0) {
+          res = a.filename.localeCompare(b.filename, undefined, { numeric: true, sensitivity: 'base' });
+        }
+      } else if (col === 'permissions') {
+        const permA = (a.attrs && a.attrs.permissions) || '';
+        const permB = (b.attrs && b.attrs.permissions) || '';
+        res = permA.localeCompare(permB);
+        if (res === 0) {
+          res = a.filename.localeCompare(b.filename, undefined, { numeric: true, sensitivity: 'base' });
+        }
+      }
+
+      return res * dir;
+    });
+  }
+
+  updateSortHeaders() {
+    const ths = document.querySelectorAll('#sftpTable thead th[data-sort]');
+    ths.forEach(th => {
+      const col = th.dataset.sort;
+      const indicator = th.querySelector('.sort-indicator');
+      if (col === this.sortColumn) {
+        th.classList.add('sorted');
+        th.classList.toggle('sorted-desc', this.sortDirection === 'desc');
+        th.classList.toggle('sorted-asc', this.sortDirection === 'asc');
+        if (indicator) {
+          indicator.textContent = this.sortDirection === 'asc' ? ' ▲' : ' ▼';
+        }
+      } else {
+        th.classList.remove('sorted', 'sorted-desc', 'sorted-asc');
+        if (indicator) {
+          indicator.textContent = '';
+        }
+      }
+    });
   }
 
   connect(serverConfig, bridgeUrl, onReady) {
@@ -187,6 +305,8 @@ class SFTPManager {
     if (this.isConnected) {
       document.getElementById('sftpEmptyState').style.display = 'none';
       this.applyViewMode();
+      this.applySort();
+      this.updateSortHeaders();
       this.renderFiles(this.currentFiles);
       this.updateSelectionUI();
       this.updateStatus(isPersian ? `نشست فعال SFTP: ${session.name}` : `Active SFTP: ${session.name}`);
@@ -311,6 +431,9 @@ class SFTPManager {
       this.pathInputEl.value = this.currentPath;
       this.currentFiles = res.files || [];
       this.selectedFiles.clear();
+
+      this.applySort();
+      this.updateSortHeaders();
 
       const activeSession = this.sessions.get(this.activeSessionId);
       if (activeSession) {
@@ -582,6 +705,12 @@ class SFTPManager {
     const btnSftpCompress = document.getElementById('btnSftpCompress');
     if (btnSftpCompress) {
       btnSftpCompress.disabled = count === 0;
+    }
+
+    const chkSelectAll = document.getElementById('selectAllFiles');
+    if (chkSelectAll) {
+      chkSelectAll.checked = this.currentFiles.length > 0 && this.selectedFiles.size === this.currentFiles.length;
+      chkSelectAll.indeterminate = this.selectedFiles.size > 0 && this.selectedFiles.size < this.currentFiles.length;
     }
   }
 

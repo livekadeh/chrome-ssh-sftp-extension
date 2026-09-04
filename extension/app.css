@@ -474,13 +474,27 @@ body {
 }
 
 .sftp-sidebar {
-  width: 240px;
+  width: 230px;
   background: var(--bg-surface);
   border-left: 1px solid var(--border-glass);
-  padding: 16px;
+  padding: 14px 10px;
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 16px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(0, 240, 255, 0.2) transparent;
+}
+
+html:not([dir="rtl"]) .sftp-sidebar,
+html[dir="ltr"] .sftp-sidebar {
+  border-right: 1px solid var(--border-glass);
+  border-left: none;
+}
+
+html[dir="rtl"] .sftp-sidebar {
+  border-left: 1px solid var(--border-glass);
+  border-right: none;
 }
 
 .sidebar-title {
@@ -489,35 +503,41 @@ body {
   text-transform: uppercase;
   color: var(--accent-cyan);
   letter-spacing: 0.5px;
-  margin-bottom: 10px;
+  margin-bottom: 8px;
+  padding: 0 4px;
 }
 
 .quick-nav-list {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 2px;
 }
 
 .quick-nav-item {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 8px 12px;
+  gap: 8px;
+  padding: 5px 8px;
   border-radius: var(--radius-sm);
   background: transparent;
   border: 1px solid transparent;
   color: var(--text-muted);
-  font-size: 13px;
+  font-size: 12px;
   font-family: var(--font-mono);
   cursor: pointer;
-  text-align: right;
+  text-align: left;
   transition: var(--transition);
+  white-space: nowrap;
+}
+
+html[dir="rtl"] .quick-nav-item {
+  text-align: right;
 }
 
 .quick-nav-item:hover {
   background: rgba(0, 240, 255, 0.08);
   border-color: rgba(0, 240, 255, 0.2);
-  color: var(--text-main);
+  color: var(--accent-cyan);
 }
 
 .shortcuts-guide {
@@ -608,6 +628,10 @@ kbd {
   border-collapse: collapse;
   font-size: 12px;
   line-height: 1.25;
+  text-align: left;
+}
+
+html[dir="rtl"] .sftp-table {
   text-align: right;
 }
 
@@ -621,6 +645,36 @@ kbd {
   position: sticky;
   top: 0;
   z-index: 10;
+}
+
+.sortable-th {
+  cursor: pointer;
+  user-select: none;
+  transition: background 0.15s ease, color 0.15s ease;
+  white-space: nowrap;
+}
+
+.sortable-th:hover {
+  background: rgba(0, 240, 255, 0.08);
+  color: var(--accent-cyan);
+}
+
+.sortable-th.sorted {
+  color: var(--accent-cyan);
+  background: rgba(0, 240, 255, 0.06);
+}
+
+.sort-indicator {
+  display: inline-block;
+  font-size: 9px;
+  margin-left: 5px;
+  color: var(--accent-cyan);
+  vertical-align: middle;
+}
+
+html[dir="rtl"] .sort-indicator {
+  margin-left: 0;
+  margin-right: 5px;
 }
 
 .sftp-table td {
@@ -1853,7 +1907,6 @@ input:focus, select:focus, textarea:focus {
 /* ================= ACTIVE SESSIONS DRAWER & FLOATING TAB ================= */
 .floating-sessions-tab {
   position: fixed;
-  right: 0;
   top: 50%;
   transform: translateY(-50%);
   z-index: 9999;
@@ -1862,19 +1915,43 @@ input:focus, select:focus, textarea:focus {
   gap: 8px;
   background: rgba(13, 20, 32, 0.95);
   border: 1px solid rgba(0, 240, 255, 0.35);
-  border-right: none;
-  border-radius: 20px 0 0 20px;
-  padding: 10px 14px 10px 12px;
   color: var(--accent-cyan);
   font-size: 12px;
   font-weight: 600;
   cursor: pointer;
-  box-shadow: -4px 0 20px rgba(0, 0, 0, 0.6), 0 0 10px var(--accent-cyan-glow);
   transition: transform 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
   user-select: none;
 }
 
-.floating-sessions-tab:hover {
+/* LTR (English) - Tab on Left Edge */
+html:not([dir="rtl"]) .floating-sessions-tab,
+html[dir="ltr"] .floating-sessions-tab {
+  left: 0;
+  right: auto;
+  border-left: none;
+  border-radius: 0 20px 20px 0;
+  padding: 10px 12px 10px 14px;
+  box-shadow: 4px 0 20px rgba(0, 0, 0, 0.6), 0 0 10px var(--accent-cyan-glow);
+}
+
+html:not([dir="rtl"]) .floating-sessions-tab:hover,
+html[dir="ltr"] .floating-sessions-tab:hover {
+  background: rgba(0, 240, 255, 0.18);
+  box-shadow: 6px 0 25px rgba(0, 240, 255, 0.4);
+  transform: translateY(-50%) translateX(4px);
+}
+
+/* RTL (Persian) - Tab on Right Edge */
+html[dir="rtl"] .floating-sessions-tab {
+  right: 0;
+  left: auto;
+  border-right: none;
+  border-radius: 20px 0 0 20px;
+  padding: 10px 14px 10px 12px;
+  box-shadow: -4px 0 20px rgba(0, 0, 0, 0.6), 0 0 10px var(--accent-cyan-glow);
+}
+
+html[dir="rtl"] .floating-sessions-tab:hover {
   background: rgba(0, 240, 255, 0.18);
   box-shadow: -6px 0 25px rgba(0, 240, 255, 0.4);
   transform: translateY(-50%) translateX(-4px);
@@ -1958,21 +2035,43 @@ input:focus, select:focus, textarea:focus {
 .sessions-drawer {
   position: fixed;
   top: 0;
-  right: 0;
   bottom: 0;
   width: 400px;
   max-width: 90vw;
   background: rgba(9, 13, 22, 0.98);
-  border-left: 1px solid rgba(0, 240, 255, 0.25);
-  box-shadow: -8px 0 35px rgba(0, 0, 0, 0.85);
   z-index: 10001;
   display: flex;
   flex-direction: column;
-  transform: translateX(100%);
   transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-.sessions-drawer.active {
+/* LTR (English) - Drawer on Left Edge */
+html:not([dir="rtl"]) .sessions-drawer,
+html[dir="ltr"] .sessions-drawer {
+  left: 0;
+  right: auto;
+  border-right: 1px solid rgba(0, 240, 255, 0.25);
+  border-left: none;
+  box-shadow: 8px 0 35px rgba(0, 0, 0, 0.85);
+  transform: translateX(-100%);
+}
+
+html:not([dir="rtl"]) .sessions-drawer.active,
+html[dir="ltr"] .sessions-drawer.active {
+  transform: translateX(0);
+}
+
+/* RTL (Persian) - Drawer on Right Edge */
+html[dir="rtl"] .sessions-drawer {
+  right: 0;
+  left: auto;
+  border-left: 1px solid rgba(0, 240, 255, 0.25);
+  border-right: none;
+  box-shadow: -8px 0 35px rgba(0, 0, 0, 0.85);
+  transform: translateX(100%);
+}
+
+html[dir="rtl"] .sessions-drawer.active {
   transform: translateX(0);
 }
 
@@ -2134,7 +2233,6 @@ input:focus, select:focus, textarea:focus {
   font-family: var(--font-mono);
   color: var(--text-muted);
   direction: ltr;
-  text-align: right;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -2145,11 +2243,22 @@ input:focus, select:focus, textarea:focus {
   font-family: var(--font-mono);
   color: var(--accent-cyan);
   direction: ltr;
-  text-align: right;
   margin-top: 2px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+html:not([dir="rtl"]) .session-card-host,
+html[dir="ltr"] .session-card-host,
+html:not([dir="rtl"]) .session-card-path,
+html[dir="ltr"] .session-card-path {
+  text-align: left;
+}
+
+html[dir="rtl"] .session-card-host,
+html[dir="rtl"] .session-card-path {
+  text-align: right;
 }
 
 .session-status-dot {
@@ -2188,7 +2297,17 @@ input:focus, select:focus, textarea:focus {
   background: rgba(239, 68, 68, 0.15);
   border: 1px solid rgba(239, 68, 68, 0.3);
   color: #ef4444;
+}
+
+html:not([dir="rtl"]) .btn-danger-icon,
+html[dir="ltr"] .btn-danger-icon {
+  margin-left: auto;
+  margin-right: 0;
+}
+
+html[dir="rtl"] .btn-danger-icon {
   margin-right: auto;
+  margin-left: 0;
 }
 
 .btn-danger-icon:hover {

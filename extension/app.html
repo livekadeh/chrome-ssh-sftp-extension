@@ -64,7 +64,7 @@
         </button>
 
         <button id="btnLangToggle" class="btn-lang-switcher" title="Switch Language / تغییر زبان">
-          <span id="langCurrentText">🌐 English</span>
+          <span id="langCurrentText">🌐 فارسی</span>
         </button>
 
         <div class="server-pill" id="activeServerPill">
@@ -155,12 +155,21 @@
             <div class="sidebar-block">
               <div class="sidebar-title" data-i18n="sftp_quick_paths">Quick Paths</div>
               <div class="quick-nav-list">
+                <button class="quick-nav-item" data-path="/"><span>⚡</span> / (Root)</button>
                 <button class="quick-nav-item" data-path="/root"><span>👑</span> /root</button>
-                <button class="quick-nav-item" data-path="/var/www"><span>🌐</span> /var/www</button>
                 <button class="quick-nav-item" data-path="/home"><span>🏠</span> /home</button>
+                <button class="quick-nav-item" data-path="/var/www"><span>🌐</span> /var/www</button>
                 <button class="quick-nav-item" data-path="/etc"><span>⚙️</span> /etc</button>
                 <button class="quick-nav-item" data-path="/var/log"><span>📜</span> /var/log</button>
-                <button class="quick-nav-item" data-path="/tmp"><span>📦</span> /tmp</button>
+                <button class="quick-nav-item" data-path="/var"><span>🗄️</span> /var</button>
+                <button class="quick-nav-item" data-path="/opt"><span>📦</span> /opt</button>
+                <button class="quick-nav-item" data-path="/usr"><span>💻</span> /usr</button>
+                <button class="quick-nav-item" data-path="/srv"><span>🚀</span> /srv</button>
+                <button class="quick-nav-item" data-path="/tmp"><span>⏳</span> /tmp</button>
+                <button class="quick-nav-item" data-path="/mnt"><span>💾</span> /mnt</button>
+                <button class="quick-nav-item" data-path="/media"><span>💿</span> /media</button>
+                <button class="quick-nav-item" data-path="/bin"><span>🔧</span> /bin</button>
+                <button class="quick-nav-item" data-path="/boot"><span>🥾</span> /boot</button>
               </div>
             </div>
           </aside>
@@ -246,12 +255,12 @@
               <table class="sftp-table" id="sftpTable" style="display: none;">
                 <thead>
                   <tr>
-                    <th style="width: 40px;"><input type="checkbox" id="selectAllFiles"></th>
-                    <th data-i18n="sftp_th_name">Name</th>
-                    <th style="width: 120px;" data-i18n="sftp_th_size">Size</th>
-                    <th style="width: 110px;" data-i18n="sftp_th_perms">Permissions</th>
-                    <th style="width: 180px;" data-i18n="sftp_th_modified">Modified</th>
-                    <th style="width: 120px; text-align: center;" data-i18n="sftp_th_actions">Actions</th>
+                    <th style="width: 40px;"><input type="checkbox" id="selectAllFiles" title="Select All / انتخاب همه"></th>
+                    <th class="sortable-th" data-sort="name"><span data-i18n="sftp_th_name">Name</span><span class="sort-indicator"></span></th>
+                    <th style="width: 120px;" class="sortable-th" data-sort="size"><span data-i18n="sftp_th_size">Size</span><span class="sort-indicator"></span></th>
+                    <th style="width: 110px;" class="sortable-th" data-sort="permissions"><span data-i18n="sftp_th_perms">Permissions</span><span class="sort-indicator"></span></th>
+                    <th style="width: 180px;" class="sortable-th" data-sort="mtime"><span data-i18n="sftp_th_modified">Modified</span><span class="sort-indicator"></span></th>
+                    <th style="width: 120px; text-align: center;"><span data-i18n="sftp_th_actions">Actions</span></th>
                   </tr>
                 </thead>
                 <tbody id="sftpTableBody">
@@ -705,7 +714,7 @@
     <div id="sessionsDrawerBackdrop" class="drawer-backdrop"></div>
 
     <!-- Active Sessions Slide-Out Drawer -->
-    <aside id="sessionsDrawer" class="sessions-drawer" dir="rtl">
+    <aside id="sessionsDrawer" class="sessions-drawer">
       <div class="drawer-header">
         <div class="drawer-title-group">
           <span class="drawer-title-icon">🖥️</span>

@@ -375,6 +375,11 @@ class I18nManager {
     document.documentElement.lang = this.currentLang;
     document.documentElement.dir = isFa ? 'rtl' : 'ltr';
 
+    const drawer = document.getElementById('sessionsDrawer');
+    if (drawer) {
+      drawer.dir = isFa ? 'rtl' : 'ltr';
+    }
+
     this.applyTranslations();
   }
 
@@ -404,10 +409,10 @@ class I18nManager {
       if (dict[key]) el.setAttribute('title', dict[key]);
     });
 
-    // Language button text update
+    // Invert language button display: show target language
     const btnLang = document.getElementById('langCurrentText');
     if (btnLang) {
-      btnLang.textContent = this.currentLang === 'en' ? '🌐 English' : '🌐 فارسی';
+      btnLang.textContent = this.currentLang === 'en' ? '🌐 فارسی' : '🌐 English';
     }
   }
 }
