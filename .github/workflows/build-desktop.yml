@@ -1,0 +1,43 @@
+name: Build Standalone Desktop Executable (.exe)
+
+on:
+  push:
+    branches:
+      - 'feature/**'
+      - main
+  workflow_dispatch:
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: desktop/package.json
+
+      - name: Install Dependencies
+        run: |
+          cd desktop
+          npm install
+
+      - name: Build Standalone Windows Portable (.exe)
+        run: |
+          cd desktop
+          npm run build:win
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload Windows Executable Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: LiveKadeh-SSH-SFTP-Portable-Windows
+          path: dist/*.exe
+          if-no-files-found: error
+          retention-days: 14

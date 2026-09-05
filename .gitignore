@@ -13,4 +13,8 @@ id_ed25519
 .DS_Store
 Thumbs.db
 *.crx
+dist/
+desktop/extension/
+desktop/server/
+desktop/node_modules/
 

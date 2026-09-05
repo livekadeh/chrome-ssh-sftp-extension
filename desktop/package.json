@@ -1,0 +1,61 @@
+{
+  "name": "livekadeh-ssh-sftp-desktop",
+  "productName": "LiveKadeh SSH & SFTP Pro",
+  "version": "1.4.3",
+  "description": "Standalone Desktop Client for LiveKadeh SSH & SFTP Pro",
+  "main": "main.js",
+  "author": "livekadeh",
+  "license": "MIT",
+  "scripts": {
+    "sync": "node copy-assets.js",
+    "prestart": "node copy-assets.js",
+    "prebuild": "node copy-assets.js",
+    "start": "electron .",
+    "pack": "node copy-assets.js && electron-builder --dir",
+    "build:win": "node copy-assets.js && electron-builder --win portable",
+    "build:win:dir": "node copy-assets.js && electron-builder --win --dir",
+    "build:linux": "node copy-assets.js && electron-builder --linux AppImage"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "ssh2": "^1.15.0",
+    "ws": "^8.18.0"
+  },
+  "devDependencies": {
+    "electron": "^31.4.0",
+    "electron-builder": "^24.13.3"
+  },
+  "build": {
+    "appId": "com.livekadeh.sshsftp",
+    "productName": "LiveKadeh SSH & SFTP Pro",
+    "directories": {
+      "output": "../dist"
+    },
+    "asar": true,
+    "asarUnpack": [
+      "**/node_modules/cpu-features/**",
+      "**/node_modules/ssh2/**"
+    ],
+    "files": [
+      "main.js",
+      "preload.js",
+      "icon.png",
+      "extension/**/*",
+      "server/**/*"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "portable",
+          "arch": ["x64"]
+        }
+      ],
+      "icon": "icon.png"
+    },
+    "portable": {
+      "artifactName": "LiveKadeh-SSH-SFTP-Portable-v${version}.exe"
+    }
+  }
+}
