@@ -6,13 +6,17 @@
   "main": "main.js",
   "author": "livekadeh",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/livekadeh/chrome-ssh-sftp-extension.git"
+  },
   "scripts": {
     "sync": "node copy-assets.js",
     "prestart": "node copy-assets.js",
     "prebuild": "node copy-assets.js",
     "start": "electron .",
     "pack": "node copy-assets.js && electron-builder --dir",
-    "build:win": "node copy-assets.js && electron-builder --win portable",
+    "build:win": "node copy-assets.js && electron-builder --win portable --publish never",
     "build:win:dir": "node copy-assets.js && electron-builder --win --dir",
     "build:linux": "node copy-assets.js && electron-builder --linux AppImage"
   },
