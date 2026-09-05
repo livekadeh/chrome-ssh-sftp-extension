@@ -1755,8 +1755,25 @@ class SFTPManager {
       c.classList.toggle('active', isMatch);
     });
 
+    // Bridge connection info
+    const bridgeUrl = this.bridgeUrl || '';
+    const isLocalBridge = bridgeUrl.includes('localhost') || bridgeUrl.includes('127.0.0.1');
+    const bridgeText = document.getElementById('openWithBridgeText');
+    const remoteNotice = document.getElementById('openWithRemoteNotice');
+    const isPersian = window.i18n && window.i18n.currentLang === 'fa';
+
+    if (bridgeText) {
+      bridgeText.textContent = isLocalBridge 
+        ? (isPersian ? `بریدج محلی متصل است (${bridgeUrl}) ✔` : `Connected to Local Bridge (${bridgeUrl}) ✔`)
+        : (isPersian ? `متصل به بریدج ریموت (${bridgeUrl})` : `Connected to Remote Bridge (${bridgeUrl})`);
+      bridgeText.style.color = isLocalBridge ? '#00ff9d' : '#f59e0b';
+    }
+    if (remoteNotice) {
+      remoteNotice.style.display = isLocalBridge ? 'none' : 'block';
+    }
+
     if (customRow) {
-      customRow.style.display = savedEditor === 'custom' ? 'block' : 'none';
+      customRow.style.display = (savedEditor === 'custom' || savedEditor === 'notepad++') ? 'block' : 'none';
     }
 
     if (modal) modal.classList.add('active');

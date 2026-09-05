@@ -2753,5 +2753,37 @@ html[dir="rtl"] .btn-danger-icon {
   100% { transform: scale(0.9); opacity: 0.7; }
 }
 
+.openwith-bridge-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(12, 18, 29, 0.7);
+  border: 1px solid var(--border-glass);
+  border-radius: var(--radius-xs);
+  padding: 6px 12px;
+  font-size: 11.5px;
+  margin-bottom: 12px;
+}
+
+.bridge-indicator-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--accent-cyan);
+  box-shadow: 0 0 6px var(--accent-cyan-glow);
+}
+
+.openwith-remote-notice {
+  background: rgba(245, 158, 11, 0.1);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  border-radius: var(--radius-sm);
+  padding: 10px 14px;
+  font-size: 11.5px;
+  color: #fbbf24;
+  line-height: 1.5;
+  margin-bottom: 14px;
+}
+
+
 
 

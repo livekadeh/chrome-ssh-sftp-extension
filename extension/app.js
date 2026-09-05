@@ -934,6 +934,26 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
   }
 
+  const btnSwitchLocalBridge = document.getElementById('btnSwitchLocalBridge');
+  if (btnSwitchLocalBridge) {
+    btnSwitchLocalBridge.addEventListener('click', () => {
+      const localUrl = 'ws://localhost:3000/ws';
+      const settingBridgeUrl = document.getElementById('settingBridgeUrl');
+      if (settingBridgeUrl) settingBridgeUrl.value = localUrl;
+      chrome.storage.local.set({ bridgeUrl: localUrl });
+      sftpManager.bridgeUrl = localUrl;
+      const isPersian = window.i18n && window.i18n.currentLang === 'fa';
+      alert(isPersian ? 'آدرس بریدج به ws://localhost:3000/ws تغییر یافت. لطفاً اطمینان حاصل کنید فایل start-windows.bat روی سیستم شما در حال اجراست.' : 'Bridge URL set to ws://localhost:3000/ws. Make sure start-windows.bat is running on your machine.');
+      const bridgeText = document.getElementById('openWithBridgeText');
+      const remoteNotice = document.getElementById('openWithRemoteNotice');
+      if (bridgeText) {
+        bridgeText.textContent = `Local Bridge: ${localUrl}`;
+        bridgeText.style.color = '#00ff9d';
+      }
+      if (remoteNotice) remoteNotice.style.display = 'none';
+    });
+  }
+
   if (openWithAppsGrid) {
     openWithAppsGrid.addEventListener('click', (e) => {
       const card = e.target.closest('.openwith-app-card');
@@ -942,9 +962,26 @@ document.addEventListener('DOMContentLoaded', async () => {
       document.querySelectorAll('#openWithAppsGrid .openwith-app-card').forEach(c => c.classList.remove('active'));
       card.classList.add('active');
 
+      const isPersian = window.i18n && window.i18n.currentLang === 'fa';
+      const labelEl = document.querySelector('label[data-i18n="openwith_custom_label"]');
+
       if (openWithCustomCmdRow) {
-        openWithCustomCmdRow.style.display = app === 'custom' ? 'block' : 'none';
-        if (app === 'custom' && openWithCustomCmd) openWithCustomCmd.focus();
+        if (app === 'custom') {
+          openWithCustomCmdRow.style.display = 'block';
+          if (labelEl) labelEl.textContent = isPersian ? 'دستور یا آدرس کامل برنامه:' : 'Command or Path to Executable:';
+          if (openWithCustomCmd) {
+            openWithCustomCmd.placeholder = 'e.g. cursor, kate, nvim, /usr/bin/gedit, C:\\Program Files\\...';
+            openWithCustomCmd.focus();
+          }
+        } else if (app === 'notepad++') {
+          openWithCustomCmdRow.style.display = 'block';
+          if (labelEl) labelEl.textContent = isPersian ? 'مسیر اختصاصی notepad++.exe (اختیاری - خالی بگذارید برای تشخیص خودکار):' : 'Custom path to notepad++.exe (Optional - leave empty for auto-detect):';
+          if (openWithCustomCmd) {
+            openWithCustomCmd.placeholder = 'C:\\Program Files\\Notepad++\\notepad++.exe';
+          }
+        } else {
+          openWithCustomCmdRow.style.display = 'none';
+        }
       }
     });
   }

@@ -819,6 +819,17 @@
         </div>
         
         <div class="modal-body openwith-body">
+          <!-- Active Bridge Status & Remote Warning -->
+          <div class="openwith-bridge-bar" id="openWithBridgeBar">
+            <span class="bridge-indicator-dot"></span>
+            <span id="openWithBridgeText">Active Bridge: ws://localhost:3000/ws</span>
+          </div>
+          <div id="openWithRemoteNotice" class="openwith-remote-notice" style="display: none;">
+            <div style="font-weight: 600; margin-bottom: 3px;">⚠️ Local Bridge required for desktop apps:</div>
+            <div>To open files in local applications like Notepad++, the bridge server must be running on your machine (<code>start-windows.bat</code>) at <code>ws://localhost:3000/ws</code>.</div>
+            <button type="button" id="btnSwitchLocalBridge" class="btn btn-xs btn-cyan" style="margin-top: 6px;">Switch to Local Bridge (localhost:3000) ⚡</button>
+          </div>
+
           <!-- Section 1: System External Editors (Local Bridge with Auto-Sync) -->
           <div class="openwith-section">
             <div class="openwith-section-title">

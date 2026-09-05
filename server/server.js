@@ -986,38 +986,144 @@ fi`;
         const platform = process.platform;
         let execCmd = '';
         let execArgs = [];
+        let isDirectExe = false;
 
+        // Custom command or path
         if (editor === 'custom' && customCommand && customCommand.trim()) {
-          execCmd = customCommand.trim();
+          const raw = customCommand.trim().replace(/^["']|["']$/g, '');
+          execCmd = raw;
           execArgs = [localFilePath];
-        } else if (editor === 'vscode') {
-          execCmd = platform === 'win32' ? 'code.cmd' : 'code';
-          execArgs = [localFilePath];
+          isDirectExe = fs.existsSync(raw);
         } else if (editor === 'notepad++') {
           if (platform === 'win32') {
-            const p1 = 'C:\\Program Files\\Notepad++\\notepad++.exe';
-            const p2 = 'C:\\Program Files (x86)\\Notepad++\\notepad++.exe';
-            if (fs.existsSync(p1)) execCmd = p1;
-            else if (fs.existsSync(p2)) execCmd = p2;
-            else execCmd = 'notepad++';
+            // Check if custom path was specified
+            if (customCommand && customCommand.trim() && fs.existsSync(customCommand.trim().replace(/^["']|["']$/g, ''))) {
+              execCmd = customCommand.trim().replace(/^["']|["']$/g, '');
+              isDirectExe = true;
+            } else {
+              const candidates = [
+                'C:\\Program Files\\Notepad++\\notepad++.exe',
+                'C:\\Program Files (x86)\\Notepad++\\notepad++.exe',
+                process.env.ProgramFiles ? path.join(process.env.ProgramFiles, 'Notepad++', 'notepad++.exe') : null,
+                process.env['ProgramFiles(x86)'] ? path.join(process.env['ProgramFiles(x86)'], 'Notepad++', 'notepad++.exe') : null,
+                process.env.LOCALAPPDATA ? path.join(process.env.LOCALAPPDATA, 'Programs', 'Notepad++', 'notepad++.exe') : null,
+                process.env.APPDATA ? path.join(process.env.APPDATA, 'Notepad++', 'notepad++.exe') : null,
+                'D:\\Program Files\\Notepad++\\notepad++.exe',
+                'D:\\Program Files (x86)\\Notepad++\\notepad++.exe',
+                'D:\\Notepad++\\notepad++.exe',
+                'C:\\Notepad++\\notepad++.exe'
+              ].filter(Boolean);
+
+              let found = null;
+              for (const c of candidates) {
+                if (fs.existsSync(c)) {
+                  found = c;
+                  break;
+                }
+              }
+
+              // Query Windows Registry App Paths if not found in standard directories
+              if (!found) {
+                try {
+                  const { execSync } = require('child_process');
+                  const out = execSync('reg query "HKLM\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\App Paths\\notepad++.exe" /ve', { timeout: 1500, stdio: ['ignore', 'pipe', 'ignore'] }).toString();
+                  const m = out.match(/REG_SZ\s+(.*)$/m);
+                  if (m && m[1]) {
+                    const regP = m[1].trim().replace(/^["']|["']$/g, '');
+                    if (fs.existsSync(regP)) found = regP;
+                  }
+                } catch (e) {}
+              }
+
+              if (!found) {
+                try {
+                  const { execSync } = require('child_process');
+                  const out = execSync('reg query "HKCU\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\App Paths\\notepad++.exe" /ve', { timeout: 1500, stdio: ['ignore', 'pipe', 'ignore'] }).toString();
+                  const m = out.match(/REG_SZ\s+(.*)$/m);
+                  if (m && m[1]) {
+                    const regP = m[1].trim().replace(/^["']|["']$/g, '');
+                    if (fs.existsSync(regP)) found = regP;
+                  }
+                } catch (e) {}
+              }
+
+              if (found) {
+                execCmd = found;
+                isDirectExe = true;
+              } else {
+                execCmd = 'notepad++';
+                isDirectExe = false;
+              }
+            }
           } else {
-            execCmd = 'notepadqq';
+            // Linux candidates
+            const linuxCandidates = [
+              '/snap/bin/notepad-plus-plus',
+              '/usr/bin/notepad-plus-plus',
+              '/usr/bin/notepadqq',
+              '/snap/bin/notepadqq',
+              '/usr/bin/gedit'
+            ];
+            let found = null;
+            for (const c of linuxCandidates) {
+              if (fs.existsSync(c)) { found = c; break; }
+            }
+            execCmd = found || 'notepadqq';
+            isDirectExe = !!found;
+          }
+          execArgs = [localFilePath];
+        } else if (editor === 'vscode') {
+          if (platform === 'win32') {
+            const candidates = [
+              process.env.LOCALAPPDATA ? path.join(process.env.LOCALAPPDATA, 'Programs', 'Microsoft VS Code', 'Code.exe') : null,
+              'C:\\Program Files\\Microsoft VS Code\\Code.exe',
+              'C:\\Program Files (x86)\\Microsoft VS Code\\Code.exe',
+              process.env.ProgramFiles ? path.join(process.env.ProgramFiles, 'Microsoft VS Code', 'Code.exe') : null
+            ].filter(Boolean);
+
+            let found = null;
+            for (const c of candidates) {
+              if (fs.existsSync(c)) { found = c; break; }
+            }
+            if (found) {
+              execCmd = found;
+              isDirectExe = true;
+            } else {
+              execCmd = 'code.cmd';
+              isDirectExe = false;
+            }
+          } else {
+            execCmd = 'code';
+            isDirectExe = false;
           }
           execArgs = [localFilePath];
         } else if (editor === 'sublime') {
           if (platform === 'win32') {
-            const p1 = 'C:\\Program Files\\Sublime Text\\sublime_text.exe';
-            const p2 = 'C:\\Program Files\\Sublime Text 3\\sublime_text.exe';
-            if (fs.existsSync(p1)) execCmd = p1;
-            else if (fs.existsSync(p2)) execCmd = p2;
-            else execCmd = 'subl';
+            const candidates = [
+              'C:\\Program Files\\Sublime Text\\sublime_text.exe',
+              'C:\\Program Files\\Sublime Text 3\\sublime_text.exe',
+              'C:\\Program Files (x86)\\Sublime Text\\sublime_text.exe'
+            ];
+            let found = null;
+            for (const c of candidates) {
+              if (fs.existsSync(c)) { found = c; break; }
+            }
+            if (found) {
+              execCmd = found;
+              isDirectExe = true;
+            } else {
+              execCmd = 'subl';
+              isDirectExe = false;
+            }
           } else {
             execCmd = 'subl';
+            isDirectExe = false;
           }
           execArgs = [localFilePath];
         } else if (editor === 'notepad') {
           if (platform === 'win32') {
             execCmd = 'notepad.exe';
+            isDirectExe = true;
             execArgs = [localFilePath];
           } else if (platform === 'darwin') {
             execCmd = 'open';
@@ -1040,92 +1146,137 @@ fi`;
           }
         }
 
+        // Spawn process reliably
+        let child = null;
+        let launchError = null;
+
         try {
-          const child = spawn(execCmd, execArgs, {
-            detached: true,
-            stdio: 'ignore',
-            shell: true
-          });
+          if (platform === 'win32') {
+            if (isDirectExe) {
+              // Direct execution without cmd.exe -> Completely immune to spaces and quote bugs!
+              child = spawn(execCmd, execArgs, {
+                detached: true,
+                stdio: 'ignore',
+                shell: false
+              });
+            } else if (execCmd === 'cmd.exe') {
+              child = spawn(execCmd, execArgs, {
+                detached: true,
+                stdio: 'ignore',
+                shell: false
+              });
+            } else {
+              // Named command like notepad++ or code.cmd -> Use powershell Start-Process with fallback
+              const escapedPath = localFilePath.replace(/'/g, "''");
+              const psScript = `Start-Process -FilePath "${execCmd}" -ArgumentList @('${escapedPath}')`;
+              child = spawn('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', psScript], {
+                detached: true,
+                stdio: 'ignore',
+                shell: false
+              });
+            }
+          } else {
+            // Linux / macOS
+            child = spawn(execCmd, execArgs, {
+              detached: true,
+              stdio: 'ignore',
+              shell: false
+            });
+          }
+
           child.on('error', (spawnErr) => {
             console.error('[External Editor Error]:', spawnErr.message);
+            launchError = spawnErr;
           });
+
           child.unref();
-        } catch (spawnErr) {
-          safeSend({ type: 'sftp-open-external-res', id, success: false, error: 'Failed to launch external editor: ' + spawnErr.message });
-          return;
+        } catch (spawnEx) {
+          launchError = spawnEx;
         }
 
-        // Set up auto-sync watcher if requested
-        if (autoSync) {
-          if (activeExternalWatchers.has(targetPath)) {
-            const old = activeExternalWatchers.get(targetPath);
-            if (old && old.watcher) {
-              try { old.watcher.close(); } catch (e) {}
-            }
-            activeExternalWatchers.delete(targetPath);
-          }
-
-          let debounceTimer = null;
-          let isUploading = false;
-          let lastMtime = 0;
-          try {
-            lastMtime = fs.statSync(localFilePath).mtimeMs;
-          } catch (e) {}
-
-          try {
-            const watcher = fs.watch(localFilePath, (eventType) => {
-              if (eventType === 'change') {
-                if (debounceTimer) clearTimeout(debounceTimer);
-                debounceTimer = setTimeout(() => {
-                  try {
-                    if (!fs.existsSync(localFilePath)) return;
-                    const curStat = fs.statSync(localFilePath);
-                    if (curStat.mtimeMs <= lastMtime) return;
-                    lastMtime = curStat.mtimeMs;
-                    if (isUploading) return;
-                    isUploading = true;
-
-                    const rLocal = fs.createReadStream(localFilePath);
-                    const wRemote = sftpSession.createWriteStream(targetPath);
-                    rLocal.pipe(wRemote);
-
-                    wRemote.on('close', () => {
-                      isUploading = false;
-                      safeSend({
-                        type: 'sftp-external-synced',
-                        path: targetPath,
-                        filename,
-                        size: curStat.size,
-                        mtime: curStat.mtimeMs
-                      });
-                    });
-
-                    wRemote.on('error', (upErr) => {
-                      isUploading = false;
-                      console.error('[Auto-Sync SFTP Upload Error]:', upErr.message);
-                    });
-                  } catch (syncErr) {
-                    isUploading = false;
-                  }
-                }, 600);
-              }
+        setTimeout(() => {
+          if (launchError) {
+            safeSend({
+              type: 'sftp-open-external-res',
+              id,
+              success: false,
+              error: `Failed to launch ${editor}: ${launchError.message}. If installed in a non-standard path, please enter the full path in Custom Command.`
             });
-
-            activeExternalWatchers.set(targetPath, { watcher, localFilePath });
-          } catch (watchErr) {
-            console.warn('[External Watcher Warning]:', watchErr.message);
+            return;
           }
-        }
 
-        safeSend({
-          type: 'sftp-open-external-res',
-          id,
-          success: true,
-          path: targetPath,
-          localPath: localFilePath,
-          editor,
-          autoSync: !!autoSync
-        });
+          // Set up auto-sync watcher
+          if (autoSync) {
+            if (activeExternalWatchers.has(targetPath)) {
+              const old = activeExternalWatchers.get(targetPath);
+              if (old && old.watcher) {
+                try { old.watcher.close(); } catch (e) {}
+              }
+              activeExternalWatchers.delete(targetPath);
+            }
+
+            let debounceTimer = null;
+            let isUploading = false;
+            let lastMtime = 0;
+            try {
+              lastMtime = fs.statSync(localFilePath).mtimeMs;
+            } catch (e) {}
+
+            try {
+              const watcher = fs.watch(localFilePath, (eventType) => {
+                if (eventType === 'change') {
+                  if (debounceTimer) clearTimeout(debounceTimer);
+                  debounceTimer = setTimeout(() => {
+                    try {
+                      if (!fs.existsSync(localFilePath)) return;
+                      const curStat = fs.statSync(localFilePath);
+                      if (curStat.mtimeMs <= lastMtime) return;
+                      lastMtime = curStat.mtimeMs;
+                      if (isUploading) return;
+                      isUploading = true;
+
+                      const rLocal = fs.createReadStream(localFilePath);
+                      const wRemote = sftpSession.createWriteStream(targetPath);
+                      rLocal.pipe(wRemote);
+
+                      wRemote.on('close', () => {
+                        isUploading = false;
+                        safeSend({
+                          type: 'sftp-external-synced',
+                          path: targetPath,
+                          filename,
+                          size: curStat.size,
+                          mtime: curStat.mtimeMs
+                        });
+                      });
+
+                      wRemote.on('error', (upErr) => {
+                        isUploading = false;
+                        console.error('[Auto-Sync SFTP Upload Error]:', upErr.message);
+                      });
+                    } catch (syncErr) {
+                      isUploading = false;
+                    }
+                  }, 600);
+                }
+              });
+
+              activeExternalWatchers.set(targetPath, { watcher, localFilePath });
+            } catch (watchErr) {
+              console.warn('[External Watcher Warning]:', watchErr.message);
+            }
+          }
+
+          safeSend({
+            type: 'sftp-open-external-res',
+            id,
+            success: true,
+            path: targetPath,
+            localPath: localFilePath,
+            editor,
+            autoSync: !!autoSync
+          });
+        }, 350);
       });
 
       readStream.pipe(writeStream);
