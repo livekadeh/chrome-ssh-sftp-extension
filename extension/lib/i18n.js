@@ -496,10 +496,22 @@ class I18nManager {
   applyTranslations() {
     const dict = I18N_DICTIONARY[this.currentLang] || I18N_DICTIONARY.en;
 
-    // Text content
+    // Text and HTML content
     document.querySelectorAll('[data-i18n]').forEach(el => {
       const key = el.getAttribute('data-i18n');
-      if (dict[key]) el.textContent = dict[key];
+      if (dict[key]) {
+        if (dict[key].includes('<') && dict[key].includes('>')) {
+          el.innerHTML = dict[key];
+        } else {
+          el.textContent = dict[key];
+        }
+      }
+    });
+
+    // Explicit HTML content
+    document.querySelectorAll('[data-i18n-html]').forEach(el => {
+      const key = el.getAttribute('data-i18n-html');
+      if (dict[key]) el.innerHTML = dict[key];
     });
 
     // Placeholders

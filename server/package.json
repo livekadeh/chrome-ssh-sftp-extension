@@ -1,6 +1,6 @@
 {
   "name": "livekadeh-ssh-sftp-bridge",
-  "version": "1.4.2",
+  "version": "1.4.3",
   "description": "High-performance WebSocket Bridge Server for LiveKadeh SSH & SFTP Chrome Extension",
   "main": "server.js",
   "bin": "server.js",
