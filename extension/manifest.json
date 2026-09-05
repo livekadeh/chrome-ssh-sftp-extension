@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "LiveKadeh SSH & SFTP Pro",
-  "version": "1.4.1",
+  "version": "1.4.2",
   "description": "⚡ Ultra-fast SSH Terminal (xterm.js) and SFTP File Manager for Google Chrome (Pro Edition)",
   "author": "LiveKadeh",
   "icons": {
