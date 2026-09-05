@@ -1135,7 +1135,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   btnExportServers.addEventListener('click', async () => {
     const { servers = [], bridgeUrl = 'ws://localhost:3000/ws' } = await chrome.storage.local.get(['servers', 'bridgeUrl']);
     const exportData = {
-      version: '1.4.0',
+      version: (chrome.runtime && chrome.runtime.getManifest) ? chrome.runtime.getManifest().version : '1.4.2',
       exportedAt: new Date().toISOString(),
       bridgeUrl,
       servers
@@ -1381,13 +1381,31 @@ document.addEventListener('DOMContentLoaded', async () => {
   const btnCheckUpdate = document.getElementById('btnCheckUpdate');
   const updateResultBox = document.getElementById('updateResultBox');
   const aboutUpdateBadge = document.getElementById('aboutUpdateBadge');
+  const aboutVersionLabel = document.getElementById('aboutVersionLabel');
+
+  const currentManifestVersion = (chrome.runtime && chrome.runtime.getManifest) 
+    ? chrome.runtime.getManifest().version 
+    : '1.4.2';
+
+  if (aboutVersionLabel) {
+    aboutVersionLabel.textContent = `v${currentManifestVersion}`;
+  }
+
+  function compareSemVer(v1, v2) {
+    const p1 = String(v1).replace(/^v/, '').split('.').map(n => parseInt(n, 10) || 0);
+    const p2 = String(v2).replace(/^v/, '').split('.').map(n => parseInt(n, 10) || 0);
+    const maxLen = Math.max(p1.length, p2.length);
+    for (let i = 0; i < maxLen; i++) {
+      const a = p1[i] || 0;
+      const b = p2[i] || 0;
+      if (a > b) return 1;
+      if (a < b) return -1;
+    }
+    return 0;
+  }
 
   async function checkForUpdates() {
     if (!btnCheckUpdate || !updateResultBox) return;
-
-    const manifestVersion = (chrome.runtime && chrome.runtime.getManifest) 
-      ? chrome.runtime.getManifest().version 
-      : '1.4.0';
 
     updateResultBox.className = 'update-result-box checking';
     updateResultBox.style.display = 'flex';
@@ -1399,26 +1417,75 @@ document.addEventListener('DOMContentLoaded', async () => {
     `;
 
     try {
-      const res = await fetch('https://api.github.com/repos/livekadeh/chrome-ssh-sftp-extension/releases/latest');
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const release = await res.json();
-      const latestTag = release.tag_name || '';
-      const latestVer = latestTag.replace(/^v/, '');
+      let latestTag = '';
+      let releaseUrl = 'https://github.com/livekadeh/chrome-ssh-sftp-extension/releases';
+      let directDownloadUrl = null;
 
-      if (latestVer === manifestVersion) {
+      try {
+        const res = await fetch('https://api.github.com/repos/livekadeh/chrome-ssh-sftp-extension/releases/latest');
+        if (res.ok) {
+          const release = await res.json();
+          latestTag = release.tag_name || '';
+          releaseUrl = release.html_url || releaseUrl;
+          const assets = Array.isArray(release.assets) ? release.assets : [];
+          const zipAsset = assets.find(a => a.name && a.name.includes('extension') && a.name.endsWith('.zip'));
+          if (zipAsset) {
+            directDownloadUrl = zipAsset.browser_download_url;
+          }
+        }
+      } catch (apiErr) {
+        console.warn('GitHub API release fetch failed, trying raw manifest fallback:', apiErr);
+      }
+
+      // Fallback to raw manifest if GitHub API had rate limiting or network issue
+      if (!latestTag) {
+        const rawRes = await fetch('https://raw.githubusercontent.com/livekadeh/chrome-ssh-sftp-extension/main/extension/manifest.json?t=' + Date.now());
+        if (rawRes.ok) {
+          const rawManifest = await rawRes.json();
+          if (rawManifest && rawManifest.version) {
+            latestTag = 'v' + rawManifest.version;
+          }
+        }
+      }
+
+      if (!latestTag) {
+        throw new Error('Unable to check for updates at this moment. Please check GitHub releases directly.');
+      }
+
+      const latestVer = latestTag.replace(/^v/, '');
+      const hasUpdate = compareSemVer(latestVer, currentManifestVersion) > 0;
+
+      if (!hasUpdate) {
         updateResultBox.className = 'update-result-box up-to-date';
+        const upToDateMsg = window.i18n 
+          ? window.i18n.t('about_up_to_date', { ver: `v${currentManifestVersion}` }) 
+          : `You are using the latest version (v${currentManifestVersion}) ✔`;
         updateResultBox.innerHTML = `
-          <span>✔</span>
-          <span>${window.i18n ? window.i18n.t('about_up_to_date') : `You are using the latest version (v${manifestVersion})`}</span>
+          <span style="font-size: 15px;">✔</span>
+          <span>${escapeHtml(upToDateMsg)}</span>
         `;
-        if (aboutUpdateBadge) aboutUpdateBadge.textContent = `Latest v${manifestVersion}`;
+        if (aboutUpdateBadge) aboutUpdateBadge.textContent = `Latest v${currentManifestVersion}`;
       } else {
         updateResultBox.className = 'update-result-box new-available';
+        const titleText = window.i18n ? window.i18n.t('about_update_available') : 'New version available:';
+        const downloadZipText = window.i18n ? window.i18n.t('about_direct_download') : 'Download Extension (.zip) 📥';
+        const releaseNotesText = window.i18n ? window.i18n.t('about_release_notes') : 'Release Notes 📄';
+        const instructionsText = window.i18n ? window.i18n.t('about_update_instructions') : 'Extract ZIP and click reload in chrome://extensions';
+
+        let actionButtonsHtml = '';
+        if (directDownloadUrl) {
+          actionButtonsHtml += `<a href="${escapeHtml(directDownloadUrl)}" target="_blank" class="btn btn-sm btn-cyan">${escapeHtml(downloadZipText)}</a>`;
+        }
+        actionButtonsHtml += `<a href="${escapeHtml(releaseUrl)}" target="_blank" class="btn btn-sm btn-secondary">${escapeHtml(releaseNotesText)}</a>`;
+
         updateResultBox.innerHTML = `
-          <span>⚡</span>
-          <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
-            <strong>${window.i18n ? window.i18n.t('about_update_available') : 'New version available:'} ${latestTag}</strong>
-            <a href="${release.html_url}" target="_blank" class="btn btn-sm btn-cyan">${window.i18n ? window.i18n.t('about_btn_download_update') : 'Download New Version 📥'}</a>
+          <span style="font-size: 18px;">⚡</span>
+          <div style="display: flex; flex-direction: column; gap: 8px; width: 100%;">
+            <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;">
+              <strong>${escapeHtml(titleText)} ${escapeHtml(latestTag)}</strong>
+              <div style="display: flex; gap: 8px; flex-wrap: wrap;">${actionButtonsHtml}</div>
+            </div>
+            <div style="font-size: 11px; opacity: 0.85;">💡 ${escapeHtml(instructionsText)}</div>
           </div>
         `;
         if (aboutUpdateBadge) aboutUpdateBadge.textContent = `Update: ${latestTag}`;
@@ -1426,7 +1493,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     } catch (err) {
       updateResultBox.className = 'update-result-box';
       updateResultBox.style.color = '#ef4444';
-      updateResultBox.innerHTML = `⚠️ ${err.message || 'Error checking for updates'}`;
+      updateResultBox.innerHTML = `⚠️ ${escapeHtml(err.message || 'Error checking for updates')}`;
     }
   }
 

@@ -213,9 +213,12 @@ const I18N_DICTIONARY = {
     about_checking: 'Checking GitHub for updates...',
     nav_standalone_window: 'Open in Standalone App Window',
     nav_standalone_btn: 'App Window ⤢',
-    about_up_to_date: 'You are using the latest version (v1.4.0) ✔',
+    about_up_to_date: 'You are using the latest version ({ver}) ✔',
     about_update_available: 'New version available:',
     about_btn_download_update: 'Download New Version 📥',
+    about_direct_download: 'Download Extension (.zip) 📥',
+    about_release_notes: 'Release Notes 📄',
+    about_update_instructions: 'Extract ZIP and click reload in chrome://extensions',
 
     // Language Toggle
     lang_btn: '🌐 English',
@@ -429,9 +432,12 @@ const I18N_DICTIONARY = {
     about_checking: 'در حال بررسی گیت‌هاب برای نسخه جدید...',
     nav_standalone_window: 'اجرا در پنجره مستقل برنامه',
     nav_standalone_btn: 'پنجره اختصاصی ⤢',
-    about_up_to_date: 'شما از آخرین نسخه پایدار (v1.4.0) استفاده می‌کنید ✔',
+    about_up_to_date: 'شما از آخرین نسخه پایدار ({ver}) استفاده می‌کنید ✔',
     about_update_available: 'نسخه جدید در دسترس است:',
     about_btn_download_update: 'دانلود نسخه جدید 📥',
+    about_direct_download: 'دانلود فایل افزونه (.zip) 📥',
+    about_release_notes: 'یادداشت تغییرات 📄',
+    about_update_instructions: 'فایل فشرده را اکسترکت کرده و در chrome://extensions رفرش را بزنید.',
 
     // Language Toggle
     lang_btn: '🌐 فارسی',
@@ -476,9 +482,15 @@ class I18nManager {
     this.applyTranslations();
   }
 
-  t(key) {
+  t(key, params = {}) {
     const dict = I18N_DICTIONARY[this.currentLang] || I18N_DICTIONARY.en;
-    return dict[key] || I18N_DICTIONARY.en[key] || key;
+    let str = dict[key] || I18N_DICTIONARY.en[key] || key;
+    if (params && typeof params === 'object') {
+      for (const [k, v] of Object.entries(params)) {
+        str = str.replace(new RegExp(`\\{${k}\\}`, 'g'), v);
+      }
+    }
+    return str;
   }
 
   applyTranslations() {

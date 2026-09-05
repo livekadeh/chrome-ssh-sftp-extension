@@ -3,7 +3,7 @@
 [![English Version](https://img.shields.io/badge/Language-English-blue.svg)](README.md)
 [![GitHub Repository](https://img.shields.io/badge/GitHub-livekadeh%2Fchrome--ssh--sftp--extension-00f0ff?style=for-the-badge&logo=github)](https://github.com/livekadeh/chrome-ssh-sftp-extension)
 [![Manifest V3](https://img.shields.io/badge/Chrome_Extension-Manifest_V3-00ff9d?style=for-the-badge&logo=googlechrome)](https://developer.chrome.com/docs/extensions/mv3/)
-[![Release v1.4.0](https://img.shields.io/badge/Release-v1.4.0-orange?style=for-the-badge)](https://github.com/livekadeh/chrome-ssh-sftp-extension/releases/tag/v1.4.0)
+[![Release v1.4.2](https://img.shields.io/badge/Release-v1.4.2-orange?style=for-the-badge)](https://github.com/livekadeh/chrome-ssh-sftp-extension/releases/tag/v1.4.2)
 [![License: MIT](https://img.shields.io/badge/License-MIT-purple?style=for-the-badge)](LICENSE)
 
 اکستنشن حرفه‌ای و پیشرفته گوگل کروم (نسخه Pro) برای اتصال مستقیم به خط فرمان **SSH (با شبیه‌ساز قدرتمند xterm.js، پشتیبانی کامل فارسی/BiDi، و منوی کلیک‌راست کپی/پیست)** و **مدیریت فایل پیشرفته SFTP (با پخش‌کننده و نمایشگر عکس و فیلم و صوت، فشرده‌سازی، حالت پنجره مستقل و نوار پیشرفت زنده آپلود)** همراه با سرور واسط پرسرعت (WebSocket Bridge Server).
@@ -46,7 +46,7 @@
 ## 🚀 راهنمای نصب و راه‌اندازی
 
 ### ۱. نصب افزونه در گوگل کروم
-1. فایل زیپ افزونه [`livekadeh-ssh-sftp-extension-v1.4.0.zip`](https://github.com/livekadeh/chrome-ssh-sftp-extension/releases/download/v1.4.0/livekadeh-ssh-sftp-extension-v1.4.0.zip) را دانلود و استخراج (Extract) کنید.
+1. فایل زیپ افزونه [`livekadeh-ssh-sftp-extension-v1.4.2.zip`](https://github.com/livekadeh/chrome-ssh-sftp-extension/releases/download/v1.4.2/livekadeh-ssh-sftp-extension-v1.4.2.zip) را دانلود و استخراج (Extract) کنید.
 2. مرورگر کروم را باز کرده و به آدرس `chrome://extensions` بروید.
 3. گزینه **Developer mode** را در بالا سمت راست فعال کنید.
 4. روی دکمه **Load unpacked** کلیک کرده و همان پوشه استخراج شده را انتخاب کنید (تمام فایل‌ها از جمله `manifest.json` مستقیماً در ریشه پوشه قرار دارند).
