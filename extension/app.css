@@ -53,34 +53,34 @@ body {
 
 /* ================= TOPBAR ================= */
 .topbar {
-  height: 56px;
+  height: 48px;
   background: rgba(12, 18, 29, 0.95);
   backdrop-filter: blur(20px);
   border-bottom: 1px solid var(--border-glass);
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 20px;
+  padding: 0 14px;
   z-index: 50;
 }
 
 .brand {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 8px;
 }
 
 .brand-badge {
-  font-size: 20px;
-  width: 36px;
-  height: 36px;
+  font-size: 16px;
+  width: 30px;
+  height: 30px;
   background: linear-gradient(135deg, rgba(0, 240, 255, 0.2), rgba(168, 85, 247, 0.2));
   border: 1px solid var(--accent-cyan);
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-xs);
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 0 15px var(--accent-cyan-glow);
+  box-shadow: 0 0 12px var(--accent-cyan-glow);
 }
 
 .brand-text {
@@ -89,7 +89,7 @@ body {
 }
 
 .brand-title {
-  font-size: 16px;
+  font-size: 14px;
   font-weight: 800;
   background: linear-gradient(90deg, #00f0ff, #c084fc);
   -webkit-background-clip: text;
@@ -98,29 +98,29 @@ body {
 }
 
 .brand-sub {
-  font-size: 10px;
+  font-size: 9px;
   color: var(--text-muted);
 }
 
 .nav-tabs {
   display: flex;
-  gap: 6px;
-  background: rgba(0, 0, 0, 0.3);
-  padding: 4px;
-  border-radius: var(--radius-md);
+  gap: 3px;
+  background: rgba(0, 0, 0, 0.35);
+  padding: 3px;
+  border-radius: var(--radius-sm);
   border: 1px solid var(--border-glass);
 }
 
 .nav-tab {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 6px 14px;
-  border-radius: var(--radius-sm);
+  gap: 5px;
+  padding: 4px 10px;
+  border-radius: var(--radius-xs);
   background: transparent;
   border: none;
   color: var(--text-muted);
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 500;
   cursor: pointer;
   transition: var(--transition);
@@ -135,25 +135,30 @@ body {
   background: linear-gradient(135deg, rgba(0, 240, 255, 0.15), rgba(168, 85, 247, 0.15));
   color: var(--accent-cyan);
   border: 1px solid rgba(0, 240, 255, 0.3);
-  box-shadow: 0 0 12px rgba(0, 240, 255, 0.2);
+  box-shadow: 0 0 10px rgba(0, 240, 255, 0.2);
 }
 
 .header-right {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 6px;
+}
+
+.header-right .btn-primary {
+  padding: 5px 12px;
+  font-size: 12px;
 }
 
 .btn-lang-switcher {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid var(--border-glass);
   color: var(--text-main);
-  padding: 6px 12px;
-  border-radius: var(--radius-sm);
-  font-size: 12px;
+  padding: 4px 8px;
+  border-radius: var(--radius-xs);
+  font-size: 11px;
   font-weight: 500;
   cursor: pointer;
   transition: var(--transition);
@@ -163,23 +168,23 @@ body {
   border-color: var(--accent-cyan);
   color: var(--accent-cyan);
   background: rgba(0, 240, 255, 0.1);
-  box-shadow: 0 0 10px rgba(0, 240, 255, 0.2);
+  box-shadow: 0 0 8px rgba(0, 240, 255, 0.2);
 }
 
 .server-pill {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   background: var(--bg-card);
   border: 1px solid var(--border-glass);
-  padding: 6px 12px;
-  border-radius: 20px;
-  font-size: 12px;
+  padding: 4px 9px;
+  border-radius: 16px;
+  font-size: 11px;
 }
 
 .status-indicator {
-  width: 8px;
-  height: 8px;
+  width: 7px;
+  height: 7px;
   border-radius: 50%;
 }
 
@@ -1367,13 +1372,18 @@ input:focus, select:focus, textarea:focus {
 }
 
 /* ================= ABOUT VIEW ================= */
+#viewABOUT {
+  overflow-y: auto;
+  height: 100%;
+}
+
 .about-workspace {
-  max-width: 900px;
+  max-width: 880px;
   margin: 0 auto;
-  padding: 30px 20px;
+  padding: 24px 20px 60px 20px;
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: 20px;
 }
 
 .about-hero-card {
@@ -1541,24 +1551,44 @@ input:focus, select:focus, textarea:focus {
 
 .about-footer-card {
   background: var(--bg-card);
+  backdrop-filter: blur(16px);
   border: 1px solid var(--border-glass);
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-md);
   padding: 16px 20px;
-  font-size: 13px;
-  color: var(--text-muted);
+  box-shadow: var(--shadow-card);
 }
 
 .about-meta-row {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  justify-content: space-between;
-  gap: 16px;
+  justify-content: space-around;
+  gap: 12px;
+}
+
+.about-meta-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(15, 23, 42, 0.6);
+  border: 1px solid rgba(0, 240, 255, 0.2);
+  border-radius: var(--radius-sm);
+  padding: 8px 16px;
+  font-size: 12px;
+  transition: var(--transition);
+}
+
+.about-meta-item:hover {
+  border-color: rgba(0, 240, 255, 0.4);
+  background: rgba(0, 240, 255, 0.08);
+}
+
+.meta-icon {
+  font-size: 15px;
 }
 
 .meta-label {
   color: var(--text-muted);
-  margin-right: 6px;
 }
 
 .meta-link {
@@ -1574,6 +1604,21 @@ input:focus, select:focus, textarea:focus {
 .meta-val {
   color: #f8fafc;
   font-weight: 500;
+}
+
+/* Draggable tab styles */
+.tab-draggable {
+  cursor: grab;
+  user-select: none;
+}
+
+.tab-draggable:active {
+  cursor: grabbing;
+}
+
+.tab-ghost {
+  opacity: 0.5;
+  background: var(--accent-cyan);
 }
 
 /* ================= SFTP VIEW SWITCHER & GRID MODE ================= */
@@ -1693,12 +1738,12 @@ input:focus, select:focus, textarea:focus {
 .btn-popout-window {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 5px;
   background: rgba(15, 23, 42, 0.7);
   border: 1px solid rgba(0, 240, 255, 0.3);
   color: var(--accent-cyan);
   border-radius: var(--radius-xs);
-  padding: 5px 10px;
+  padding: 4px 8px;
   font-size: 11px;
   font-weight: 600;
   cursor: pointer;
@@ -1912,15 +1957,36 @@ input:focus, select:focus, textarea:focus {
   z-index: 9999;
   display: flex;
   align-items: center;
-  gap: 8px;
-  background: rgba(13, 20, 32, 0.95);
-  border: 1px solid rgba(0, 240, 255, 0.35);
+  gap: 7px;
+  background: rgba(13, 20, 32, 0.96);
+  border: 1px solid rgba(0, 240, 255, 0.4);
   color: var(--accent-cyan);
-  font-size: 12px;
+  font-size: 11.5px;
   font-weight: 600;
-  cursor: pointer;
-  transition: transform 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
+  cursor: grab;
+  transition: background 0.2s ease, box-shadow 0.2s ease, padding 0.2s ease;
   user-select: none;
+  touch-action: none;
+}
+
+.floating-sessions-tab:active,
+.floating-sessions-tab.dragging {
+  cursor: grabbing !important;
+  transition: none !important;
+  background: rgba(0, 240, 255, 0.25) !important;
+  box-shadow: 0 0 25px rgba(0, 240, 255, 0.7) !important;
+}
+
+.floating-drag-grip {
+  font-size: 13px;
+  opacity: 0.5;
+  letter-spacing: -1px;
+  cursor: grab;
+  transition: opacity 0.2s ease;
+}
+
+.floating-sessions-tab:hover .floating-drag-grip {
+  opacity: 0.9;
 }
 
 /* LTR (English) - Tab on Left Edge */
@@ -1929,16 +1995,16 @@ html[dir="ltr"] .floating-sessions-tab {
   left: 0;
   right: auto;
   border-left: none;
-  border-radius: 0 20px 20px 0;
-  padding: 10px 12px 10px 14px;
+  border-radius: 0 16px 16px 0;
+  padding: 7px 11px 7px 9px;
   box-shadow: 4px 0 20px rgba(0, 0, 0, 0.6), 0 0 10px var(--accent-cyan-glow);
 }
 
-html:not([dir="rtl"]) .floating-sessions-tab:hover,
-html[dir="ltr"] .floating-sessions-tab:hover {
+html:not([dir="rtl"]) .floating-sessions-tab:not(.dragging):hover,
+html[dir="ltr"] .floating-sessions-tab:not(.dragging):hover {
   background: rgba(0, 240, 255, 0.18);
-  box-shadow: 6px 0 25px rgba(0, 240, 255, 0.4);
-  transform: translateY(-50%) translateX(4px);
+  box-shadow: 6px 0 25px rgba(0, 240, 255, 0.45);
+  padding-left: 13px;
 }
 
 /* RTL (Persian) - Tab on Right Edge */
@@ -1946,15 +2012,15 @@ html[dir="rtl"] .floating-sessions-tab {
   right: 0;
   left: auto;
   border-right: none;
-  border-radius: 20px 0 0 20px;
-  padding: 10px 14px 10px 12px;
+  border-radius: 16px 0 0 16px;
+  padding: 7px 9px 7px 11px;
   box-shadow: -4px 0 20px rgba(0, 0, 0, 0.6), 0 0 10px var(--accent-cyan-glow);
 }
 
-html[dir="rtl"] .floating-sessions-tab:hover {
+html[dir="rtl"] .floating-sessions-tab:not(.dragging):hover {
   background: rgba(0, 240, 255, 0.18);
-  box-shadow: -6px 0 25px rgba(0, 240, 255, 0.4);
-  transform: translateY(-50%) translateX(-4px);
+  box-shadow: -6px 0 25px rgba(0, 240, 255, 0.45);
+  padding-right: 13px;
 }
 
 .floating-tab-icon {
@@ -1993,12 +2059,12 @@ html[dir="rtl"] .floating-sessions-tab:hover {
 .btn-sessions-trigger {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 5px;
   background: rgba(15, 23, 42, 0.8);
   border: 1px solid rgba(0, 240, 255, 0.3);
   color: #f8fafc;
   border-radius: var(--radius-xs);
-  padding: 5px 10px;
+  padding: 4px 8px;
   font-size: 11px;
   font-weight: 600;
   cursor: pointer;

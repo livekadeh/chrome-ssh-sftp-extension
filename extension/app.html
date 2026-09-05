@@ -621,18 +621,21 @@
             </div>
           </div>
 
-          <!-- Credits & Meta Info -->
+          <!-- Credits & Meta Info Card -->
           <div class="about-footer-card">
             <div class="about-meta-row">
-              <div>
+              <div class="about-meta-item">
+                <span class="meta-icon">👨‍💻</span>
                 <span class="meta-label">Developer:</span>
                 <a href="https://livekadeh.com" target="_blank" class="meta-link">LiveKadeh</a>
               </div>
-              <div>
+              <div class="about-meta-item">
+                <span class="meta-icon">⚖️</span>
                 <span class="meta-label">License:</span>
                 <span class="meta-val">MIT Open Source</span>
               </div>
-              <div>
+              <div class="about-meta-item">
+                <span class="meta-icon">🛡️</span>
                 <span class="meta-label">Chrome Web Store:</span>
                 <span class="meta-val">Manifest V3 Compliant</span>
               </div>
@@ -968,13 +971,14 @@
       </div>
     </div>
 
-    <!-- Floating Sessions Tab on Right Edge -->
-    <button id="btnFloatingSessions" class="floating-sessions-tab" title="Active Servers Drawer / مدیریت سرورهای باز">
+    <!-- Floating Sessions Tab on Right Edge (Draggable) -->
+    <div id="btnFloatingSessions" class="floating-sessions-tab" title="Active Servers Drawer / مدیریت سرورهای باز (Drag up/down to move)" role="button" tabindex="0">
+      <span class="floating-drag-grip" title="Drag to move">⠿</span>
       <span class="pulse-indicator"></span>
       <span class="floating-tab-icon">⚡📁</span>
       <span class="floating-tab-label" data-i18n="drawer_open_servers">Open Servers</span>
       <span id="floatingSessionsBadge" class="sessions-badge">0</span>
-    </button>
+    </div>
 
     <!-- Sessions Drawer Backdrop -->
     <div id="sessionsDrawerBackdrop" class="drawer-backdrop"></div>

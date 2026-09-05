@@ -1540,7 +1540,90 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (sessionsDrawerBackdrop) sessionsDrawerBackdrop.classList.remove('active');
   }
 
-  if (btnFloatingSessions) btnFloatingSessions.addEventListener('click', openSessionsDrawer);
+  // Draggable Floating Sessions Tab (Vertical edge drag & drop)
+  if (btnFloatingSessions) {
+    let isDraggingTab = false;
+    let dragStartY = 0;
+    let dragStartTop = 0;
+    let hasMovedTab = false;
+
+    // Load saved vertical position from chrome storage
+    try {
+      chrome.storage.local.get('floatingTabTop', (data) => {
+        if (data && typeof data.floatingTabTop === 'number') {
+          const tabHeight = btnFloatingSessions.offsetHeight || 38;
+          const minTop = 15;
+          const maxTop = Math.max(minTop, window.innerHeight - tabHeight - 15);
+          const clamped = Math.max(minTop, Math.min(maxTop, data.floatingTabTop));
+          btnFloatingSessions.style.top = `${clamped}px`;
+          btnFloatingSessions.style.transform = 'none';
+        }
+      });
+    } catch (e) {}
+
+    btnFloatingSessions.addEventListener('pointerdown', (e) => {
+      if (e.button !== 0 && e.pointerType === 'mouse') return;
+
+      isDraggingTab = true;
+      hasMovedTab = false;
+      dragStartY = e.clientY;
+      const rect = btnFloatingSessions.getBoundingClientRect();
+      dragStartTop = rect.top;
+
+      try {
+        btnFloatingSessions.setPointerCapture(e.pointerId);
+      } catch (err) {}
+      btnFloatingSessions.classList.add('dragging');
+    });
+
+    btnFloatingSessions.addEventListener('pointermove', (e) => {
+      if (!isDraggingTab) return;
+
+      const deltaY = e.clientY - dragStartY;
+      if (Math.abs(deltaY) > 4) {
+        hasMovedTab = true;
+      }
+
+      if (hasMovedTab) {
+        const tabHeight = btnFloatingSessions.offsetHeight || 38;
+        const minTop = 15;
+        const maxTop = Math.max(minTop, window.innerHeight - tabHeight - 15);
+        const newTop = Math.max(minTop, Math.min(maxTop, dragStartTop + deltaY));
+
+        btnFloatingSessions.style.top = `${newTop}px`;
+        btnFloatingSessions.style.transform = 'none';
+      }
+    });
+
+    const endTabDrag = (e) => {
+      if (!isDraggingTab) return;
+      isDraggingTab = false;
+      btnFloatingSessions.classList.remove('dragging');
+
+      try {
+        btnFloatingSessions.releasePointerCapture(e.pointerId);
+      } catch (err) {}
+
+      if (hasMovedTab) {
+        const currentTop = parseInt(btnFloatingSessions.style.top, 10);
+        if (!isNaN(currentTop)) {
+          chrome.storage.local.set({ floatingTabTop: currentTop });
+        }
+      } else {
+        openSessionsDrawer();
+      }
+    };
+
+    btnFloatingSessions.addEventListener('pointerup', endTabDrag);
+    btnFloatingSessions.addEventListener('pointercancel', endTabDrag);
+
+    btnFloatingSessions.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        openSessionsDrawer();
+      }
+    });
+  }
   if (btnHeaderSessions) btnHeaderSessions.addEventListener('click', openSessionsDrawer);
   if (btnCloseSessionsDrawer) btnCloseSessionsDrawer.addEventListener('click', closeSessionsDrawer);
   if (sessionsDrawerBackdrop) sessionsDrawerBackdrop.addEventListener('click', closeSessionsDrawer);
