@@ -214,6 +214,7 @@
               </div>
               <div class="action-group">
                 <button id="btnSftpDownload" class="btn btn-sm btn-secondary" disabled>📥 Download</button>
+                <button id="btnSftpOpenWith" class="btn btn-sm btn-secondary" disabled title="Open with External Editor / باز کردن با ادیتور خارجی"><span data-i18n="sftp_open_with_btn">↗️ Open With...</span></button>
                 <button id="btnSftpPreview" class="btn btn-sm btn-cyan" disabled title="Play or View Media file"><span data-i18n="sftp_preview_btn">👁️ Preview / Play</span></button>
                 <button id="btnSftpEdit" class="btn btn-sm btn-secondary" disabled>✏️ Edit</button>
                 <button id="btnSftpExtract" class="btn btn-sm btn-secondary" disabled title="Extract archive on remote server"><span data-i18n="sftp_extract_btn">📦 Extract</span></button>
@@ -323,6 +324,10 @@
             <div class="context-item" id="sftpCtxDownload">
               <span class="ctx-icon">📥</span>
               <span class="ctx-label" data-i18n="sftp_ctx_download">Download</span>
+            </div>
+            <div class="context-item" id="sftpCtxOpenWith">
+              <span class="ctx-icon">↗️</span>
+              <span class="ctx-label" data-i18n="sftp_ctx_open_with">Open With...</span>
             </div>
             <div class="context-item" id="sftpCtxPreview" style="display: none;">
               <span class="ctx-icon">👁️</span>
@@ -491,6 +496,33 @@
                 <option value="monokai">Monokai Pro</option>
                 <option value="matrix">Matrix Green</option>
               </select>
+            </div>
+          </div>
+
+          <!-- External Editor Settings Card -->
+          <div class="settings-card">
+            <h3 data-i18n="settings_ext_editor_title">External Editor (Open With)</h3>
+            <p class="help-text" data-i18n="settings_ext_editor_hint">Configure the default external desktop application to open SFTP files:</p>
+            <div class="form-row">
+              <label data-i18n="settings_ext_editor_label">Default External Editor:</label>
+              <select id="settingDefaultExtEditor">
+                <option value="default">System Default App (xdg-open / Windows Default)</option>
+                <option value="vscode">Visual Studio Code (code)</option>
+                <option value="notepad++">Notepad++</option>
+                <option value="sublime">Sublime Text (subl)</option>
+                <option value="notepad">Notepad / Gedit</option>
+                <option value="custom">Custom Command / Path</option>
+              </select>
+            </div>
+            <div class="form-row" id="settingCustomEditorRow" style="display: none;">
+              <label data-i18n="settings_ext_editor_custom">Custom Command / Path:</label>
+              <input type="text" id="settingCustomEditorCmd" dir="ltr" placeholder="e.g. cursor, kate, nvim, /usr/bin/gedit">
+            </div>
+            <div class="form-row">
+              <label class="checkbox-label">
+                <input type="checkbox" id="settingExtAutoSync" checked>
+                <span data-i18n="settings_ext_autosync">Automatically upload changes on save (Ctrl+S)</span>
+              </label>
             </div>
           </div>
 
@@ -681,6 +713,7 @@
             <span id="editorFilePath">/root/example.txt</span>
           </div>
           <div class="editor-header-actions">
+            <button id="btnEditorOpenWith" class="btn btn-sm btn-secondary" title="Open with External Editor / باز کردن با ادیتور خارجی">↗️ <span data-i18n="editor_open_with">Open With...</span></button>
             <button id="btnEditorSave" class="btn btn-sm btn-cyan">Save (Ctrl+S) 💾</button>
             <button class="modal-close" id="btnCloseEditorModal">✕</button>
           </div>
@@ -767,6 +800,159 @@
         </div>
         <div class="modal-footer info-modal-footer">
           <button type="button" class="btn btn-secondary" id="btnInfoClose" data-i18n="info_btn_close">Close</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ================= OPEN WITH / EXTERNAL EDITOR MODAL ================= -->
+    <div id="openWithModal" class="modal-backdrop">
+      <div class="modal-box modal-openwith">
+        <div class="modal-header">
+          <div class="openwith-title-group">
+            <span class="openwith-icon">↗️</span>
+            <div>
+              <div class="openwith-title" data-i18n="openwith_modal_title">Open With...</div>
+              <div class="openwith-file-name" id="openWithFileName">filename.txt</div>
+            </div>
+          </div>
+          <button class="modal-close" id="btnCloseOpenWithModal">✕</button>
+        </div>
+        
+        <div class="modal-body openwith-body">
+          <!-- Section 1: System External Editors (Local Bridge with Auto-Sync) -->
+          <div class="openwith-section">
+            <div class="openwith-section-title">
+              <span>🖥️</span>
+              <span data-i18n="openwith_sec_system">System External Editor (Auto-Sync)</span>
+            </div>
+            <div class="openwith-apps-grid" id="openWithAppsGrid">
+              <!-- Default System App -->
+              <div class="openwith-app-card active" data-app="default">
+                <div class="app-card-icon">💻</div>
+                <div class="app-card-info">
+                  <div class="app-card-name" data-i18n="openwith_app_default">System Default App</div>
+                  <div class="app-card-desc" data-i18n="openwith_app_default_desc">xdg-open / Windows Default</div>
+                </div>
+                <div class="app-card-radio"></div>
+              </div>
+
+              <!-- VS Code -->
+              <div class="openwith-app-card" data-app="vscode">
+                <div class="app-card-icon">💙</div>
+                <div class="app-card-info">
+                  <div class="app-card-name">Visual Studio Code</div>
+                  <div class="app-card-desc">code &lt;file&gt;</div>
+                </div>
+                <div class="app-card-radio"></div>
+              </div>
+
+              <!-- Notepad++ -->
+              <div class="openwith-app-card" data-app="notepad++">
+                <div class="app-card-icon">📝</div>
+                <div class="app-card-info">
+                  <div class="app-card-name">Notepad++</div>
+                  <div class="app-card-desc">notepad++ &lt;file&gt;</div>
+                </div>
+                <div class="app-card-radio"></div>
+              </div>
+
+              <!-- Sublime Text -->
+              <div class="openwith-app-card" data-app="sublime">
+                <div class="app-card-icon">🟠</div>
+                <div class="app-card-info">
+                  <div class="app-card-name">Sublime Text</div>
+                  <div class="app-card-desc">subl &lt;file&gt;</div>
+                </div>
+                <div class="app-card-radio"></div>
+              </div>
+
+              <!-- Notepad / Gedit -->
+              <div class="openwith-app-card" data-app="notepad">
+                <div class="app-card-icon">📄</div>
+                <div class="app-card-info">
+                  <div class="app-card-name">Notepad / Gedit</div>
+                  <div class="app-card-desc">notepad / gedit &lt;file&gt;</div>
+                </div>
+                <div class="app-card-radio"></div>
+              </div>
+
+              <!-- Custom Command -->
+              <div class="openwith-app-card" data-app="custom">
+                <div class="app-card-icon">⚙️</div>
+                <div class="app-card-info">
+                  <div class="app-card-name" data-i18n="openwith_app_custom">Custom Executable / Command</div>
+                  <div class="app-card-desc" data-i18n="openwith_app_custom_desc">Custom CLI or App Path</div>
+                </div>
+                <div class="app-card-radio"></div>
+              </div>
+            </div>
+
+            <!-- Custom Command Input -->
+            <div id="openWithCustomCmdRow" class="form-row" style="display: none; margin-top: 10px;">
+              <label data-i18n="openwith_custom_label">Command or Path to Executable:</label>
+              <input type="text" id="openWithCustomCmd" dir="ltr" class="form-control" placeholder="e.g. cursor, kate, nvim, /usr/bin/gedit, C:\Program Files\...">
+            </div>
+
+            <!-- Auto-Sync Checkbox & Tip -->
+            <div class="openwith-options-row">
+              <label class="checkbox-label">
+                <input type="checkbox" id="openWithAutoSync" checked>
+                <span data-i18n="openwith_autosync_lbl">Auto-sync changes to remote server on save (Ctrl+S) ⚡</span>
+              </label>
+              <div class="openwith-hint-text" data-i18n="openwith_autosync_hint">
+                The bridge watches the local file and automatically uploads modified contents whenever you save.
+              </div>
+            </div>
+
+            <!-- Launch System App Button -->
+            <div class="openwith-action-row">
+              <button id="btnLaunchExternalEditor" class="btn btn-cyan btn-full">
+                <span data-i18n="openwith_launch_btn">🚀 Open in Selected System App</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Section 2: Browser & Web View / Edit -->
+          <div class="openwith-section" style="margin-top: 18px;">
+            <div class="openwith-section-title">
+              <span>🌐</span>
+              <span data-i18n="openwith_sec_browser">Browser View & Web Editor</span>
+            </div>
+
+            <div class="openwith-browser-actions">
+              <button type="button" id="btnOpenWithNewTab" class="openwith-btn-tile">
+                <span class="tile-icon">👁️</span>
+                <div class="tile-content">
+                  <strong data-i18n="openwith_new_tab">Open in New Tab</strong>
+                  <small data-i18n="openwith_new_tab_desc">View code, raw text, or media in a browser tab</small>
+                </div>
+              </button>
+
+              <button type="button" id="btnOpenWithBuiltinEditor" class="openwith-btn-tile">
+                <span class="tile-icon">✏️</span>
+                <div class="tile-content">
+                  <strong data-i18n="openwith_builtin">Built-in Editor</strong>
+                  <small data-i18n="openwith_builtin_desc">Edit directly inside LiveKadeh extension</small>
+                </div>
+              </button>
+
+              <button type="button" id="btnOpenWithFilePicker" class="openwith-btn-tile">
+                <span class="tile-icon">💾</span>
+                <div class="tile-content">
+                  <strong data-i18n="openwith_save_picker">Save & Sync Local File</strong>
+                  <small data-i18n="openwith_save_picker_desc">Save to disk via Chrome File Picker & sync</small>
+                </div>
+              </button>
+            </div>
+          </div>
+
+          <!-- Active Sync Notification Box -->
+          <div id="openWithActiveSyncBox" class="openwith-sync-box" style="display: none;">
+            <div class="sync-box-header">
+              <span class="sync-dot pulse"></span>
+              <span id="openWithSyncStatusText">Auto-sync active...</span>
+            </div>
+          </div>
         </div>
       </div>
     </div>

@@ -6,6 +6,9 @@
 
 const http = require('http');
 const path = require('path');
+const fs = require('fs');
+const os = require('os');
+const { spawn } = require('child_process');
 const express = require('express');
 const { WebSocketServer } = require('ws');
 const { Client } = require('ssh2');
@@ -56,6 +59,7 @@ wss.on('connection', (ws, req) => {
   let sftpSession = null;
   let isConnected = false;
   const uploadHandles = new Map();
+  const activeExternalWatchers = new Map();
 
   const safeSend = (obj) => {
     if (ws.readyState === ws.OPEN) {
@@ -77,6 +81,13 @@ wss.on('connection', (ws, req) => {
       }
     });
     uploadHandles.clear();
+
+    activeExternalWatchers.forEach((item) => {
+      if (item.watcher) {
+        try { item.watcher.close(); } catch (e) {}
+      }
+    });
+    activeExternalWatchers.clear();
 
     if (sshStream) {
       try { sshStream.end(); } catch (e) {}
@@ -939,6 +950,199 @@ fi`;
           }
         });
       });
+      return;
+    }
+
+    // --- SFTP OPEN WITH EXTERNAL EDITOR (LOCAL BRIDGE & AUTO-SYNC) ---
+    if (type === 'sftp-open-external') {
+      const { path: targetPath, id, editor = 'default', customCommand = '', autoSync = true } = msg;
+      if (!checkSftp(id)) return;
+
+      const filename = path.posix.basename(targetPath);
+      const safeDirName = Buffer.from(targetPath).toString('hex').slice(0, 16);
+      const localDir = path.join(os.tmpdir(), 'chrome-sftp-cache', safeDirName);
+
+      try {
+        fs.mkdirSync(localDir, { recursive: true });
+      } catch (dirErr) {
+        safeSend({ type: 'sftp-open-external-res', id, success: false, error: 'Cannot create local cache directory: ' + dirErr.message });
+        return;
+      }
+
+      const localFilePath = path.join(localDir, filename);
+
+      const readStream = sftpSession.createReadStream(targetPath);
+      const writeStream = fs.createWriteStream(localFilePath);
+
+      readStream.on('error', (rErr) => {
+        safeSend({ type: 'sftp-open-external-res', id, success: false, error: 'SFTP read error: ' + rErr.message });
+      });
+
+      writeStream.on('error', (wErr) => {
+        safeSend({ type: 'sftp-open-external-res', id, success: false, error: 'Local cache write error: ' + wErr.message });
+      });
+
+      writeStream.on('finish', () => {
+        const platform = process.platform;
+        let execCmd = '';
+        let execArgs = [];
+
+        if (editor === 'custom' && customCommand && customCommand.trim()) {
+          execCmd = customCommand.trim();
+          execArgs = [localFilePath];
+        } else if (editor === 'vscode') {
+          execCmd = platform === 'win32' ? 'code.cmd' : 'code';
+          execArgs = [localFilePath];
+        } else if (editor === 'notepad++') {
+          if (platform === 'win32') {
+            const p1 = 'C:\\Program Files\\Notepad++\\notepad++.exe';
+            const p2 = 'C:\\Program Files (x86)\\Notepad++\\notepad++.exe';
+            if (fs.existsSync(p1)) execCmd = p1;
+            else if (fs.existsSync(p2)) execCmd = p2;
+            else execCmd = 'notepad++';
+          } else {
+            execCmd = 'notepadqq';
+          }
+          execArgs = [localFilePath];
+        } else if (editor === 'sublime') {
+          if (platform === 'win32') {
+            const p1 = 'C:\\Program Files\\Sublime Text\\sublime_text.exe';
+            const p2 = 'C:\\Program Files\\Sublime Text 3\\sublime_text.exe';
+            if (fs.existsSync(p1)) execCmd = p1;
+            else if (fs.existsSync(p2)) execCmd = p2;
+            else execCmd = 'subl';
+          } else {
+            execCmd = 'subl';
+          }
+          execArgs = [localFilePath];
+        } else if (editor === 'notepad') {
+          if (platform === 'win32') {
+            execCmd = 'notepad.exe';
+            execArgs = [localFilePath];
+          } else if (platform === 'darwin') {
+            execCmd = 'open';
+            execArgs = ['-e', localFilePath];
+          } else {
+            execCmd = 'gedit';
+            execArgs = [localFilePath];
+          }
+        } else {
+          // Default system application
+          if (platform === 'win32') {
+            execCmd = 'cmd.exe';
+            execArgs = ['/c', 'start', '""', localFilePath];
+          } else if (platform === 'darwin') {
+            execCmd = 'open';
+            execArgs = [localFilePath];
+          } else {
+            execCmd = 'xdg-open';
+            execArgs = [localFilePath];
+          }
+        }
+
+        try {
+          const child = spawn(execCmd, execArgs, {
+            detached: true,
+            stdio: 'ignore',
+            shell: true
+          });
+          child.on('error', (spawnErr) => {
+            console.error('[External Editor Error]:', spawnErr.message);
+          });
+          child.unref();
+        } catch (spawnErr) {
+          safeSend({ type: 'sftp-open-external-res', id, success: false, error: 'Failed to launch external editor: ' + spawnErr.message });
+          return;
+        }
+
+        // Set up auto-sync watcher if requested
+        if (autoSync) {
+          if (activeExternalWatchers.has(targetPath)) {
+            const old = activeExternalWatchers.get(targetPath);
+            if (old && old.watcher) {
+              try { old.watcher.close(); } catch (e) {}
+            }
+            activeExternalWatchers.delete(targetPath);
+          }
+
+          let debounceTimer = null;
+          let isUploading = false;
+          let lastMtime = 0;
+          try {
+            lastMtime = fs.statSync(localFilePath).mtimeMs;
+          } catch (e) {}
+
+          try {
+            const watcher = fs.watch(localFilePath, (eventType) => {
+              if (eventType === 'change') {
+                if (debounceTimer) clearTimeout(debounceTimer);
+                debounceTimer = setTimeout(() => {
+                  try {
+                    if (!fs.existsSync(localFilePath)) return;
+                    const curStat = fs.statSync(localFilePath);
+                    if (curStat.mtimeMs <= lastMtime) return;
+                    lastMtime = curStat.mtimeMs;
+                    if (isUploading) return;
+                    isUploading = true;
+
+                    const rLocal = fs.createReadStream(localFilePath);
+                    const wRemote = sftpSession.createWriteStream(targetPath);
+                    rLocal.pipe(wRemote);
+
+                    wRemote.on('close', () => {
+                      isUploading = false;
+                      safeSend({
+                        type: 'sftp-external-synced',
+                        path: targetPath,
+                        filename,
+                        size: curStat.size,
+                        mtime: curStat.mtimeMs
+                      });
+                    });
+
+                    wRemote.on('error', (upErr) => {
+                      isUploading = false;
+                      console.error('[Auto-Sync SFTP Upload Error]:', upErr.message);
+                    });
+                  } catch (syncErr) {
+                    isUploading = false;
+                  }
+                }, 600);
+              }
+            });
+
+            activeExternalWatchers.set(targetPath, { watcher, localFilePath });
+          } catch (watchErr) {
+            console.warn('[External Watcher Warning]:', watchErr.message);
+          }
+        }
+
+        safeSend({
+          type: 'sftp-open-external-res',
+          id,
+          success: true,
+          path: targetPath,
+          localPath: localFilePath,
+          editor,
+          autoSync: !!autoSync
+        });
+      });
+
+      readStream.pipe(writeStream);
+      return;
+    }
+
+    // --- SFTP STOP EXTERNAL WATCHER ---
+    if (type === 'sftp-stop-external') {
+      const { path: targetPath, id } = msg;
+      if (activeExternalWatchers.has(targetPath)) {
+        const item = activeExternalWatchers.get(targetPath);
+        if (item && item.watcher) {
+          try { item.watcher.close(); } catch (e) {}
+        }
+        activeExternalWatchers.delete(targetPath);
+      }
+      safeSend({ type: 'sftp-stop-external-res', id, success: true });
       return;
     }
   });

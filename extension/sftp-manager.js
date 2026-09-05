@@ -438,6 +438,18 @@ class SFTPManager {
       return;
     }
 
+    // Handle background external editor auto-sync notification
+    if (msg.type === 'sftp-external-synced') {
+      this.updateStatus(isPersian ? `فایل "${msg.filename}" به طور خودکار در سرور به‌روزرسانی شد 🟢` : `File "${msg.filename}" auto-synced to server 🟢`);
+      const targetFile = this.currentFiles.find(f => f.filename === msg.filename);
+      if (targetFile) {
+        if (msg.size !== undefined) targetFile.attrs.size = msg.size;
+        targetFile.attrs.mtime = Math.floor((msg.mtime || Date.now()) / 1000);
+        this.renderFileList();
+      }
+      return;
+    }
+
     if (msg.id && session.pendingCallbacks.has(msg.id)) {
       const entry = session.pendingCallbacks.get(msg.id);
 
@@ -730,6 +742,16 @@ class SFTPManager {
     const disabled = count === 0;
     document.getElementById('btnSftpDownload').disabled = disabled;
     document.getElementById('btnSftpEdit').disabled = count !== 1;
+
+    const btnOpenWith = document.getElementById('btnSftpOpenWith');
+    if (btnOpenWith) {
+      const isSingle = count === 1;
+      const selectedName = isSingle ? Array.from(this.selectedFiles)[0] : null;
+      const selectedFile = selectedName ? this.currentFiles.find(f => f.filename === selectedName) : null;
+      const isDir = selectedFile ? selectedFile.isDir : false;
+      btnOpenWith.disabled = !(isSingle && !isDir);
+    }
+
     const btnDelete = document.getElementById('btnSftpDelete');
     if (btnDelete) {
       btnDelete.disabled = disabled;
@@ -1683,6 +1705,192 @@ class SFTPManager {
 
   updateStatus(text) {
     this.statusEl.textContent = text;
+  }
+
+  // ================= OPEN WITH / EXTERNAL EDITOR =================
+  openWith(filename) {
+    if (!filename) {
+      if (this.selectedFiles.size === 1) {
+        filename = Array.from(this.selectedFiles)[0];
+      } else {
+        return;
+      }
+    }
+
+    const file = this.currentFiles.find(f => f.filename === filename);
+    if (file && file.isDir) {
+      return;
+    }
+
+    this.activeOpenWithFile = filename;
+    const targetPath = (this.currentPath.endsWith('/') ? this.currentPath : this.currentPath + '/') + filename;
+    this.activeOpenWithPath = targetPath;
+
+    const modal = document.getElementById('openWithModal');
+    const nameEl = document.getElementById('openWithFileName');
+    const customRow = document.getElementById('openWithCustomCmdRow');
+    const customInput = document.getElementById('openWithCustomCmd');
+    const autoSyncChk = document.getElementById('openWithAutoSync');
+    const syncBox = document.getElementById('openWithActiveSyncBox');
+
+    if (nameEl) nameEl.textContent = `${filename} (${targetPath})`;
+    if (syncBox) syncBox.style.display = 'none';
+
+    // Load saved preferences
+    const savedEditor = localStorage.getItem('livekadeh_ext_editor') || 'default';
+    const savedCustom = localStorage.getItem('livekadeh_ext_editor_cmd') || '';
+    const savedAutoSync = localStorage.getItem('livekadeh_ext_autosync');
+
+    if (autoSyncChk) {
+      autoSyncChk.checked = savedAutoSync !== 'false';
+    }
+    if (customInput) {
+      customInput.value = savedCustom;
+    }
+
+    // Activate selected app card
+    const cards = document.querySelectorAll('#openWithAppsGrid .openwith-app-card');
+    cards.forEach(c => {
+      const isMatch = c.getAttribute('data-app') === savedEditor;
+      c.classList.toggle('active', isMatch);
+    });
+
+    if (customRow) {
+      customRow.style.display = savedEditor === 'custom' ? 'block' : 'none';
+    }
+
+    if (modal) modal.classList.add('active');
+  }
+
+  async launchExternalEditor(targetPath, filename, editorChoice, customCmd, autoSync) {
+    const isPersian = window.i18n && window.i18n.currentLang === 'fa';
+    this.updateStatus(isPersian ? `در حال آماده‌سازی و باز کردن "${filename}" در ادیتور خارجی...` : `Preparing and launching "${filename}" in external editor...`);
+
+    const syncBox = document.getElementById('openWithActiveSyncBox');
+    const syncText = document.getElementById('openWithSyncStatusText');
+
+    try {
+      const res = await this.sendRequest({
+        type: 'sftp-open-external',
+        path: targetPath,
+        editor: editorChoice,
+        customCommand: customCmd,
+        autoSync: !!autoSync
+      }, { timeout: 45000 });
+
+      if (res && res.success) {
+        if (autoSync && syncBox && syncText) {
+          syncBox.style.display = 'block';
+          syncText.textContent = isPersian 
+            ? `پایش خودکار فعال است. با ذخیره (Ctrl+S) تغییرات روی سرور ذخیره می‌شود.`
+            : `Auto-sync active. Changes will upload to server on save (Ctrl+S).`;
+        }
+
+        this.updateStatus(isPersian 
+          ? `فایل "${filename}" در برنامه سیستم باز شد ✔` 
+          : `File "${filename}" launched in system application ✔`);
+
+        setTimeout(() => {
+          const modal = document.getElementById('openWithModal');
+          if (modal) modal.classList.remove('active');
+        }, 1200);
+      } else {
+        throw new Error(res.error || 'Failed to open file in system application');
+      }
+    } catch (err) {
+      console.error('Launch external editor error:', err);
+      const bridgeHost = this.bridgeUrl || '';
+      const isRemoteBridge = !bridgeHost.includes('localhost') && !bridgeHost.includes('127.0.0.1');
+
+      let tip = '';
+      if (isRemoteBridge) {
+        tip = isPersian 
+          ? '\n\n💡 نکته: سرور بریدج روی هاست ریموت متصل است. برای باز کردن در برنامه‌های ویندوز یا دسکتاپ، از بریج محلی (Local Bridge) استفاده کنید یا از گزینه‌های «نمایش در برگه جدید» / «ویرایشگر داخلی» بهره ببرید.'
+          : '\n\n💡 Tip: Connected to a remote bridge server. To open with local desktop programs, connect to Local Bridge (localhost) or use "Open in New Tab" / "Built-in Editor".';
+      }
+
+      alert((isPersian ? 'خطا در اجرای برنامه سیستم: ' : 'Failed to launch system application: ') + err.message + tip);
+      this.updateStatus(isPersian ? 'خطا در باز کردن ادیتور سیستم' : 'Error launching external editor');
+    }
+  }
+
+  async openInNewTab(filename) {
+    if (!filename) return;
+    const isPersian = window.i18n && window.i18n.currentLang === 'fa';
+    const targetPath = (this.currentPath.endsWith('/') ? this.currentPath : this.currentPath + '/') + filename;
+    this.updateStatus(isPersian ? `در حال باز کردن "${filename}" در برگه جدید...` : `Opening "${filename}" in new tab...`);
+
+    try {
+      const lower = filename.toLowerCase();
+      let mimeType = 'text/plain; charset=utf-8';
+      if (lower.endsWith('.html') || lower.endsWith('.htm')) mimeType = 'text/html; charset=utf-8';
+      else if (lower.endsWith('.json')) mimeType = 'application/json; charset=utf-8';
+      else if (lower.endsWith('.css')) mimeType = 'text/css; charset=utf-8';
+      else if (lower.endsWith('.js') || lower.endsWith('.mjs')) mimeType = 'application/javascript; charset=utf-8';
+      else if (lower.endsWith('.xml') || lower.endsWith('.svg')) mimeType = 'text/xml; charset=utf-8';
+      else if (lower.endsWith('.md')) mimeType = 'text/markdown; charset=utf-8';
+      else if (lower.endsWith('.pdf')) mimeType = 'application/pdf';
+      else if (lower.endsWith('.png')) mimeType = 'image/png';
+      else if (lower.endsWith('.jpg') || lower.endsWith('.jpeg')) mimeType = 'image/jpeg';
+      else if (lower.endsWith('.gif')) mimeType = 'image/gif';
+      else if (lower.endsWith('.webp')) mimeType = 'image/webp';
+      else if (lower.endsWith('.mp4')) mimeType = 'video/mp4';
+      else if (lower.endsWith('.mp3')) mimeType = 'audio/mpeg';
+
+      const isBinary = mimeType.startsWith('image/') || mimeType.startsWith('video/') || mimeType.startsWith('audio/') || mimeType === 'application/pdf';
+
+      if (isBinary) {
+        const res = await this.sendRequest({ type: 'sftp-download', path: targetPath });
+        const byteCharacters = atob(res.content);
+        const byteNumbers = new Array(byteCharacters.length);
+        for (let i = 0; i < byteCharacters.length; i++) {
+          byteNumbers[i] = byteCharacters.charCodeAt(i);
+        }
+        const blob = new Blob([new Uint8Array(byteNumbers)], { type: mimeType });
+        const url = URL.createObjectURL(blob);
+        window.open(url, '_blank');
+      } else {
+        const res = await this.sendRequest({ type: 'sftp-read', path: targetPath });
+        const blob = new Blob([res.content], { type: mimeType });
+        const url = URL.createObjectURL(blob);
+        window.open(url, '_blank');
+      }
+
+      const modal = document.getElementById('openWithModal');
+      if (modal) modal.classList.remove('active');
+      this.updateStatus(isPersian ? `فایل "${filename}" در برگه جدید باز شد ✔` : `Opened "${filename}" in new tab ✔`);
+    } catch (err) {
+      alert((isPersian ? 'خطا در باز کردن برگه: ' : 'Error opening in new tab: ') + err.message);
+    }
+  }
+
+  async saveAndSyncWithFilePicker(filename) {
+    if (!filename) return;
+    const isPersian = window.i18n && window.i18n.currentLang === 'fa';
+    const targetPath = (this.currentPath.endsWith('/') ? this.currentPath : this.currentPath + '/') + filename;
+
+    try {
+      if (window.showSaveFilePicker) {
+        this.updateStatus(isPersian ? `در حال آماده‌سازی فایل "${filename}"...` : `Preparing file "${filename}"...`);
+        const res = await this.sendRequest({ type: 'sftp-read', path: targetPath });
+        const handle = await window.showSaveFilePicker({ suggestedName: filename });
+        const writable = await handle.createWritable();
+        await writable.write(res.content);
+        await writable.close();
+
+        this.updateStatus(isPersian ? `فایل "${filename}" در دیسک ذخیره شد ✔` : `Saved "${filename}" to local disk ✔`);
+        const modal = document.getElementById('openWithModal');
+        if (modal) modal.classList.remove('active');
+      } else {
+        this.downloadFile(filename);
+        const modal = document.getElementById('openWithModal');
+        if (modal) modal.classList.remove('active');
+      }
+    } catch (err) {
+      if (err.name !== 'AbortError') {
+        alert((isPersian ? 'خطا در ذخیره فایل: ' : 'Error saving file: ') + err.message);
+      }
+    }
   }
 }
 

@@ -510,6 +510,12 @@ document.addEventListener('DOMContentLoaded', async () => {
       sftpManager.editFile(Array.from(sftpManager.selectedFiles)[0]);
     }
   });
+  const btnSftpOpenWith = document.getElementById('btnSftpOpenWith');
+  if (btnSftpOpenWith) {
+    btnSftpOpenWith.addEventListener('click', () => {
+      sftpManager.openWith();
+    });
+  }
   const btnSftpExtract = document.getElementById('btnSftpExtract');
   if (btnSftpExtract) {
     btnSftpExtract.addEventListener('click', () => {
@@ -554,6 +560,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const sftpContextMenu = document.getElementById('sftpContextMenu');
   const sftpCtxOpen = document.getElementById('sftpCtxOpen');
   const sftpCtxDownload = document.getElementById('sftpCtxDownload');
+  const sftpCtxOpenWith = document.getElementById('sftpCtxOpenWith');
   const sftpCtxPreview = document.getElementById('sftpCtxPreview');
   const sftpCtxEdit = document.getElementById('sftpCtxEdit');
   const sftpCtxExtract = document.getElementById('sftpCtxExtract');
@@ -597,6 +604,7 @@ document.addEventListener('DOMContentLoaded', async () => {
           }
         }
       }
+      if (sftpCtxOpenWith) sftpCtxOpenWith.style.display = isDir ? 'none' : 'flex';
       if (sftpCtxPreview) sftpCtxPreview.style.display = isMedia ? 'flex' : 'none';
       if (sftpCtxEdit) sftpCtxEdit.style.display = isDir ? 'none' : 'flex';
       if (sftpCtxExtract) sftpCtxExtract.style.display = isArchive ? 'flex' : 'none';
@@ -623,6 +631,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     } else {
       if (sftpCtxOpen) sftpCtxOpen.style.display = 'none';
       if (sftpCtxDownload) sftpCtxDownload.style.display = 'none';
+      if (sftpCtxOpenWith) sftpCtxOpenWith.style.display = 'none';
       if (sftpCtxPreview) sftpCtxPreview.style.display = 'none';
       if (sftpCtxEdit) sftpCtxEdit.style.display = 'none';
       if (sftpCtxExtract) sftpCtxExtract.style.display = 'none';
@@ -692,6 +701,16 @@ document.addEventListener('DOMContentLoaded', async () => {
       hideSftpContextMenu();
       if (sftpContextTarget && sftpContextTarget.filename) {
         sftpManager.downloadFile(sftpContextTarget.filename, sftpContextTarget.isDir);
+      }
+    });
+  }
+
+  if (sftpCtxOpenWith) {
+    sftpCtxOpenWith.addEventListener('click', () => {
+      hideSftpContextMenu();
+      const targetName = sftpContextTarget ? sftpContextTarget.filename : Array.from(sftpManager.selectedFiles)[0];
+      if (targetName) {
+        sftpManager.openWith(targetName);
       }
     });
   }
@@ -849,6 +868,15 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Editor Modal
   btnEditorSave.addEventListener('click', () => sftpManager.saveEditedFile());
   btnCloseEditorModal.addEventListener('click', () => editorModal.classList.remove('active'));
+  const btnEditorOpenWith = document.getElementById('btnEditorOpenWith');
+  if (btnEditorOpenWith) {
+    btnEditorOpenWith.addEventListener('click', () => {
+      const editorFilePath = document.getElementById('editorFilePath').textContent;
+      const filename = editorFilePath.split('/').pop();
+      editorModal.classList.remove('active');
+      sftpManager.openWith(filename);
+    });
+  }
 
   // Media Preview Modal
   const mediaModal = document.getElementById('mediaModal');
@@ -880,6 +908,84 @@ document.addEventListener('DOMContentLoaded', async () => {
   if (sftpInfoModal) {
     sftpInfoModal.addEventListener('click', (e) => {
       if (e.target === sftpInfoModal) sftpInfoModal.classList.remove('active');
+    });
+  }
+
+  // Open With Modal
+  const openWithModal = document.getElementById('openWithModal');
+  const btnCloseOpenWithModal = document.getElementById('btnCloseOpenWithModal');
+  const btnLaunchExternalEditor = document.getElementById('btnLaunchExternalEditor');
+  const btnOpenWithNewTab = document.getElementById('btnOpenWithNewTab');
+  const btnOpenWithBuiltinEditor = document.getElementById('btnOpenWithBuiltinEditor');
+  const btnOpenWithFilePicker = document.getElementById('btnOpenWithFilePicker');
+  const openWithAppsGrid = document.getElementById('openWithAppsGrid');
+  const openWithCustomCmdRow = document.getElementById('openWithCustomCmdRow');
+  const openWithCustomCmd = document.getElementById('openWithCustomCmd');
+  const openWithAutoSync = document.getElementById('openWithAutoSync');
+
+  if (btnCloseOpenWithModal) {
+    btnCloseOpenWithModal.addEventListener('click', () => {
+      if (openWithModal) openWithModal.classList.remove('active');
+    });
+  }
+  if (openWithModal) {
+    openWithModal.addEventListener('click', (e) => {
+      if (e.target === openWithModal) openWithModal.classList.remove('active');
+    });
+  }
+
+  if (openWithAppsGrid) {
+    openWithAppsGrid.addEventListener('click', (e) => {
+      const card = e.target.closest('.openwith-app-card');
+      if (!card) return;
+      const app = card.getAttribute('data-app');
+      document.querySelectorAll('#openWithAppsGrid .openwith-app-card').forEach(c => c.classList.remove('active'));
+      card.classList.add('active');
+
+      if (openWithCustomCmdRow) {
+        openWithCustomCmdRow.style.display = app === 'custom' ? 'block' : 'none';
+        if (app === 'custom' && openWithCustomCmd) openWithCustomCmd.focus();
+      }
+    });
+  }
+
+  if (btnLaunchExternalEditor) {
+    btnLaunchExternalEditor.addEventListener('click', () => {
+      const activeCard = document.querySelector('#openWithAppsGrid .openwith-app-card.active');
+      const editorChoice = activeCard ? activeCard.getAttribute('data-app') : 'default';
+      const customCmd = openWithCustomCmd ? openWithCustomCmd.value.trim() : '';
+      const autoSync = openWithAutoSync ? openWithAutoSync.checked : true;
+
+      localStorage.setItem('livekadeh_ext_editor', editorChoice);
+      if (customCmd) localStorage.setItem('livekadeh_ext_editor_cmd', customCmd);
+      localStorage.setItem('livekadeh_ext_autosync', autoSync ? 'true' : 'false');
+
+      sftpManager.launchExternalEditor(
+        sftpManager.activeOpenWithPath,
+        sftpManager.activeOpenWithFile,
+        editorChoice,
+        customCmd,
+        autoSync
+      );
+    });
+  }
+
+  if (btnOpenWithNewTab) {
+    btnOpenWithNewTab.addEventListener('click', () => {
+      sftpManager.openInNewTab(sftpManager.activeOpenWithFile);
+    });
+  }
+
+  if (btnOpenWithBuiltinEditor) {
+    btnOpenWithBuiltinEditor.addEventListener('click', () => {
+      if (openWithModal) openWithModal.classList.remove('active');
+      sftpManager.editFile(sftpManager.activeOpenWithFile);
+    });
+  }
+
+  if (btnOpenWithFilePicker) {
+    btnOpenWithFilePicker.addEventListener('click', () => {
+      sftpManager.saveAndSyncWithFilePicker(sftpManager.activeOpenWithFile);
     });
   }
   if (btnInfoCopyPath) {
@@ -1035,12 +1141,36 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
 
   // Settings Loading & Saving
+  const settingDefaultExtEditor = document.getElementById('settingDefaultExtEditor');
+  const settingCustomEditorRow = document.getElementById('settingCustomEditorRow');
+  const settingCustomEditorCmd = document.getElementById('settingCustomEditorCmd');
+  const settingExtAutoSync = document.getElementById('settingExtAutoSync');
+
+  if (settingDefaultExtEditor) {
+    settingDefaultExtEditor.addEventListener('change', () => {
+      if (settingCustomEditorRow) {
+        settingCustomEditorRow.style.display = settingDefaultExtEditor.value === 'custom' ? 'block' : 'none';
+      }
+    });
+  }
+
   async function loadSettings() {
     const data = await chrome.storage.local.get(['bridgeUrl', 'fontFamily', 'fontSize', 'terminalTheme']);
     if (data.bridgeUrl) settingBridgeUrl.value = data.bridgeUrl;
     if (data.fontFamily) settingFontFamily.value = data.fontFamily;
     if (data.fontSize) settingFontSize.value = data.fontSize;
     if (data.terminalTheme) settingTerminalTheme.value = data.terminalTheme;
+
+    const extEditor = localStorage.getItem('livekadeh_ext_editor') || 'default';
+    const extEditorCmd = localStorage.getItem('livekadeh_ext_editor_cmd') || '';
+    const extAutoSync = localStorage.getItem('livekadeh_ext_autosync');
+
+    if (settingDefaultExtEditor) {
+      settingDefaultExtEditor.value = extEditor;
+      if (settingCustomEditorRow) settingCustomEditorRow.style.display = extEditor === 'custom' ? 'block' : 'none';
+    }
+    if (settingCustomEditorCmd) settingCustomEditorCmd.value = extEditorCmd;
+    if (settingExtAutoSync) settingExtAutoSync.checked = extAutoSync !== 'false';
   }
 
   btnSaveSettings.addEventListener('click', async () => {
@@ -1053,6 +1183,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     termManager.fontFamily = fontFamily;
     termManager.fontSize = fontSize;
     termManager.themeName = terminalTheme;
+
+    if (settingDefaultExtEditor) {
+      localStorage.setItem('livekadeh_ext_editor', settingDefaultExtEditor.value);
+      localStorage.setItem('livekadeh_ext_editor_cmd', settingCustomEditorCmd ? settingCustomEditorCmd.value.trim() : '');
+      localStorage.setItem('livekadeh_ext_autosync', settingExtAutoSync ? (settingExtAutoSync.checked ? 'true' : 'false') : 'true');
+    }
 
     const isPersian = window.i18n && window.i18n.currentLang === 'fa';
     alert(isPersian ? 'تنظیمات با موفقیت ذخیره گردید ✔' : 'Settings saved successfully ✔');
