@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&family=Fira+Code:wght@400;500;600&display=swap');
 
 :root {
   --bg-dark: #06090e;
@@ -22,6 +22,7 @@
   --radius-md: 12px;
   --radius-lg: 16px;
   --font-mono: 'JetBrains Mono', monospace;
+  --terminal-font: 'Cascadia Code', 'Consolas', 'JetBrains Mono', 'Fira Code', monospace;
   --transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
@@ -233,10 +234,19 @@
   transform: translateY(-1px);
 }
 
-* {
+*,
+*::before,
+*::after {
   box-sizing: border-box;
   margin: 0;
   padding: 0;
+}
+
+body,
+button,
+input,
+select,
+textarea {
   font-family: 'Vazirmatn', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 }
 
@@ -503,11 +513,21 @@ body {
 }
 
 .terminal-container,
+.terminal-container *,
 .xterm-wrapper,
-.xterm-instance {
-  font-family: 'Cascadia Code', 'Consolas', 'JetBrains Mono', 'Fira Code', 'Vazir Code', 'Courier New', monospace;
-  letter-spacing: 0;
-  word-spacing: 0;
+.xterm-instance,
+.xterm,
+.xterm *,
+.xterm-screen,
+.xterm-rows,
+.xterm-rows div,
+.xterm-rows span,
+.xterm-char-measure-element {
+  font-family: var(--terminal-font, 'Cascadia Code', 'Consolas', 'JetBrains Mono', monospace) !important;
+  font-feature-settings: "liga" 0 !important;
+  font-variant-ligatures: none !important;
+  letter-spacing: 0px !important;
+  word-spacing: 0px !important;
 }
 
 .btn-action.active-rtl {

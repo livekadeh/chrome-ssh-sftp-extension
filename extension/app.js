@@ -1228,7 +1228,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (data.bridgeUrl) settingBridgeUrl.value = data.bridgeUrl;
     if (data.fontFamily) {
       settingFontFamily.value = data.fontFamily;
-      termManager.fontFamily = data.fontFamily;
+      if (!settingFontFamily.value) {
+        settingFontFamily.selectedIndex = 0;
+      }
+      termManager.fontFamily = settingFontFamily.value;
+    } else {
+      termManager.fontFamily = settingFontFamily.value;
     }
     if (data.fontSize) {
       settingFontSize.value = data.fontSize;
@@ -1253,6 +1258,31 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
     if (settingCustomEditorCmd) settingCustomEditorCmd.value = extEditorCmd;
     if (settingExtAutoSync) settingExtAutoSync.checked = extAutoSync !== 'false';
+  }
+
+  // Live preview for appearance changes
+  if (settingFontFamily) {
+    settingFontFamily.addEventListener('change', () => {
+      termManager.fontFamily = settingFontFamily.value;
+      termManager.applyAppearance();
+    });
+  }
+
+  if (settingTerminalTheme) {
+    settingTerminalTheme.addEventListener('change', () => {
+      termManager.themeName = settingTerminalTheme.value;
+      termManager.applyAppearance();
+    });
+  }
+
+  if (settingFontSize) {
+    settingFontSize.addEventListener('input', () => {
+      const sz = parseInt(settingFontSize.value, 10);
+      if (sz >= 10 && sz <= 28) {
+        termManager.fontSize = sz;
+        termManager.applyAppearance();
+      }
+    });
   }
 
   btnSaveSettings.addEventListener('click', async () => {

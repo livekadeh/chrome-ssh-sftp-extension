@@ -9,9 +9,12 @@ class SSHTerminalManager {
     this.sessions = new Map();
     this.activeSessionId = null;
     this.fontSize = 14;
-    this.fontFamily = "'Cascadia Code', 'Consolas', 'JetBrains Mono', 'Fira Code', 'Vazir Code', 'Courier New', monospace";
+    this.fontFamily = "'Cascadia Code', 'Consolas', 'JetBrains Mono', 'Fira Code', monospace, 'Vazirmatn'";
     this.themeName = 'cyberpunk';
     this.rtlAlignEnabled = true;
+    try {
+      document.documentElement.style.setProperty('--terminal-font', this.fontFamily);
+    } catch (e) {}
 
     this.themes = {
       cyberpunk: {
@@ -350,6 +353,12 @@ class SSHTerminalManager {
 
   applyAppearance() {
     const activeTheme = this.themes[this.themeName] || this.themes.cyberpunk;
+    try {
+      document.documentElement.style.setProperty('--terminal-font', this.fontFamily);
+      if (this.containerEl) {
+        this.containerEl.style.setProperty('--terminal-font', this.fontFamily);
+      }
+    } catch (e) {}
     this.sessions.forEach((session) => {
       if (session && session.term) {
         session.term.options.fontFamily = this.fontFamily;
@@ -373,6 +382,9 @@ class SSHTerminalManager {
     termDiv.style.width = '100%';
     termDiv.style.height = '100%';
     termDiv.style.display = 'none';
+    try {
+      termDiv.style.setProperty('--terminal-font', this.fontFamily);
+    } catch (e) {}
     this.containerEl.appendChild(termDiv);
 
     // Initialize xterm
