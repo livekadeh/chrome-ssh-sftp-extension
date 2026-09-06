@@ -148,6 +148,13 @@ const I18N_DICTIONARY = {
     drawer_no_sftp: 'No active SFTP session connected',
     drawer_no_ssh: 'No active SSH terminal open',
     drawer_new_conn: '+ New Connection',
+    header_transfers_btn: 'Transfers',
+    drawer_transfers: 'Transfers',
+    transfers_drawer_title: 'Transfers & Operations',
+    transfers_clear_completed: 'Clear Completed',
+    transfers_no_active: 'No active transfers or operations',
+    transfers_active_tasks: 'active task(s)',
+    transfers_total_speed: 'Total Speed',
 
     // Servers View
     servers_title: 'Saved Server Vault',
@@ -376,6 +383,13 @@ const I18N_DICTIONARY = {
     drawer_no_sftp: 'هیچ نشست فعال SFTP وجود ندارد',
     drawer_no_ssh: 'هیچ ترمینال SSH باز نیست',
     drawer_new_conn: '+ اتصال جدید',
+    header_transfers_btn: 'عملیات‌ها',
+    drawer_transfers: 'عملیات‌ها',
+    transfers_drawer_title: 'مدیریت انتقال‌ها و عملیات‌ها',
+    transfers_clear_completed: 'پاک کردن',
+    transfers_no_active: 'هیچ انتقال یا عملیاتی در حال اجرا نیست',
+    transfers_active_tasks: 'عملیات فعال',
+    transfers_total_speed: 'سرعت کل',
 
     // Servers View
     servers_title: 'صندوقچه سرورهای ذخیره‌شده',

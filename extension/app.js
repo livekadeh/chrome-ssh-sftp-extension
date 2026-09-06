@@ -1817,6 +1817,9 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (sessionsDrawer && sessionsDrawer.classList.contains('active')) {
         closeSessionsDrawer();
       }
+      if (window.transferManager && window.transferManager.isOpen) {
+        window.transferManager.closeDrawer();
+      }
     }
   });
 
@@ -2007,4 +2010,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   await loadServersList();
   await loadPublicBridges();
   await renderSessionsDrawer();
+  if (window.transferManager) {
+    window.transferManager.init();
+  }
 });

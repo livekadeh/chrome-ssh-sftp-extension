@@ -3476,6 +3476,328 @@ html[dir="rtl"] .btn-danger-icon {
   margin-bottom: 14px;
 }
 
+/* ================= ACTIVE TRANSFERS DRAWER & FLOATING TAB ================= */
+.floating-sessions-tab#btnFloatingSessions {
+  top: calc(50% - 32px);
+}
+
+.floating-transfers-tab {
+  top: calc(50% + 32px);
+  border-color: rgba(245, 158, 11, 0.4);
+  color: #fbbf24;
+}
+
+.floating-transfers-tab.has-active-transfers {
+  background: rgba(245, 158, 11, 0.18) !important;
+  border-color: rgba(245, 158, 11, 0.8) !important;
+  box-shadow: 0 0 16px rgba(245, 158, 11, 0.45) !important;
+  animation: pulseTabAmber 2s infinite ease-in-out;
+}
+
+@keyframes pulseTabAmber {
+  0% { box-shadow: 0 0 8px rgba(245, 158, 11, 0.3); }
+  50% { box-shadow: 0 0 20px rgba(245, 158, 11, 0.7); }
+  100% { box-shadow: 0 0 8px rgba(245, 158, 11, 0.3); }
+}
+
+.pulse-indicator-transfer {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #fbbf24;
+  box-shadow: 0 0 8px #fbbf24;
+  animation: pulseTransfer 1.8s infinite;
+}
+
+@keyframes pulseTransfer {
+  0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.7); }
+  70% { transform: scale(1.1); box-shadow: 0 0 0 6px rgba(245, 158, 11, 0); }
+  100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(245, 158, 11, 0); }
+}
+
+.transfers-badge {
+  background: #fbbf24 !important;
+  color: #05080f !important;
+}
+
+.btn-transfers-trigger {
+  border-color: rgba(245, 158, 11, 0.3);
+}
+
+.btn-transfers-trigger:hover {
+  border-color: #fbbf24;
+  background: rgba(245, 158, 11, 0.12);
+  box-shadow: 0 0 10px rgba(245, 158, 11, 0.4);
+}
+
+.btn-drawer-action {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #e2e8f0;
+  border-radius: var(--radius-xs);
+  padding: 4px 10px;
+  font-size: 11px;
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.btn-drawer-action:hover {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+.drawer-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.transfers-drawer-body {
+  padding: 14px 16px;
+  overflow-y: auto;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.transfers-items-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.transfer-card {
+  background: rgba(15, 23, 42, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius-md);
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  transition: var(--transition);
+  position: relative;
+  overflow: hidden;
+}
+
+.transfer-card:hover {
+  border-color: rgba(0, 240, 255, 0.35);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+}
+
+.transfer-card.status-running {
+  border-left: 3px solid #fbbf24;
+}
+
+html[dir="rtl"] .transfer-card.status-running {
+  border-left: 1px solid rgba(255, 255, 255, 0.1);
+  border-right: 3px solid #fbbf24;
+}
+
+.transfer-card.status-completed {
+  border-left: 3px solid var(--accent-green);
+}
+
+html[dir="rtl"] .transfer-card.status-completed {
+  border-left: 1px solid rgba(255, 255, 255, 0.1);
+  border-right: 3px solid var(--accent-green);
+}
+
+.transfer-card.status-error {
+  border-left: 3px solid #f87171;
+}
+
+html[dir="rtl"] .transfer-card.status-error {
+  border-left: 1px solid rgba(255, 255, 255, 0.1);
+  border-right: 3px solid #f87171;
+}
+
+.transfer-card.status-cancelled {
+  border-left: 3px solid #94a3b8;
+  opacity: 0.75;
+}
+
+html[dir="rtl"] .transfer-card.status-cancelled {
+  border-left: 1px solid rgba(255, 255, 255, 0.1);
+  border-right: 3px solid #94a3b8;
+}
+
+.transfer-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.transfer-header-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  flex: 1;
+}
+
+.transfer-icon {
+  font-size: 20px;
+  flex-shrink: 0;
+}
+
+.transfer-icon.pulse {
+  animation: pulseSession 1.5s infinite;
+}
+
+.transfer-title-group {
+  min-width: 0;
+  flex: 1;
+}
+
+.transfer-file-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: #f8fafc;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  direction: ltr;
+  text-align: left;
+}
+
+html[dir="rtl"] .transfer-file-name {
+  text-align: right;
+}
+
+.transfer-type-tag {
+  font-size: 11px;
+  color: #94a3b8;
+  margin-top: 2px;
+}
+
+.transfer-header-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.transfer-status-badge {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 12px;
+  white-space: nowrap;
+}
+
+.transfer-status-badge.badge-running {
+  background: rgba(245, 158, 11, 0.18);
+  color: #fbbf24;
+  border: 1px solid rgba(245, 158, 11, 0.35);
+}
+
+.transfer-status-badge.badge-completed {
+  background: rgba(34, 197, 94, 0.15);
+  color: #4ade80;
+  border: 1px solid rgba(34, 197, 94, 0.3);
+}
+
+.transfer-status-badge.badge-error {
+  background: rgba(239, 68, 68, 0.15);
+  color: #f87171;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.transfer-status-badge.badge-cancelled {
+  background: rgba(148, 163, 184, 0.15);
+  color: #cbd5e1;
+  border: 1px solid rgba(148, 163, 184, 0.25);
+}
+
+.btn-task-action {
+  background: transparent;
+  border: none;
+  color: #94a3b8;
+  font-size: 13px;
+  cursor: pointer;
+  padding: 4px 6px;
+  border-radius: var(--radius-xs);
+  transition: var(--transition);
+}
+
+.btn-task-action:hover {
+  color: #f87171;
+  background: rgba(239, 68, 68, 0.15);
+}
+
+.transfer-progress-track {
+  height: 6px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 3px;
+  overflow: hidden;
+  position: relative;
+}
+
+.transfer-progress-bar {
+  height: 100%;
+  background: linear-gradient(90deg, #38bdf8, #818cf8, #fbbf24);
+  border-radius: 3px;
+  transition: width 0.25s ease;
+}
+
+.status-completed .transfer-progress-bar {
+  background: var(--accent-green) !important;
+}
+
+.status-error .transfer-progress-bar {
+  background: #f87171 !important;
+}
+
+.status-cancelled .transfer-progress-bar {
+  background: #64748b !important;
+}
+
+.transfer-card-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 11.5px;
+  color: #94a3b8;
+  font-family: var(--font-mono);
+}
+
+.transfer-footer-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.transfer-percent {
+  font-weight: 700;
+  color: #f8fafc;
+}
+
+.transfer-size {
+  color: #94a3b8;
+}
+
+.transfer-speed {
+  color: #fbbf24;
+  font-weight: 600;
+}
+
+.transfers-drawer-footer {
+  padding: 12px 18px;
+  background: rgba(15, 23, 42, 0.85);
+  border-top: 1px solid var(--border-glass);
+}
+
+.transfers-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 11.5px;
+  color: #cbd5e1;
+  font-family: var(--font-mono);
+}
+
 
 
 

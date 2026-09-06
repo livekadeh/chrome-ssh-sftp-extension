@@ -63,6 +63,13 @@
           <span id="headerSessionsBadge" class="sessions-badge">0</span>
         </button>
 
+        <button id="btnHeaderTransfers" class="btn-sessions-trigger btn-transfers-trigger" title="Transfers & Operations (مدیریت انتقال‌ها و عملیات‌ها)">
+          <span class="pulse-indicator-transfer"></span>
+          <span class="btn-trigger-icon">📥</span>
+          <span data-i18n="header_transfers_btn">Transfers</span>
+          <span id="headerTransfersBadge" class="sessions-badge transfers-badge">0</span>
+        </button>
+
         <button id="btnLangToggle" class="btn-lang-switcher" title="Switch Language / تغییر زبان">
           <span id="langCurrentText">🌐 فارسی</span>
         </button>
@@ -1168,6 +1175,15 @@
       <span id="floatingSessionsBadge" class="sessions-badge">0</span>
     </div>
 
+    <!-- Floating Transfers Tab on Edge (Draggable) -->
+    <div id="btnFloatingTransfers" class="floating-sessions-tab floating-transfers-tab" title="Transfers & Operations / مدیریت انتقال‌ها و عملیات‌ها (Drag up/down to move)" role="button" tabindex="0">
+      <span class="floating-drag-grip" title="Drag to move">⠿</span>
+      <span class="pulse-indicator-transfer"></span>
+      <span class="floating-tab-icon">📥⚡</span>
+      <span class="floating-tab-label" data-i18n="drawer_transfers">Transfers</span>
+      <span id="floatingTransfersBadge" class="sessions-badge transfers-badge">0</span>
+    </div>
+
     <!-- Sessions Drawer Backdrop -->
     <div id="sessionsDrawerBackdrop" class="drawer-backdrop"></div>
 
@@ -1234,12 +1250,51 @@
       </div>
     </aside>
 
+    <!-- Transfers Drawer Backdrop -->
+    <div id="transfersDrawerBackdrop" class="drawer-backdrop"></div>
+
+    <!-- Active Transfers Slide-Out Drawer -->
+    <aside id="transfersDrawer" class="sessions-drawer transfers-drawer">
+      <div class="drawer-header">
+        <div class="drawer-title-group">
+          <span class="drawer-title-icon">📥</span>
+          <div>
+            <h3 class="drawer-title" data-i18n="transfers_drawer_title">مدیریت انتقال‌ها و عملیات‌ها</h3>
+            <span class="drawer-subtitle" id="transfersDrawerSubtitle">۰ عملیات فعال</span>
+          </div>
+        </div>
+        <div class="drawer-header-actions">
+          <button id="btnClearFinishedTransfers" class="btn-drawer-action" title="Clear Completed / پاک کردن تکمیل‌شده‌ها" data-i18n-title="transfers_clear_completed">
+            <span>🧹 پاک کردن</span>
+          </button>
+          <button id="btnCloseTransfersDrawer" class="drawer-close-btn" title="بستن">✕</button>
+        </div>
+      </div>
+
+      <div class="drawer-body transfers-drawer-body">
+        <div id="transfersListContainer" class="transfers-items-list">
+          <div class="drawer-empty-hint" id="transfersEmptyHint" data-i18n="transfers_no_active">
+            <span class="empty-hint-icon">🚀</span>
+            <span>هیچ انتقال یا عملیاتی در حال اجرا نیست</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="drawer-footer transfers-drawer-footer">
+        <div class="transfers-summary">
+          <span id="transfersTotalSpeed">سرعت کل: ۰ B/s</span>
+          <span id="transfersActiveCount">۰ در حال اجرا</span>
+        </div>
+      </div>
+    </aside>
+
   </div>
 
   <script src="lib/xterm.js"></script>
   <script src="lib/xterm-addon-fit.js"></script>
   <script src="lib/persian-bidi-shaper.js"></script>
   <script src="lib/i18n.js"></script>
+  <script src="transfer-manager.js"></script>
   <script src="ssh-terminal.js"></script>
   <script src="sftp-manager.js"></script>
   <script src="app.js"></script>

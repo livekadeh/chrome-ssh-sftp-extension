@@ -854,6 +854,16 @@ class SFTPManager {
 
     this.updateStatus(isPersian ? `در حال فشرده‌سازی ${archiveName}...` : `Compressing into ${archiveName}...`);
 
+    let transferTask = null;
+    if (window.transferManager) {
+      transferTask = window.transferManager.addTask({
+        type: 'compress',
+        name: archiveName,
+        statusText: isPersian ? 'در حال فشرده‌سازی در سرور...' : 'Compressing archive on server...',
+        canCancel: false
+      });
+    }
+
     try {
       const res = await this.sendRequest({
         type: 'sftp-compress',
@@ -866,14 +876,23 @@ class SFTPManager {
       if (res && res.success) {
         const succMsg = isPersian ? `فایل "${archiveName}" با موفقیت ایجاد شد ✔` : `Archive "${archiveName}" created successfully ✔`;
         this.updateStatus(succMsg);
+        if (transferTask && window.transferManager) {
+          window.transferManager.completeTask(transferTask.id, succMsg);
+        }
         alert(succMsg);
         this.listDirectory(this.currentPath);
       } else {
         const errMsg = res && res.error ? res.error : 'Unknown compression error';
+        if (transferTask && window.transferManager) {
+          window.transferManager.errorTask(transferTask.id, errMsg);
+        }
         alert(isPersian ? `خطا در فشرده‌سازی:\n${errMsg}` : `Compression error:\n${errMsg}`);
         this.updateStatus(isPersian ? 'خطا در فشرده‌سازی' : 'Compression failed');
       }
     } catch (err) {
+      if (transferTask && window.transferManager) {
+        window.transferManager.errorTask(transferTask.id, err);
+      }
       alert(`Compression error: ${err.message}`);
       this.updateStatus('Compression error');
     }
@@ -897,6 +916,16 @@ class SFTPManager {
 
     this.updateStatus(isPersian ? `در حال استخراج ${filename}...` : `Extracting ${filename}...`);
 
+    let transferTask = null;
+    if (window.transferManager) {
+      transferTask = window.transferManager.addTask({
+        type: 'extract',
+        name: filename,
+        statusText: isPersian ? 'در حال استخراج در سرور...' : 'Extracting archive on server...',
+        canCancel: false
+      });
+    }
+
     try {
       const res = await this.sendRequest({
         type: 'sftp-extract',
@@ -907,14 +936,23 @@ class SFTPManager {
       if (res && res.success) {
         const succMsg = isPersian ? `فایل "${filename}" با موفقیت استخراج شد ✔` : `Archive "${filename}" extracted successfully ✔`;
         this.updateStatus(succMsg);
+        if (transferTask && window.transferManager) {
+          window.transferManager.completeTask(transferTask.id, succMsg);
+        }
         alert(succMsg);
         this.listDirectory(this.currentPath);
       } else {
         const errMsg = res && res.error ? res.error : 'Unknown extract error';
+        if (transferTask && window.transferManager) {
+          window.transferManager.errorTask(transferTask.id, errMsg);
+        }
         alert(isPersian ? `خطا در استخراج فایل فشرده:\n${errMsg}` : `Extract error:\n${errMsg}`);
         this.updateStatus(isPersian ? 'خطا در استخراج آرشیو' : 'Extract failed');
       }
     } catch (err) {
+      if (transferTask && window.transferManager) {
+        window.transferManager.errorTask(transferTask.id, err);
+      }
       alert(`Extract error: ${err.message}`);
       this.updateStatus('Extract error');
     }
@@ -978,6 +1016,19 @@ class SFTPManager {
     let overallUploadedBytes = 0;
     const startTime = Date.now();
 
+    let transferTask = null;
+    if (window.transferManager) {
+      transferTask = window.transferManager.addTask({
+        type: 'upload',
+        name: fileList.length === 1 ? fileList[0].name : `${fileList.length} files (${this.formatBytes(totalBytes)})`,
+        totalBytes,
+        canCancel: true,
+        onCancel: () => {
+          this.isUploadCancelled = true;
+        }
+      });
+    }
+
     // Fast arrayBuffer to base64 conversion avoiding FileReader overhead
     const readSliceBase64 = async (blob) => {
       const buffer = await blob.arrayBuffer();
@@ -1030,6 +1081,16 @@ class SFTPManager {
         if (barEl) barEl.style.width = `${percent}%`;
         if (sizeEl) sizeEl.textContent = `${this.formatBytes(overallUploadedBytes)} / ${this.formatBytes(totalBytes)}`;
         if (speedEl) speedEl.textContent = `${this.formatBytes(speed)}/s`;
+
+        if (transferTask && window.transferManager) {
+          window.transferManager.updateTask(transferTask.id, {
+            transferredBytes: overallUploadedBytes,
+            totalBytes,
+            percent,
+            speed,
+            statusText: `${file.name} (${i + 1}/${fileList.length})`
+          });
+        }
       } else {
         // High-speed pipelined chunk upload for large files
         let initRes;
@@ -1039,61 +1100,8 @@ class SFTPManager {
           initRes = null;
         }
 
-        if (initRes && initRes.success && initRes.uploadId) {
-          const uploadId = initRes.uploadId;
-          const inFlight = new Set();
-          let uploadError = null;
-
-          for (let offset = 0; offset < file.size; offset += chunkSize) {
-            if (this.isUploadCancelled || uploadError) break;
-
-            const slice = file.slice(offset, offset + chunkSize);
-            const sliceOffset = offset;
-
-            const task = (async () => {
-              const chunkBase64 = await readSliceBase64(slice);
-              if (this.isUploadCancelled || uploadError) return;
-
-              await this.sendRequest({
-                type: 'sftp-chunk-write',
-                uploadId: uploadId,
-                chunk: chunkBase64,
-                offset: sliceOffset
-              });
-
-              overallUploadedBytes += slice.size;
-              const percent = totalBytes > 0 ? Math.min(100, Math.round((overallUploadedBytes / totalBytes) * 100)) : 100;
-              const elapsed = (Date.now() - startTime) / 1000;
-              const speed = elapsed > 0 ? overallUploadedBytes / elapsed : 0;
-
-              if (percentEl) percentEl.textContent = `${percent}%`;
-              if (barEl) barEl.style.width = `${percent}%`;
-              if (sizeEl) sizeEl.textContent = `${this.formatBytes(overallUploadedBytes)} / ${this.formatBytes(totalBytes)}`;
-              if (speedEl) speedEl.textContent = `${this.formatBytes(speed)}/s`;
-            })().catch(err => {
-              uploadError = err;
-            });
-
-            inFlight.add(task);
-            task.finally(() => inFlight.delete(task));
-
-            if (inFlight.size >= CONCURRENCY) {
-              await Promise.race(inFlight);
-            }
-          }
-
-          await Promise.all(inFlight);
-
-          try {
-            await this.sendRequest({ type: 'sftp-chunk-end', uploadId });
-          } catch (e) {}
-
-          if (uploadError && !this.isUploadCancelled) {
-            alert(`خطا در آپلود ${file.name}: ${uploadError.message}`);
-            break;
-          }
-        } else {
-          // Direct write fallback
+        if (!initRes || !initRes.success || !initRes.uploadId) {
+          // Fallback to direct write
           try {
             const base64Data = await readSliceBase64(file);
             if (this.isUploadCancelled) break;
@@ -1108,11 +1116,90 @@ class SFTPManager {
             if (!this.isUploadCancelled) alert(`خطا در آپلود ${file.name}: ${err.message}`);
             break;
           }
+        } else {
+          const uploadId = initRes.uploadId;
+          const numChunks = Math.ceil(file.size / chunkSize);
+          let fileUploadedBytes = 0;
+          let uploadError = null;
+
+          const uploadChunkIndex = async (idx) => {
+            const start = idx * chunkSize;
+            const end = Math.min(start + chunkSize, file.size);
+            const slice = file.slice(start, end);
+            const chunkBase64 = await readSliceBase64(slice);
+
+            if (this.isUploadCancelled) return;
+
+            await this.sendRequest({
+              type: 'sftp-chunk-write',
+              uploadId,
+              chunk: chunkBase64,
+              offset: start
+            });
+
+            const chunkSizeActual = end - start;
+            fileUploadedBytes += chunkSizeActual;
+            overallUploadedBytes += chunkSizeActual;
+
+            const percent = totalBytes > 0 ? Math.round((overallUploadedBytes / totalBytes) * 100) : 100;
+            const elapsed = (Date.now() - startTime) / 1000;
+            const speed = elapsed > 0 ? overallUploadedBytes / elapsed : 0;
+            if (percentEl) percentEl.textContent = `${percent}%`;
+            if (barEl) barEl.style.width = `${percent}%`;
+            if (sizeEl) sizeEl.textContent = `${this.formatBytes(overallUploadedBytes)} / ${this.formatBytes(totalBytes)}`;
+            if (speedEl) speedEl.textContent = `${this.formatBytes(speed)}/s`;
+
+            if (transferTask && window.transferManager) {
+              window.transferManager.updateTask(transferTask.id, {
+                transferredBytes: overallUploadedBytes,
+                totalBytes,
+                percent,
+                speed,
+                statusText: `${file.name} (${i + 1}/${fileList.length})`
+              });
+            }
+          };
+
+          try {
+            let nextIndex = 0;
+            const worker = async () => {
+              while (nextIndex < numChunks) {
+                if (this.isUploadCancelled || uploadError) break;
+                const idx = nextIndex++;
+                await uploadChunkIndex(idx);
+              }
+            };
+
+            const workers = [];
+            for (let w = 0; w < Math.min(CONCURRENCY, numChunks); w++) {
+              workers.push(worker());
+            }
+            await Promise.all(workers);
+
+            if (this.isUploadCancelled) {
+              try {
+                await this.sendRequest({ type: 'sftp-chunk-abort', uploadId });
+              } catch (e) {}
+              break;
+            }
+
+            await this.sendRequest({ type: 'sftp-chunk-end', uploadId });
+          } catch (err) {
+            uploadError = err;
+            try {
+              await this.sendRequest({ type: 'sftp-chunk-abort', uploadId });
+            } catch (e) {}
+            if (!this.isUploadCancelled) alert(`خطا در آپلود ${file.name}: ${err.message}`);
+            break;
+          }
         }
       }
     }
 
     if (this.isUploadCancelled) {
+      if (transferTask && window.transferManager) {
+        window.transferManager.cancelTask(transferTask.id);
+      }
       return;
     }
 
@@ -1121,6 +1208,10 @@ class SFTPManager {
     const isPersian = window.i18n && window.i18n.currentLang === 'fa';
     if (speedEl) speedEl.textContent = isPersian ? 'تکمیل شد' : 'Complete';
     this.updateStatus(isPersian ? 'تمام فایل‌ها با موفقیت آپلود شدند ✔' : 'All files uploaded successfully ✔');
+
+    if (transferTask && window.transferManager) {
+      window.transferManager.completeTask(transferTask.id, isPersian ? 'تمام فایل‌ها با موفقیت آپلود شدند ✔' : 'All files uploaded successfully ✔');
+    }
 
     setTimeout(() => {
       if (progressContainer) progressContainer.style.display = 'none';
@@ -1163,6 +1254,22 @@ class SFTPManager {
     this.isDownloadCancelled = false;
     this.activeDownloadController = new AbortController();
     const signal = this.activeDownloadController.signal;
+
+    let transferTask = null;
+    if (window.transferManager) {
+      transferTask = window.transferManager.addTask({
+        type: 'download',
+        name: filename,
+        totalBytes: (fileObj && fileObj.attrs && fileObj.attrs.size) ? fileObj.attrs.size : 0,
+        canCancel: true,
+        onCancel: () => {
+          this.isDownloadCancelled = true;
+          if (this.activeDownloadController) {
+            try { this.activeDownloadController.abort(); } catch (e) {}
+          }
+        }
+      });
+    }
 
     // UI Progress Elements
     const progressContainer = document.getElementById('sftpDownloadProgressContainer');
@@ -1214,6 +1321,10 @@ class SFTPManager {
           } catch (e) {}
         }
 
+        if (transferTask && window.transferManager && totalSize > 0) {
+          window.transferManager.updateTask(transferTask.id, { totalBytes: totalSize });
+        }
+
         // Multi-segment configuration
         const numThreads = (totalSize >= 4 * 1024 * 1024) ? 4 : 1;
         if (counterEl) {
@@ -1244,21 +1355,31 @@ class SFTPManager {
           totalDownloaded += chunkLength;
           const now = Date.now();
           const elapsed = (now - lastTime) / 1000;
+          let currentSpeed = 0;
           if (elapsed >= 0.4) {
             const diff = totalDownloaded - lastBytes;
-            const speed = diff / elapsed;
+            currentSpeed = diff / elapsed;
             lastTime = now;
             lastBytes = totalDownloaded;
-            if (speedEl) speedEl.textContent = `${this.formatBytes(speed)}/s`;
+            if (speedEl) speedEl.textContent = `${this.formatBytes(currentSpeed)}/s`;
           }
 
+          const pct = totalSize > 0 ? Math.min(99, Math.floor((totalDownloaded / totalSize) * 100)) : 0;
           if (totalSize > 0) {
-            const pct = Math.min(99, Math.floor((totalDownloaded / totalSize) * 100));
             if (percentEl) percentEl.textContent = `${pct}%`;
             if (barEl) barEl.style.width = `${pct}%`;
             if (sizeEl) sizeEl.textContent = `${this.formatBytes(totalDownloaded)} / ${this.formatBytes(totalSize)}`;
           } else {
             if (sizeEl) sizeEl.textContent = `${this.formatBytes(totalDownloaded)}`;
+          }
+
+          if (transferTask && window.transferManager) {
+            window.transferManager.updateTask(transferTask.id, {
+              transferredBytes: totalDownloaded,
+              totalBytes: totalSize,
+              percent: pct,
+              speed: currentSpeed
+            });
           }
         };
 
@@ -1295,6 +1416,10 @@ class SFTPManager {
         if (barEl) barEl.style.width = '100%';
         if (speedEl) speedEl.textContent = isPersian ? 'تکمیل شد' : 'Complete';
         this.updateStatus(isPersian ? `دانلود ${filename} با موفقیت پایان یافت ✔` : `Downloaded ${filename} successfully ✔`);
+
+        if (transferTask && window.transferManager) {
+          window.transferManager.completeTask(transferTask.id, isPersian ? `دانلود ${filename} با موفقیت تکمیل شد ✔` : `Downloaded ${filename} successfully ✔`);
+        }
 
         const blobUrl = URL.createObjectURL(blob);
         const a = document.createElement('a');
@@ -1339,11 +1464,23 @@ class SFTPManager {
       if (percentEl) percentEl.textContent = '100% ✔';
       if (barEl) barEl.style.width = '100%';
       this.updateStatus(isPersian ? `دانلود ${filename} انجام شد ✔` : `Downloaded ${filename} successfully ✔`);
+
+      if (transferTask && window.transferManager) {
+        window.transferManager.completeTask(transferTask.id, isPersian ? `دانلود ${filename} انجام شد ✔` : `Downloaded ${filename} successfully ✔`);
+      }
+
       setTimeout(() => {
         if (progressContainer) progressContainer.style.display = 'none';
       }, 1500);
 
     } catch (err) {
+      if (transferTask && window.transferManager) {
+        if (err.name === 'AbortError' || this.isDownloadCancelled) {
+          window.transferManager.cancelTask(transferTask.id);
+        } else {
+          window.transferManager.errorTask(transferTask.id, err);
+        }
+      }
       if (err.name === 'AbortError' || this.isDownloadCancelled) {
         return;
       }
@@ -1360,6 +1497,16 @@ class SFTPManager {
     const isPersian = window.i18n && window.i18n.currentLang === 'fa';
     this.updateStatus(isPersian ? `در حال آماده‌سازی و فشرده‌سازی پوشه "${folderName}" در سرور...` : `Archiving folder "${folderName}" on server...`);
 
+    let transferTask = null;
+    if (window.transferManager) {
+      transferTask = window.transferManager.addTask({
+        type: 'download',
+        name: `${folderName}.zip`,
+        statusText: isPersian ? 'در حال فشرده‌سازی پوشه در سرور...' : 'Compressing folder on server...',
+        canCancel: false
+      });
+    }
+
     const chunks = [];
     let totalBytes = 0;
     let downloadFilename = `${folderName}.zip`;
@@ -1372,12 +1519,23 @@ class SFTPManager {
           onMessage: (msg) => {
             if (msg.type === 'sftp-download-dir-progress') {
               this.updateStatus(isPersian ? `در حال فشرده‌سازی پوشه "${folderName}"...` : `Compressing folder "${folderName}" on server...`);
+              if (transferTask && window.transferManager) {
+                window.transferManager.updateTask(transferTask.id, {
+                  statusText: isPersian ? 'در حال فشرده‌سازی پوشه در سرور...' : 'Compressing folder on server...'
+                });
+              }
             } else if (msg.type === 'sftp-download-dir-start') {
               totalBytes = msg.totalSize || 0;
               if (msg.filename) downloadFilename = msg.filename;
               this.updateStatus(isPersian 
                 ? `دانلود پوشه "${folderName}" (${this.formatBytes(totalBytes)})...` 
                 : `Downloading folder "${folderName}" (${this.formatBytes(totalBytes)})...`);
+              if (transferTask && window.transferManager) {
+                window.transferManager.updateTask(transferTask.id, {
+                  totalBytes,
+                  statusText: isPersian ? `در حال دریافت (${this.formatBytes(totalBytes)})...` : `Downloading (${this.formatBytes(totalBytes)})...`
+                });
+              }
             } else if (msg.type === 'sftp-download-dir-chunk') {
               const binaryString = atob(msg.chunk);
               const len = binaryString.length;
@@ -1392,6 +1550,15 @@ class SFTPManager {
               this.updateStatus(isPersian 
                 ? `در حال دریافت "${folderName}": %${pct} (${this.formatBytes(current)} از ${this.formatBytes(totalBytes)})` 
                 : `Downloading "${folderName}": ${pct}% (${this.formatBytes(current)} of ${this.formatBytes(totalBytes)})`);
+
+              if (transferTask && window.transferManager) {
+                window.transferManager.updateTask(transferTask.id, {
+                  transferredBytes: current,
+                  totalBytes,
+                  percent: pct,
+                  statusText: `${pct}% (${this.formatBytes(current)} / ${this.formatBytes(totalBytes)})`
+                });
+              }
             }
           }
         }
@@ -1415,8 +1582,15 @@ class SFTPManager {
 
       const sizeStr = totalBytes > 0 ? ` (${this.formatBytes(totalBytes)})` : '';
       this.updateStatus(isPersian ? `دانلود پوشه "${folderName}" با موفقیت تکمیل شد${sizeStr} ✔` : `Folder "${folderName}" downloaded successfully${sizeStr} ✔`);
+
+      if (transferTask && window.transferManager) {
+        window.transferManager.completeTask(transferTask.id, isPersian ? `دانلود پوشه با موفقیت تکمیل شد ✔` : `Folder downloaded successfully ✔`);
+      }
     } catch (err) {
       console.error('Directory download failed:', err);
+      if (transferTask && window.transferManager) {
+        window.transferManager.errorTask(transferTask.id, err);
+      }
       alert((isPersian ? 'خطا در دانلود پوشه: ' : 'Error downloading folder: ') + err.message);
       this.updateStatus(isPersian ? 'خطا در دانلود پوشه' : 'Error downloading folder');
     }
@@ -1925,6 +2099,24 @@ class SFTPManager {
     this.isOperationCancelled = false;
     this.activeDownloadController = new AbortController();
 
+    let transferTask = null;
+    if (window.transferManager) {
+      transferTask = window.transferManager.addTask({
+        type: isCrossServer ? 'cross_transfer' : (action === 'copy' ? 'copy' : 'move'),
+        name: items.length === 1 ? items[0].filename : (isPersian ? `${items.length} فایل/پوشه` : `${items.length} items`),
+        statusText: isCrossServer 
+          ? (isPersian ? 'انتقال بین دو سرور...' : 'Cross-server transfer...') 
+          : (action === 'copy' ? (isPersian ? 'کپی داخلی سیستم‌عامل (cp -r)...' : 'Native OS copy (cp -r)...') : (isPersian ? 'انتقال داخلی سیستم‌عامل (mv)...' : 'Native OS move (mv)...')),
+        canCancel: true,
+        onCancel: () => {
+          this.isOperationCancelled = true;
+          if (this.activeDownloadController) {
+            try { this.activeDownloadController.abort(); } catch (e) {}
+          }
+        }
+      });
+    }
+
     if (progressContainer) {
       if (uploadContainer && uploadContainer.style.display !== 'none') {
         progressContainer.classList.add('has-upload-active');
@@ -1967,6 +2159,10 @@ class SFTPManager {
           ? (isPersian ? `${items.length} مورد با دستور داخلی سیستم‌عامل کپی شد ✔` : `${items.length} item(s) copied natively ✔`)
           : (isPersian ? `${items.length} مورد با دستور داخلی سیستم‌عامل منتقل شد ✔` : `${items.length} item(s) moved natively ✔`);
         this.updateStatus(successMsg);
+
+        if (transferTask && window.transferManager) {
+          window.transferManager.completeTask(transferTask.id, successMsg);
+        }
 
       } else {
         // --- CASE 2: Cross-Server SFTP Transfer ---
@@ -2016,6 +2212,15 @@ class SFTPManager {
                 if (percentEl) percentEl.textContent = `${pct}%`;
                 if (barEl) barEl.style.width = `${pct}%`;
                 if (sizeEl) sizeEl.textContent = `${this.formatBytes(transferred)} / ${this.formatBytes(total)}`;
+                if (transferTask && window.transferManager) {
+                  window.transferManager.updateTask(transferTask.id, {
+                    transferredBytes: transferred,
+                    totalBytes: total,
+                    percent: pct,
+                    speed,
+                    statusText: `${item.filename} (${idx + 1}/${items.length})`
+                  });
+                }
               } else {
                 if (sizeEl) sizeEl.textContent = `${this.formatBytes(transferred)}`;
               }
@@ -2041,12 +2246,24 @@ class SFTPManager {
         if (percentEl) percentEl.textContent = '100% ✔';
         if (barEl) barEl.style.width = '100%';
         if (speedEl) speedEl.textContent = isPersian ? 'تکمیل شد ✔' : 'Completed ✔';
-        this.updateStatus(isPersian ? `انتقال ${items.length} مورد بین سرورها با موفقیت پایان یافت ✔` : `Transferred ${items.length} item(s) between servers successfully ✔`);
+        const crossSuccessMsg = isPersian ? `انتقال ${items.length} مورد بین سرورها با موفقیت پایان یافت ✔` : `Transferred ${items.length} item(s) between servers successfully ✔`;
+        this.updateStatus(crossSuccessMsg);
+
+        if (transferTask && window.transferManager) {
+          window.transferManager.completeTask(transferTask.id, crossSuccessMsg);
+        }
       }
 
       this.listDirectory(this.currentPath);
       this.updateSelectionUI();
     } catch (err) {
+      if (transferTask && window.transferManager) {
+        if (this.isOperationCancelled) {
+          window.transferManager.cancelTask(transferTask.id);
+        } else {
+          window.transferManager.errorTask(transferTask.id, err);
+        }
+      }
       if (this.isOperationCancelled) return;
       alert((isPersian ? 'خطا در عملیات: ' : 'Operation failed: ') + err.message);
       this.updateStatus(`Error: ${err.message}`);
@@ -2191,6 +2408,16 @@ class SFTPManager {
     const sizeEl = document.getElementById('downloadProgressSize');
     const speedEl = document.getElementById('downloadProgressSpeed');
 
+    let transferTask = null;
+    if (window.transferManager) {
+      transferTask = window.transferManager.addTask({
+        type: 'move',
+        name: items.length === 1 ? items[0].filename : (isPersian ? `${items.length} فایل و پوشه` : `${items.length} items`),
+        statusText: isPersian ? 'انتقال داخلی سیستم‌عامل (mv)...' : 'Native OS move (mv)...',
+        canCancel: false
+      });
+    }
+
     if (progressContainer) {
       if (uploadContainer && uploadContainer.style.display !== 'none') {
         progressContainer.classList.add('has-upload-active');
@@ -2217,11 +2444,20 @@ class SFTPManager {
       if (sizeEl) sizeEl.textContent = isPersian ? `${items.length} مورد انجام شد` : `${items.length} item(s) done`;
       if (speedEl) speedEl.textContent = isPersian ? 'تکمیل شد ✔' : 'Completed ✔';
 
-      this.updateStatus(isPersian ? `${items.length} مورد با موفقیت منتقل شد ✔` : `${items.length} item(s) moved successfully ✔`);
+      const moveSuccessMsg = isPersian ? `${items.length} مورد با موفقیت منتقل شد ✔` : `${items.length} item(s) moved successfully ✔`;
+      this.updateStatus(moveSuccessMsg);
+
+      if (transferTask && window.transferManager) {
+        window.transferManager.completeTask(transferTask.id, moveSuccessMsg);
+      }
+
       this.listDirectory(this.currentPath);
       this.selectedFiles.clear();
       this.updateSelectionUI();
     } catch (err) {
+      if (transferTask && window.transferManager) {
+        window.transferManager.errorTask(transferTask.id, err);
+      }
       alert((isPersian ? 'خطا در انتقال: ' : 'Error moving items: ') + err.message);
       this.updateStatus(`Error: ${err.message}`);
     } finally {
