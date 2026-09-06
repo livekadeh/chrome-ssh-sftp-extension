@@ -427,6 +427,30 @@ document.addEventListener('DOMContentLoaded', async () => {
         await termManager.pasteFromClipboard();
       }
     }
+
+    // SFTP Shortcuts: Ctrl+C (copy), Ctrl+X (cut), Ctrl+V (paste)
+    const isSftpActive = document.querySelector('#viewSFTP.active');
+    const activeTag = document.activeElement ? document.activeElement.tagName.toLowerCase() : '';
+    const isInputFocused = activeTag === 'input' || activeTag === 'textarea';
+
+    if (isSftpActive && !isInputFocused) {
+      if ((e.ctrlKey || e.metaKey) && !e.shiftKey && (e.key === 'c' || e.key === 'C')) {
+        if (sftpManager.selectedFiles.size > 0) {
+          e.preventDefault();
+          sftpManager.copySelection();
+        }
+      } else if ((e.ctrlKey || e.metaKey) && !e.shiftKey && (e.key === 'x' || e.key === 'X')) {
+        if (sftpManager.selectedFiles.size > 0) {
+          e.preventDefault();
+          sftpManager.cutSelection();
+        }
+      } else if ((e.ctrlKey || e.metaKey) && !e.shiftKey && (e.key === 'v' || e.key === 'V')) {
+        if (sftpManager.hasClipboard()) {
+          e.preventDefault();
+          sftpManager.pasteClipboard();
+        }
+      }
+    }
   });
 
   // SFTP Navigation Controls
@@ -556,6 +580,26 @@ document.addEventListener('DOMContentLoaded', async () => {
     sftpManager.deleteSelected();
   });
 
+  const btnSftpCopy = document.getElementById('btnSftpCopy');
+  if (btnSftpCopy) {
+    btnSftpCopy.addEventListener('click', () => sftpManager.copySelection());
+  }
+
+  const btnSftpCut = document.getElementById('btnSftpCut');
+  if (btnSftpCut) {
+    btnSftpCut.addEventListener('click', () => sftpManager.cutSelection());
+  }
+
+  const btnSftpPaste = document.getElementById('btnSftpPaste');
+  if (btnSftpPaste) {
+    btnSftpPaste.addEventListener('click', () => sftpManager.pasteClipboard());
+  }
+
+  const btnSftpMove = document.getElementById('btnSftpMove');
+  if (btnSftpMove) {
+    btnSftpMove.addEventListener('click', () => sftpManager.moveSelectionDialog());
+  }
+
   // ================= SFTP CONTEXT MENU =================
   const sftpContextMenu = document.getElementById('sftpContextMenu');
   const sftpCtxOpen = document.getElementById('sftpCtxOpen');
@@ -565,6 +609,10 @@ document.addEventListener('DOMContentLoaded', async () => {
   const sftpCtxEdit = document.getElementById('sftpCtxEdit');
   const sftpCtxExtract = document.getElementById('sftpCtxExtract');
   const sftpCtxCompress = document.getElementById('sftpCtxCompress');
+  const sftpCtxCopy = document.getElementById('sftpCtxCopy');
+  const sftpCtxCut = document.getElementById('sftpCtxCut');
+  const sftpCtxPaste = document.getElementById('sftpCtxPaste');
+  const sftpCtxMoveTo = document.getElementById('sftpCtxMoveTo');
   const sftpCtxRename = document.getElementById('sftpCtxRename');
   const sftpCtxChmod = document.getElementById('sftpCtxChmod');
   const sftpCtxInfo = document.getElementById('sftpCtxInfo');
@@ -572,6 +620,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const sftpCtxDelete = document.getElementById('sftpCtxDelete');
   const sftpCtxDivider = document.getElementById('sftpCtxDivider');
   const sftpCtxDirInfo = document.getElementById('sftpCtxDirInfo');
+  const sftpCtxPasteDir = document.getElementById('sftpCtxPasteDir');
   const sftpCtxUpload = document.getElementById('sftpCtxUpload');
   const sftpCtxNewFolder = document.getElementById('sftpCtxNewFolder');
   const sftpCtxNewFile = document.getElementById('sftpCtxNewFile');
@@ -609,6 +658,10 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (sftpCtxEdit) sftpCtxEdit.style.display = isDir ? 'none' : 'flex';
       if (sftpCtxExtract) sftpCtxExtract.style.display = isArchive ? 'flex' : 'none';
       if (sftpCtxCompress) sftpCtxCompress.style.display = 'flex';
+      if (sftpCtxCopy) sftpCtxCopy.style.display = 'flex';
+      if (sftpCtxCut) sftpCtxCut.style.display = 'flex';
+      if (sftpCtxPaste) sftpCtxPaste.style.display = sftpManager.hasClipboard() ? 'flex' : 'none';
+      if (sftpCtxMoveTo) sftpCtxMoveTo.style.display = 'flex';
       if (sftpCtxRename) sftpCtxRename.style.display = 'flex';
       if (sftpCtxChmod) sftpCtxChmod.style.display = 'flex';
       if (sftpCtxInfo) sftpCtxInfo.style.display = 'flex';
@@ -628,6 +681,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       }
       if (sftpCtxDivider) sftpCtxDivider.style.display = 'block';
       if (sftpCtxDirInfo) sftpCtxDirInfo.style.display = 'none';
+      if (sftpCtxPasteDir) sftpCtxPasteDir.style.display = 'none';
     } else {
       if (sftpCtxOpen) sftpCtxOpen.style.display = 'none';
       if (sftpCtxDownload) sftpCtxDownload.style.display = 'none';
@@ -636,6 +690,10 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (sftpCtxEdit) sftpCtxEdit.style.display = 'none';
       if (sftpCtxExtract) sftpCtxExtract.style.display = 'none';
       if (sftpCtxCompress) sftpCtxCompress.style.display = sftpManager.selectedFiles.size > 0 ? 'flex' : 'none';
+      if (sftpCtxCopy) sftpCtxCopy.style.display = 'none';
+      if (sftpCtxCut) sftpCtxCut.style.display = 'none';
+      if (sftpCtxPaste) sftpCtxPaste.style.display = 'none';
+      if (sftpCtxMoveTo) sftpCtxMoveTo.style.display = 'none';
       if (sftpCtxRename) sftpCtxRename.style.display = 'none';
       if (sftpCtxChmod) sftpCtxChmod.style.display = 'none';
       if (sftpCtxInfo) sftpCtxInfo.style.display = 'none';
@@ -643,6 +701,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (sftpCtxDelete) sftpCtxDelete.style.display = 'none';
       if (sftpCtxDivider) sftpCtxDivider.style.display = 'none';
       if (sftpCtxDirInfo) sftpCtxDirInfo.style.display = 'flex';
+      if (sftpCtxPasteDir) sftpCtxPasteDir.style.display = sftpManager.hasClipboard() ? 'flex' : 'none';
     }
 
     sftpContextMenu.style.display = 'block';
@@ -747,6 +806,41 @@ document.addEventListener('DOMContentLoaded', async () => {
     sftpCtxCompress.addEventListener('click', () => {
       hideSftpContextMenu();
       sftpManager.compressSelected('zip');
+    });
+  }
+
+  if (sftpCtxCopy) {
+    sftpCtxCopy.addEventListener('click', () => {
+      hideSftpContextMenu();
+      sftpManager.copySelection(sftpContextTarget ? sftpContextTarget.filename : null);
+    });
+  }
+
+  if (sftpCtxCut) {
+    sftpCtxCut.addEventListener('click', () => {
+      hideSftpContextMenu();
+      sftpManager.cutSelection(sftpContextTarget ? sftpContextTarget.filename : null);
+    });
+  }
+
+  if (sftpCtxPaste) {
+    sftpCtxPaste.addEventListener('click', () => {
+      hideSftpContextMenu();
+      sftpManager.pasteClipboard();
+    });
+  }
+
+  if (sftpCtxPasteDir) {
+    sftpCtxPasteDir.addEventListener('click', () => {
+      hideSftpContextMenu();
+      sftpManager.pasteClipboard();
+    });
+  }
+
+  if (sftpCtxMoveTo) {
+    sftpCtxMoveTo.addEventListener('click', () => {
+      hideSftpContextMenu();
+      sftpManager.moveSelectionDialog(sftpContextTarget ? sftpContextTarget.filename : null);
     });
   }
 

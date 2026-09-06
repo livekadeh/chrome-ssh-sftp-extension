@@ -1147,6 +1147,14 @@ html[dir="rtl"] .sort-indicator {
   background: rgba(0, 240, 255, 0.16) !important;
 }
 
+.sftp-row.cut-pending,
+.sftp-grid-card.cut-pending {
+  opacity: 0.55;
+  filter: grayscale(0.4);
+  outline: 1px dashed var(--accent-cyan, #00f0ff);
+  transition: opacity 0.2s ease, filter 0.2s ease;
+}
+
 .file-name-cell {
   display: flex;
   align-items: center;

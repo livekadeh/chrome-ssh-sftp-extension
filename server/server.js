@@ -773,6 +773,178 @@ wss.on('connection', (ws, req) => {
       return;
     }
 
+    // --- SFTP COPY (RECURSIVE OR STREAMING) ---
+    if (type === 'sftp-copy') {
+      const { items, srcPath, destPath, id } = msg;
+      if (!checkSftp(id)) return;
+
+      const copyList = items && Array.isArray(items) && items.length > 0 
+        ? items 
+        : (srcPath && destPath ? [{ src: srcPath, dest: destPath }] : []);
+
+      if (copyList.length === 0) {
+        safeSend({ type: 'sftp-copy-res', id, success: false, error: 'No items specified for copy' });
+        return;
+      }
+
+      const escapeShell = (str) => "'" + str.replace(/'/g, "'\\''") + "'";
+
+      // Strategy 1: Fast server-side copy via SSH exec
+      if (sshClient && isConnected) {
+        const copyCmds = copyList.map(item => `cp -r ${escapeShell(item.src)} ${escapeShell(item.dest)}`).join(' && ');
+        sshClient.exec(copyCmds, (err, stream) => {
+          if (err) {
+            fallbackSftpCopy();
+            return;
+          }
+
+          let stderr = '';
+          stream.stderr.on('data', (d) => { stderr += d.toString(); });
+          stream.on('close', (code) => {
+            if (code === 0) {
+              safeSend({ type: 'sftp-copy-res', id, success: true, count: copyList.length });
+            } else {
+              fallbackSftpCopy(stderr || `Copy command exited with code ${code}`);
+            }
+          });
+        });
+        return;
+      }
+
+      fallbackSftpCopy();
+
+      // Strategy 2: Fallback pure SFTP recursive copy
+      function fallbackSftpCopy(originalError = null) {
+        let index = 0;
+
+        function copyNext() {
+          if (index >= copyList.length) {
+            safeSend({ type: 'sftp-copy-res', id, success: true, count: copyList.length });
+            return;
+          }
+
+          const current = copyList[index++];
+          sftpCopyItem(current.src, current.dest, (err) => {
+            if (err) {
+              safeSend({
+                type: 'sftp-copy-res',
+                id,
+                success: false,
+                error: err.message || originalError || 'Failed to copy item'
+              });
+              return;
+            }
+            copyNext();
+          });
+        }
+
+        function sftpCopyFile(src, dest, cb) {
+          const r = sftpSession.createReadStream(src);
+          const w = sftpSession.createWriteStream(dest);
+          let finished = false;
+          const done = (err) => {
+            if (!finished) {
+              finished = true;
+              cb(err);
+            }
+          };
+          r.on('error', done);
+          w.on('error', done);
+          w.on('close', () => done(null));
+          r.pipe(w);
+        }
+
+        function sftpCopyItem(src, dest, cb) {
+          sftpSession.stat(src, (sErr, stats) => {
+            if (sErr) return cb(sErr);
+            const isDir = (stats.mode & 0o170000) === 0o040000;
+            if (!isDir) {
+              sftpCopyFile(src, dest, cb);
+            } else {
+              sftpSession.mkdir(dest, () => {
+                sftpSession.readdir(src, (rErr, list) => {
+                  if (rErr) return cb(rErr);
+                  const children = (list || []).filter(c => c.filename !== '.' && c.filename !== '..');
+                  if (children.length === 0) return cb(null);
+                  let pending = children.length;
+                  let childError = null;
+                  for (const child of children) {
+                    const cSrc = (src.endsWith('/') ? src : src + '/') + child.filename;
+                    const cDest = (dest.endsWith('/') ? dest : dest + '/') + child.filename;
+                    sftpCopyItem(cSrc, cDest, (cErr) => {
+                      if (cErr && !childError) childError = cErr;
+                      pending--;
+                      if (pending === 0) cb(childError);
+                    });
+                  }
+                });
+              });
+            }
+          });
+        }
+
+        copyNext();
+      }
+      return;
+    }
+
+    // --- SFTP MOVE (BATCH / SINGLE) ---
+    if (type === 'sftp-move') {
+      const { items, srcPath, destPath, id } = msg;
+      if (!checkSftp(id)) return;
+
+      const moveList = items && Array.isArray(items) && items.length > 0 
+        ? items 
+        : (srcPath && destPath ? [{ src: srcPath, dest: destPath }] : []);
+
+      if (moveList.length === 0) {
+        safeSend({ type: 'sftp-move-res', id, success: false, error: 'No items specified for move' });
+        return;
+      }
+
+      const escapeShell = (str) => "'" + str.replace(/'/g, "'\\''") + "'";
+      let index = 0;
+
+      function moveNext() {
+        if (index >= moveList.length) {
+          safeSend({ type: 'sftp-move-res', id, success: true, count: moveList.length });
+          return;
+        }
+
+        const current = moveList[index++];
+        sftpSession.rename(current.src, current.dest, (err) => {
+          if (!err) {
+            moveNext();
+          } else {
+            // Fallback via SSH mv if available
+            if (sshClient && isConnected) {
+              const mvCmd = `mv ${escapeShell(current.src)} ${escapeShell(current.dest)}`;
+              sshClient.exec(mvCmd, (mvErr, stream) => {
+                if (mvErr) {
+                  safeSend({ type: 'sftp-move-res', id, success: false, error: mvErr.message });
+                  return;
+                }
+                let stderr = '';
+                stream.stderr.on('data', (d) => { stderr += d.toString(); });
+                stream.on('close', (code) => {
+                  if (code === 0) {
+                    moveNext();
+                  } else {
+                    safeSend({ type: 'sftp-move-res', id, success: false, error: stderr || `Move failed with code ${code}` });
+                  }
+                });
+              });
+            } else {
+              safeSend({ type: 'sftp-move-res', id, success: false, error: err.message });
+            }
+          }
+        });
+      }
+
+      moveNext();
+      return;
+    }
+
     // --- SFTP CHMOD ---
     if (type === 'sftp-chmod') {
       const { path: filePath, mode, id } = msg;

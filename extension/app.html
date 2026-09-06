@@ -248,6 +248,35 @@
                     <line x1="12" y1="15" x2="12" y2="3"/>
                   </svg>
                 </button>
+                <button id="btnSftpCopy" class="btn-sftp-action" disabled title="Copy (Ctrl+C)" data-i18n-title="sftp_copy_btn">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+                  </svg>
+                </button>
+                <button id="btnSftpCut" class="btn-sftp-action" disabled title="Cut / Move (Ctrl+X)" data-i18n-title="sftp_cut_btn">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="6" cy="6" r="3"/>
+                    <circle cx="6" cy="18" r="3"/>
+                    <line x1="20" y1="4" x2="8.12" y2="15.88"/>
+                    <line x1="14.47" y1="14.48" x2="20" y2="20"/>
+                    <line x1="8.12" y1="8.12" x2="12" y2="12"/>
+                  </svg>
+                </button>
+                <button id="btnSftpPaste" class="btn-sftp-action" disabled title="Paste (Ctrl+V)" data-i18n-title="sftp_paste_btn">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/>
+                    <rect x="8" y="2" width="8" height="4" rx="1" ry="1"/>
+                  </svg>
+                </button>
+                <button id="btnSftpMove" class="btn-sftp-action" disabled title="Move to..." data-i18n-title="sftp_move_btn">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                    <polyline points="14 2 14 8 20 8"/>
+                    <line x1="11" y1="14" x2="17" y2="14"/>
+                    <polyline points="14 11 17 14 14 17"/>
+                  </svg>
+                </button>
                 <button id="btnSftpPreview" class="btn-sftp-action btn-sftp-preview" disabled title="Preview / Play Media" data-i18n-title="sftp_preview_btn">
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                     <polygon points="5 3 19 12 5 21 5 3"/>
@@ -423,6 +452,25 @@
               <span class="ctx-icon">🗜️</span>
               <span class="ctx-label" data-i18n="sftp_ctx_compress">Compress (Zip/Tar)</span>
             </div>
+            <div class="context-item" id="sftpCtxCopy">
+              <span class="ctx-icon">📋</span>
+              <span class="ctx-label" data-i18n="sftp_ctx_copy">Copy</span>
+              <span class="ctx-shortcut">Ctrl+C</span>
+            </div>
+            <div class="context-item" id="sftpCtxCut">
+              <span class="ctx-icon">✂️</span>
+              <span class="ctx-label" data-i18n="sftp_ctx_cut">Cut</span>
+              <span class="ctx-shortcut">Ctrl+X</span>
+            </div>
+            <div class="context-item" id="sftpCtxPaste" style="display: none;">
+              <span class="ctx-icon">📥</span>
+              <span class="ctx-label" data-i18n="sftp_ctx_paste">Paste</span>
+              <span class="ctx-shortcut">Ctrl+V</span>
+            </div>
+            <div class="context-item" id="sftpCtxMoveTo">
+              <span class="ctx-icon">➡️</span>
+              <span class="ctx-label" data-i18n="sftp_ctx_move_to">Move To...</span>
+            </div>
             <div class="context-item" id="sftpCtxRename">
               <span class="ctx-icon">🏷️</span>
               <span class="ctx-label" data-i18n="sftp_ctx_rename">Rename</span>
@@ -453,6 +501,11 @@
             <div class="context-item" id="sftpCtxDirInfo">
               <span class="ctx-icon">ℹ️</span>
               <span class="ctx-label" data-i18n="sftp_ctx_dir_info">Folder Information</span>
+            </div>
+            <div class="context-item" id="sftpCtxPasteDir" style="display: none;">
+              <span class="ctx-icon">📥</span>
+              <span class="ctx-label" data-i18n="sftp_ctx_paste">Paste</span>
+              <span class="ctx-shortcut">Ctrl+V</span>
             </div>
             <div class="context-item" id="sftpCtxUpload">
               <span class="ctx-icon">📤</span>

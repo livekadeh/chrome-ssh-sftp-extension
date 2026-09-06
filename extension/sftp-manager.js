@@ -26,6 +26,7 @@ class SFTPManager {
     this.callbackSeq = 1;
     this.isUploadCancelled = false;
     this.currentMediaUrl = null;
+    this.clipboard = null;
 
     this.sortColumn = 'name';
     this.sortDirection = 'asc';
@@ -536,11 +537,16 @@ class SFTPManager {
           }) 
         : '-';
 
+      const isCutPending = this.clipboard && this.clipboard.action === 'cut' &&
+        this.clipboard.sourceDir === this.currentPath &&
+        this.clipboard.files.some(cf => cf.filename === file.filename);
+
       // 1. Table Row (List View)
       const tr = document.createElement('tr');
       tr.className = 'sftp-row';
       tr.dataset.name = file.filename;
       if (this.selectedFiles.has(file.filename)) tr.classList.add('selected');
+      if (isCutPending) tr.classList.add('cut-pending');
 
       tr.innerHTML = `
         <td><input type="checkbox" class="file-chk" data-name="${file.filename}" ${this.selectedFiles.has(file.filename) ? 'checked' : ''}></td>
@@ -643,6 +649,7 @@ class SFTPManager {
         card.className = 'sftp-grid-card';
         card.dataset.name = file.filename;
         if (this.selectedFiles.has(file.filename)) card.classList.add('selected');
+        if (isCutPending) card.classList.add('cut-pending');
 
         card.innerHTML = `
           <input type="checkbox" class="grid-card-chk file-chk" data-name="${file.filename}" ${this.selectedFiles.has(file.filename) ? 'checked' : ''}>
@@ -802,6 +809,18 @@ class SFTPManager {
     if (btnSftpCompress) {
       btnSftpCompress.disabled = count === 0;
     }
+
+    const btnCopy = document.getElementById('btnSftpCopy');
+    if (btnCopy) btnCopy.disabled = disabled;
+
+    const btnCut = document.getElementById('btnSftpCut');
+    if (btnCut) btnCut.disabled = disabled;
+
+    const btnPaste = document.getElementById('btnSftpPaste');
+    if (btnPaste) btnPaste.disabled = !this.hasClipboard();
+
+    const btnMove = document.getElementById('btnSftpMove');
+    if (btnMove) btnMove.disabled = disabled;
 
     const chkSelectAll = document.getElementById('selectAllFiles');
     if (chkSelectAll) {
@@ -1564,6 +1583,182 @@ class SFTPManager {
       this.listDirectory(this.currentPath);
     } catch (err) {
       alert(`Error changing permissions: ${err.message}`);
+    }
+  }
+
+  hasClipboard() {
+    return !!(this.clipboard && this.clipboard.files && this.clipboard.files.length > 0);
+  }
+
+  resolveActionTarget(targetFilename) {
+    let names = [];
+    if (targetFilename) {
+      names = [targetFilename];
+    } else if (this.selectedFiles.size > 0) {
+      names = Array.from(this.selectedFiles);
+    }
+    if (names.length === 0) return [];
+
+    const base = this.currentPath.endsWith('/') ? this.currentPath : this.currentPath + '/';
+    return names.map(name => {
+      const fileObj = this.currentFiles.find(f => f.filename === name);
+      const isDir = fileObj ? !!(fileObj.attrs && fileObj.attrs.isDirectory) : false;
+      return {
+        filename: name,
+        fullPath: base + name,
+        isDir
+      };
+    });
+  }
+
+  copySelection(targetFilename) {
+    const filesToCopy = this.resolveActionTarget(targetFilename);
+    if (filesToCopy.length === 0) return;
+
+    this.clipboard = {
+      action: 'copy',
+      sourceDir: this.currentPath,
+      files: filesToCopy
+    };
+
+    const isPersian = window.i18n && window.i18n.currentLang === 'fa';
+    const msg = isPersian
+      ? `${filesToCopy.length} مورد کپی شد. به مسیر مقصد رفته و Paste را بزنید.`
+      : `${filesToCopy.length} item(s) copied. Navigate to destination and click Paste.`;
+    this.updateStatus(msg);
+    this.updateSelectionUI();
+    this.renderFiles(this.currentFiles);
+  }
+
+  cutSelection(targetFilename) {
+    const filesToCut = this.resolveActionTarget(targetFilename);
+    if (filesToCut.length === 0) return;
+
+    this.clipboard = {
+      action: 'cut',
+      sourceDir: this.currentPath,
+      files: filesToCut
+    };
+
+    const isPersian = window.i18n && window.i18n.currentLang === 'fa';
+    const msg = isPersian
+      ? `${filesToCut.length} مورد آماده برش و انتقال. به مسیر مقصد رفته و Paste را بزنید.`
+      : `${filesToCut.length} item(s) cut for move. Navigate to destination and click Paste.`;
+    this.updateStatus(msg);
+    this.updateSelectionUI();
+    this.renderFiles(this.currentFiles);
+  }
+
+  generateCopyName(filename, isDir) {
+    const existingNames = new Set(this.currentFiles.map(f => f.filename));
+
+    if (isDir) {
+      let candidate = `${filename} (copy)`;
+      let count = 2;
+      while (existingNames.has(candidate)) {
+        candidate = `${filename} (copy ${count++})`;
+      }
+      return candidate;
+    }
+
+    const lastDot = filename.lastIndexOf('.');
+    let base = filename;
+    let ext = '';
+    if (lastDot > 0) {
+      base = filename.substring(0, lastDot);
+      ext = filename.substring(lastDot);
+    }
+
+    let candidate = `${base} (copy)${ext}`;
+    let count = 2;
+    while (existingNames.has(candidate)) {
+      candidate = `${base} (copy ${count++})${ext}`;
+    }
+    return candidate;
+  }
+
+  async pasteClipboard(destDirOverride) {
+    if (!this.hasClipboard()) return;
+
+    const isPersian = window.i18n && window.i18n.currentLang === 'fa';
+    const destDir = destDirOverride || this.currentPath;
+    const destBase = destDir.endsWith('/') ? destDir : destDir + '/';
+    const { action, sourceDir, files } = this.clipboard;
+
+    // Prevent cutting into same folder without action
+    if (action === 'cut' && sourceDir === destDir) {
+      this.updateStatus(isPersian ? 'مسیر مبدا و مقصد یکسان است.' : 'Source and destination directories are identical.');
+      return;
+    }
+
+    const items = files.map(item => {
+      let targetName = item.filename;
+      if (action === 'copy' && sourceDir === destDir) {
+        targetName = this.generateCopyName(item.filename, item.isDir);
+      }
+      return {
+        src: item.fullPath,
+        dest: destBase + targetName,
+        filename: targetName,
+        isDir: item.isDir
+      };
+    });
+
+    try {
+      this.updateStatus(isPersian ? `در حال پردازش ${items.length} فایل...` : `Processing ${items.length} item(s)...`);
+
+      if (action === 'copy') {
+        await this.sendRequest({ type: 'sftp-copy', items });
+        this.updateStatus(isPersian ? `${items.length} مورد با موفقیت کپی شد ✔` : `${items.length} item(s) copied successfully ✔`);
+      } else {
+        await this.sendRequest({ type: 'sftp-move', items });
+        this.clipboard = null;
+        this.updateStatus(isPersian ? `${items.length} مورد با موفقیت منتقل شد ✔` : `${items.length} item(s) moved successfully ✔`);
+      }
+
+      this.listDirectory(this.currentPath);
+      this.updateSelectionUI();
+    } catch (err) {
+      alert((isPersian ? 'خطا در عملیات: ' : 'Operation failed: ') + err.message);
+      this.updateStatus(`Error: ${err.message}`);
+    }
+  }
+
+  async moveSelectionDialog(targetFilename) {
+    const filesToMove = this.resolveActionTarget(targetFilename);
+    if (filesToMove.length === 0) return;
+
+    const isPersian = window.i18n && window.i18n.currentLang === 'fa';
+    const promptMsg = isPersian
+      ? `مسیر کامل پوشه مقصد برای انتقال ${filesToMove.length} مورد را وارد کنید:`
+      : `Enter full destination directory path for ${filesToMove.length} item(s):`;
+
+    const destDir = prompt(promptMsg, this.currentPath);
+    if (!destDir) return;
+
+    const targetDirClean = destDir.trim();
+    if (!targetDirClean || targetDirClean === this.currentPath) {
+      return;
+    }
+
+    const destBase = targetDirClean.endsWith('/') ? targetDirClean : targetDirClean + '/';
+    const items = filesToMove.map(item => ({
+      src: item.fullPath,
+      dest: destBase + item.filename,
+      filename: item.filename,
+      isDir: item.isDir
+    }));
+
+    try {
+      this.updateStatus(isPersian ? 'در حال انتقال به مقصد...' : 'Moving items to destination...');
+      await this.sendRequest({ type: 'sftp-move', items });
+      this.updateStatus(isPersian ? `${items.length} مورد با موفقیت منتقل شد ✔` : `${items.length} item(s) moved successfully ✔`);
+      this.listDirectory(this.currentPath);
+      this.selectedFiles.clear();
+      this.updateSelectionUI();
+    } catch (err) {
+      alert((isPersian ? 'خطا در انتقال: ' : 'Error moving items: ') + err.message);
+      this.updateStatus(`Error: ${err.message}`);
     }
   }
 
