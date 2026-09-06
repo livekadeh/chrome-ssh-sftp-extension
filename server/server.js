@@ -806,6 +806,7 @@ wss.on('connection', (ws, req) => {
         const cmd = `rm -rf -- ${escapeShell(dirPath)}`;
         let stderr = '';
         let exitCode = null;
+        let finished = false;
 
         sshClient.exec(cmd, (execErr, stream) => {
           if (execErr) {
@@ -813,9 +814,10 @@ wss.on('connection', (ws, req) => {
               safeSend({ type: 'sftp-rmdir-res', id, success: !err, path: dirPath, error: err ? err.message : null });
             });
           }
-          stream.stderr.on('data', d => { stderr += d.toString(); });
-          stream.on('exit', code => { exitCode = code; });
-          stream.on('close', code => {
+
+          const finish = (code) => {
+            if (finished) return;
+            finished = true;
             const finalCode = (typeof code === 'number') ? code : (typeof exitCode === 'number' ? exitCode : (stderr ? 1 : 0));
             if (finalCode === 0) {
               safeSend({ type: 'sftp-rmdir-res', id, success: true, path: dirPath, error: null });
@@ -824,7 +826,18 @@ wss.on('connection', (ws, req) => {
                 safeSend({ type: 'sftp-rmdir-res', id, success: !err, path: dirPath, error: err ? (stderr || err.message) : null });
               });
             }
+          };
+
+          stream.on('data', () => {});
+          stream.stderr.on('data', d => { stderr += d.toString(); });
+          stream.on('exit', code => {
+            exitCode = code;
+            finish(code);
           });
+          stream.on('close', code => {
+            finish(code);
+          });
+          stream.resume();
         });
       } else {
         sftpRmdirRecursive(dirPath, (err) => {
@@ -877,6 +890,7 @@ wss.on('connection', (ws, req) => {
         const copyCmds = copyList.map(item => `cp -r -- ${escapeShell(item.src)} ${escapeShell(item.dest)}`).join(' && ');
         let stderr = '';
         let exitCode = null;
+        let finished = false;
 
         sshClient.exec(copyCmds, (err, stream) => {
           if (err) {
@@ -884,18 +898,27 @@ wss.on('connection', (ws, req) => {
             return;
           }
 
-          stream.stderr.on('data', (d) => { stderr += d.toString(); });
-          stream.on('exit', (code) => {
-            exitCode = code;
-          });
-          stream.on('close', (code) => {
+          const finish = (code) => {
+            if (finished) return;
+            finished = true;
             const finalCode = (typeof code === 'number') ? code : (typeof exitCode === 'number' ? exitCode : (stderr ? 1 : 0));
             if (finalCode === 0) {
               safeSend({ type: 'sftp-copy-res', id, success: true, count: copyList.length });
             } else {
               fallbackSftpCopy(stderr || `Copy command exited with code ${finalCode}`);
             }
+          };
+
+          stream.on('data', () => {});
+          stream.stderr.on('data', (d) => { stderr += d.toString(); });
+          stream.on('exit', (code) => {
+            exitCode = code;
+            finish(code);
           });
+          stream.on('close', (code) => {
+            finish(code);
+          });
+          stream.resume();
         });
         return;
       }
@@ -1040,24 +1063,35 @@ wss.on('connection', (ws, req) => {
         const mvCmds = moveList.map(item => `mv -f -- ${escapeShell(item.src)} ${escapeShell(item.dest)}`).join(' && ');
         let stderr = '';
         let exitCode = null;
+        let finished = false;
 
         sshClient.exec(mvCmds, (err, stream) => {
           if (err) {
             fallbackSftpMove();
             return;
           }
-          stream.stderr.on('data', (d) => { stderr += d.toString(); });
-          stream.on('exit', (code) => {
-            exitCode = code;
-          });
-          stream.on('close', (code) => {
+
+          const finish = (code) => {
+            if (finished) return;
+            finished = true;
             const finalCode = (typeof code === 'number') ? code : (typeof exitCode === 'number' ? exitCode : (stderr ? 1 : 0));
             if (finalCode === 0) {
               safeSend({ type: 'sftp-move-res', id, success: true, count: moveList.length });
             } else {
               fallbackSftpMove(stderr || `Move command exited with code ${finalCode}`);
             }
+          };
+
+          stream.on('data', () => {});
+          stream.stderr.on('data', (d) => { stderr += d.toString(); });
+          stream.on('exit', (code) => {
+            exitCode = code;
+            finish(code);
           });
+          stream.on('close', (code) => {
+            finish(code);
+          });
+          stream.resume();
         });
         return;
       }
