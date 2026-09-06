@@ -18,7 +18,9 @@
     "pack": "node copy-assets.js && electron-builder --dir",
     "build:win": "node copy-assets.js && electron-builder --win portable --publish never",
     "build:win:dir": "node copy-assets.js && electron-builder --win --dir",
-    "build:linux": "node copy-assets.js && electron-builder --linux AppImage"
+    "build:linux": "node copy-assets.js && electron-builder --linux AppImage tar.gz --publish never",
+    "build:mac": "node copy-assets.js && electron-builder --mac zip dmg --publish never",
+    "build:all": "node copy-assets.js && electron-builder -wlm --publish never"
   },
   "dependencies": {
     "cors": "^2.8.5",
@@ -66,6 +68,36 @@
     "portable": {
       "artifactName": "LiveKadeh-SSH-SFTP-Portable-v${version}.exe",
       "splashImage": "splash.bmp"
+    },
+    "linux": {
+      "target": [
+        {
+          "target": "AppImage",
+          "arch": ["x64"]
+        },
+        {
+          "target": "tar.gz",
+          "arch": ["x64"]
+        }
+      ],
+      "category": "Network",
+      "artifactName": "LiveKadeh-SSH-SFTP-Linux-v${version}.${ext}",
+      "icon": "icon.png"
+    },
+    "mac": {
+      "target": [
+        {
+          "target": "dmg",
+          "arch": ["x64", "arm64"]
+        },
+        {
+          "target": "zip",
+          "arch": ["x64", "arm64"]
+        }
+      ],
+      "category": "public.app-category.developer-tools",
+      "artifactName": "LiveKadeh-SSH-SFTP-Mac-${arch}-v${version}.${ext}",
+      "icon": "icon.png"
     }
   }
 }

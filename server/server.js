@@ -58,6 +58,27 @@ app.get('/downloads', (req, res) => {
       badge: 'ویندوز x64'
     },
     {
+      name: 'LiveKadeh-SSH-SFTP-Linux-v1.5.0.AppImage',
+      title: 'نسخه دسکتاپ لینوکس (Linux AppImage x64)',
+      path: path.join(distDir, 'LiveKadeh-SSH-SFTP-Linux-v1.5.0.AppImage'),
+      url: '/download/LiveKadeh-SSH-SFTP-Linux-v1.5.0.AppImage',
+      badge: 'لینوکس AppImage'
+    },
+    {
+      name: 'LiveKadeh-SSH-SFTP-Mac-arm64-v1.5.0.zip',
+      title: 'نسخه دسکتاپ مک (macOS Apple Silicon M1/M2/M3/M4)',
+      path: path.join(distDir, 'LiveKadeh-SSH-SFTP-Mac-arm64-v1.5.0.zip'),
+      url: '/download/LiveKadeh-SSH-SFTP-Mac-arm64-v1.5.0.zip',
+      badge: 'مک Apple Silicon'
+    },
+    {
+      name: 'LiveKadeh-SSH-SFTP-Mac-x64-v1.5.0.zip',
+      title: 'نسخه دسکتاپ مک اینتل (macOS Intel x64)',
+      path: path.join(distDir, 'LiveKadeh-SSH-SFTP-Mac-x64-v1.5.0.zip'),
+      url: '/download/LiveKadeh-SSH-SFTP-Mac-x64-v1.5.0.zip',
+      badge: 'مک Intel x64'
+    },
+    {
       name: 'livekadeh-ssh-sftp-extension-v1.5.0.zip',
       title: 'افزونه کروم (Chrome Extension ZIP)',
       path: path.join(rootDir, 'livekadeh-ssh-sftp-extension-v1.5.0.zip'),
