@@ -189,6 +189,7 @@ app.get('/stream', (req, res) => {
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Range');
+    res.setHeader('Access-Control-Expose-Headers', 'Content-Range, Content-Length, Accept-Ranges, Content-Disposition');
     res.setHeader('Accept-Ranges', 'bytes');
 
     if (req.query.download === '1' || req.query.download === 'true') {

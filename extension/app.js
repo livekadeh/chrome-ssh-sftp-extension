@@ -523,6 +523,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     btnCancelUpload.addEventListener('click', () => sftpManager.cancelUpload());
   }
 
+  const btnCancelDownload = document.getElementById('btnCancelDownload');
+  if (btnCancelDownload) {
+    btnCancelDownload.addEventListener('click', () => sftpManager.cancelDownload());
+  }
+
   // SFTP Action Toolbar
   btnSftpNewFile.addEventListener('click', () => sftpManager.createNewFile());
   btnSftpNewFolder.addEventListener('click', () => sftpManager.createNewFolder());

@@ -1828,6 +1828,154 @@ input:focus, select:focus, textarea:focus {
   direction: ltr;
 }
 
+/* ================= SFTP DOWNLOAD PROGRESS BAR ================= */
+.sftp-download-progress {
+  position: absolute;
+  bottom: 35px;
+  left: 20px;
+  right: 20px;
+  z-index: 101;
+  animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.sftp-download-progress.has-upload-active {
+  bottom: 145px;
+}
+
+.download-progress-card {
+  background: rgba(12, 18, 29, 0.95);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(0, 255, 157, 0.45);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6), 0 0 20px rgba(0, 255, 157, 0.2);
+  border-radius: var(--radius-md);
+  padding: 14px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+[data-theme="light"] .download-progress-card {
+  background: rgba(255, 255, 255, 0.95);
+  border: 1px solid rgba(16, 185, 129, 0.4);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.12), 0 0 15px rgba(16, 185, 129, 0.15);
+}
+
+.download-progress-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.download-header-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.download-pulse-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: rgba(0, 255, 157, 0.15);
+  border: 1px solid #00ff9d;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  animation: pulseGlow 1.5s infinite alternate;
+}
+
+.download-file-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-main);
+  max-width: 400px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.download-file-counter {
+  font-size: 11px;
+  color: #00ff9d;
+  font-weight: 600;
+}
+
+[data-theme="light"] .download-file-counter {
+  color: #059669;
+}
+
+.download-header-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.download-percent-text {
+  font-family: var(--font-mono);
+  font-size: 16px;
+  font-weight: 700;
+  color: #00ff9d;
+  text-shadow: 0 0 8px rgba(0, 255, 157, 0.5);
+}
+
+[data-theme="light"] .download-percent-text {
+  color: #059669;
+  text-shadow: none;
+}
+
+.btn-cancel-download {
+  background: rgba(239, 68, 68, 0.15);
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  color: #ef4444;
+  width: 26px;
+  height: 26px;
+  border-radius: var(--radius-xs);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.btn-cancel-download:hover {
+  background: rgba(239, 68, 68, 0.35);
+  color: #ffffff;
+  box-shadow: 0 0 10px rgba(239, 68, 68, 0.5);
+}
+
+.download-track {
+  width: 100%;
+  height: 8px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 4px;
+  overflow: hidden;
+  position: relative;
+}
+
+[data-theme="light"] .download-track {
+  background: rgba(0, 0, 0, 0.06);
+}
+
+.download-bar {
+  height: 100%;
+  background: linear-gradient(90deg, #00ff9d, #00f0ff);
+  border-radius: 4px;
+  box-shadow: 0 0 10px #00ff9d;
+  transition: width 0.15s ease-out;
+}
+
+.download-footer {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  font-family: var(--font-mono);
+  color: var(--text-muted);
+  direction: ltr;
+}
+
 @keyframes pulseGlow {
   0% { box-shadow: 0 0 5px rgba(0, 240, 255, 0.2); }
   100% { box-shadow: 0 0 16px rgba(0, 240, 255, 0.6); }
