@@ -7,7 +7,7 @@ This package wraps the LiveKadeh SSH & SFTP extension and the high-speed WebSock
 - **Zero Dependencies**: Does not require Google Chrome, Node.js, or any external bridge installation.
 - **Embedded WebSocket Bridge**: Automatically starts the bridge on a free local port (default 3000) inside the app lifecycle.
 - **Full Offline Persistence**: Profiles, settings, and keys are stored in a dedicated local file in user app data.
-- **Single Portable Executable**: Generates `LiveKadeh-SSH-SFTP-Portable-v1.5.0.exe` for instant launch without an installer.
+- **Single Portable Executable**: Generates `LiveKadeh-SSH-SFTP-Portable-v1.5.1.exe` for instant launch without an installer.
 
 ## Development & Local Run
 
@@ -25,4 +25,4 @@ npm run build:win
 ```
 
 The output file will be generated in `dist/`:
-`dist/LiveKadeh-SSH-SFTP-Portable-v1.5.0.exe`
+`dist/LiveKadeh-SSH-SFTP-Portable-v1.5.1.exe`

@@ -4,7 +4,7 @@ const fs = require('fs');
 const net = require('net');
 const http = require('http');
 
-const APP_VERSION = '1.5.0';
+const APP_VERSION = '1.5.1';
 
 let splashWindow = null;
 let mainWindow = null;
