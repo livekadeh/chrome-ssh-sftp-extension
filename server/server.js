@@ -804,16 +804,20 @@ wss.on('connection', (ws, req) => {
 
       if (sshClient && isConnected) {
         const cmd = `rm -rf -- ${escapeShell(dirPath)}`;
+        let stderr = '';
+        let exitCode = null;
+
         sshClient.exec(cmd, (execErr, stream) => {
           if (execErr) {
             return sftpRmdirRecursive(dirPath, (err) => {
               safeSend({ type: 'sftp-rmdir-res', id, success: !err, path: dirPath, error: err ? err.message : null });
             });
           }
-          let stderr = '';
           stream.stderr.on('data', d => { stderr += d.toString(); });
+          stream.on('exit', code => { exitCode = code; });
           stream.on('close', code => {
-            if (code === 0) {
+            const finalCode = (typeof code === 'number') ? code : (typeof exitCode === 'number' ? exitCode : (stderr ? 1 : 0));
+            if (finalCode === 0) {
               safeSend({ type: 'sftp-rmdir-res', id, success: true, path: dirPath, error: null });
             } else {
               sftpRmdirRecursive(dirPath, (err) => {
@@ -870,20 +874,26 @@ wss.on('connection', (ws, req) => {
 
       // Strategy 1: Fast server-side copy via SSH exec
       if (sshClient && isConnected) {
-        const copyCmds = copyList.map(item => `cp -r ${escapeShell(item.src)} ${escapeShell(item.dest)}`).join(' && ');
+        const copyCmds = copyList.map(item => `cp -r -- ${escapeShell(item.src)} ${escapeShell(item.dest)}`).join(' && ');
+        let stderr = '';
+        let exitCode = null;
+
         sshClient.exec(copyCmds, (err, stream) => {
           if (err) {
-            fallbackSftpCopy();
+            fallbackSftpCopy(err.message);
             return;
           }
 
-          let stderr = '';
           stream.stderr.on('data', (d) => { stderr += d.toString(); });
+          stream.on('exit', (code) => {
+            exitCode = code;
+          });
           stream.on('close', (code) => {
-            if (code === 0) {
+            const finalCode = (typeof code === 'number') ? code : (typeof exitCode === 'number' ? exitCode : (stderr ? 1 : 0));
+            if (finalCode === 0) {
               safeSend({ type: 'sftp-copy-res', id, success: true, count: copyList.length });
             } else {
-              fallbackSftpCopy(stderr || `Copy command exited with code ${code}`);
+              fallbackSftpCopy(stderr || `Copy command exited with code ${finalCode}`);
             }
           });
         });
@@ -892,7 +902,7 @@ wss.on('connection', (ws, req) => {
 
       fallbackSftpCopy();
 
-      // Strategy 2: Fallback pure SFTP recursive copy
+      // Strategy 2: Fallback pure SFTP recursive copy with safe atomic / chunked transfers
       function fallbackSftpCopy(originalError = null) {
         let index = 0;
 
@@ -918,19 +928,61 @@ wss.on('connection', (ws, req) => {
         }
 
         function sftpCopyFile(src, dest, cb) {
-          const r = sftpSession.createReadStream(src);
-          const w = sftpSession.createWriteStream(dest);
-          let finished = false;
-          const done = (err) => {
-            if (!finished) {
-              finished = true;
-              cb(err);
+          sftpSession.stat(src, (stErr, stats) => {
+            if (stErr) return cb(stErr);
+            const fileSize = (stats && typeof stats.size === 'number') ? stats.size : 0;
+
+            // In-memory read/write for files under 64MB - fast, atomic, zero stream deadlocks
+            if (fileSize < 64 * 1024 * 1024) {
+              sftpSession.readFile(src, (readErr, data) => {
+                if (readErr) return cb(readErr);
+                sftpSession.writeFile(dest, data, cb);
+              });
+              return;
             }
-          };
-          r.on('error', done);
-          w.on('error', done);
-          w.on('close', () => done(null));
-          r.pipe(w);
+
+            // Chunked read/write for larger files
+            sftpSession.open(src, 'r', (openErr, readHandle) => {
+              if (openErr) return cb(openErr);
+              sftpSession.open(dest, 'w', (wOpenErr, writeHandle) => {
+                if (wOpenErr) {
+                  sftpSession.close(readHandle, () => {});
+                  return cb(wOpenErr);
+                }
+
+                const CHUNK_SIZE = 512 * 1024;
+                const buf = Buffer.alloc(CHUNK_SIZE);
+                let position = 0;
+
+                function copyNextChunk() {
+                  sftpSession.read(readHandle, buf, 0, CHUNK_SIZE, position, (rErr, bytesRead) => {
+                    if (rErr) {
+                      sftpSession.close(readHandle, () => {});
+                      sftpSession.close(writeHandle, () => {});
+                      return cb(rErr);
+                    }
+                    if (bytesRead === 0) {
+                      sftpSession.close(readHandle, () => {});
+                      sftpSession.close(writeHandle, (cErr) => cb(cErr));
+                      return;
+                    }
+
+                    sftpSession.write(writeHandle, buf, 0, bytesRead, position, (wErr) => {
+                      if (wErr) {
+                        sftpSession.close(readHandle, () => {});
+                        sftpSession.close(writeHandle, () => {});
+                        return cb(wErr);
+                      }
+                      position += bytesRead;
+                      copyNextChunk();
+                    });
+                  });
+                }
+
+                copyNextChunk();
+              });
+            });
+          });
         }
 
         function sftpCopyItem(src, dest, cb) {
@@ -985,19 +1037,25 @@ wss.on('connection', (ws, req) => {
 
       // Strategy 1: Fast OS native move via SSH exec
       if (sshClient && isConnected) {
-        const mvCmds = moveList.map(item => `mv ${escapeShell(item.src)} ${escapeShell(item.dest)}`).join(' && ');
+        const mvCmds = moveList.map(item => `mv -f -- ${escapeShell(item.src)} ${escapeShell(item.dest)}`).join(' && ');
+        let stderr = '';
+        let exitCode = null;
+
         sshClient.exec(mvCmds, (err, stream) => {
           if (err) {
             fallbackSftpMove();
             return;
           }
-          let stderr = '';
           stream.stderr.on('data', (d) => { stderr += d.toString(); });
+          stream.on('exit', (code) => {
+            exitCode = code;
+          });
           stream.on('close', (code) => {
-            if (code === 0) {
+            const finalCode = (typeof code === 'number') ? code : (typeof exitCode === 'number' ? exitCode : (stderr ? 1 : 0));
+            if (finalCode === 0) {
               safeSend({ type: 'sftp-move-res', id, success: true, count: moveList.length });
             } else {
-              fallbackSftpMove(stderr || `Move command exited with code ${code}`);
+              fallbackSftpMove(stderr || `Move command exited with code ${finalCode}`);
             }
           });
         });

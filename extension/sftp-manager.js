@@ -1946,10 +1946,10 @@ class SFTPManager {
             ? (isPersian ? 'کپی داخلی سیستم‌عامل (OS Native cp ⚡)' : 'Native OS Fast Copy (cp -r) ⚡')
             : (isPersian ? 'انتقال داخلی سیستم‌عامل (OS Native mv ⚡)' : 'Native OS Fast Move (mv) ⚡');
         }
-        if (percentEl) percentEl.textContent = '50%';
-        if (barEl) barEl.style.width = '50%';
-        if (sizeEl) sizeEl.textContent = isPersian ? `${items.length} مورد در حال پردازش...` : `Processing ${items.length} item(s)...`;
-        if (speedEl) speedEl.textContent = isPersian ? 'مستقیم سیستم‌عامل' : 'OS Direct';
+        if (percentEl) percentEl.textContent = isPersian ? 'در حال اجرا...' : 'Running...';
+        if (barEl) barEl.style.width = '75%';
+        if (sizeEl) sizeEl.textContent = isPersian ? `${items.length} مورد مستقیم در هسته سیستم‌عامل...` : `Direct OS execution for ${items.length} item(s)...`;
+        if (speedEl) speedEl.textContent = isPersian ? 'دستور مستقیم هسته لینوکس ⚡' : 'OS Kernel cp/mv ⚡';
 
         if (action === 'copy') {
           await this.sendRequest({ type: 'sftp-copy', items }, 180000);
@@ -2203,10 +2203,10 @@ class SFTPManager {
     if (pulseIconEl) pulseIconEl.textContent = '🚚';
     if (fileNameEl) fileNameEl.textContent = items.length === 1 ? items[0].filename : (isPersian ? `${items.length} فایل و پوشه` : `${items.length} items`);
     if (counterEl) counterEl.textContent = isPersian ? 'انتقال داخلی سیستم‌عامل (OS Native mv ⚡)' : 'Native OS Fast Move (mv) ⚡';
-    if (percentEl) percentEl.textContent = '50%';
-    if (barEl) barEl.style.width = '50%';
-    if (sizeEl) sizeEl.textContent = isPersian ? `${items.length} مورد در حال انتقال...` : `Moving ${items.length} item(s)...`;
-    if (speedEl) speedEl.textContent = isPersian ? 'مستقیم سیستم‌عامل' : 'OS Direct';
+    if (percentEl) percentEl.textContent = isPersian ? 'در حال انتقال...' : 'Moving...';
+    if (barEl) barEl.style.width = '75%';
+    if (sizeEl) sizeEl.textContent = isPersian ? `${items.length} مورد مستقیم در سیستم‌عامل...` : `Direct OS move for ${items.length} item(s)...`;
+    if (speedEl) speedEl.textContent = isPersian ? 'دستور مستقیم هسته لینوکس ⚡' : 'OS Kernel mv ⚡';
 
     try {
       this.updateStatus(isPersian ? 'در حال انتقال با دستور مستقیم سیستم‌عامل...' : 'Moving with native OS command...');
