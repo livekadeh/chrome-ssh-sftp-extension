@@ -1177,6 +1177,38 @@ document.addEventListener('DOMContentLoaded', async () => {
     input.click();
   });
 
+  // App Theme Switcher Logic
+  const btnAppThemeToggle = document.getElementById('btnAppThemeToggle');
+  const appThemeIcon = document.getElementById('appThemeIcon');
+  const settingAppTheme = document.getElementById('settingAppTheme');
+
+  function setAppTheme(theme) {
+    const isLight = theme === 'light';
+    document.documentElement.setAttribute('data-theme', isLight ? 'light' : 'dark');
+    localStorage.setItem('livekadeh_app_theme', isLight ? 'light' : 'dark');
+    chrome.storage.local.set({ appTheme: isLight ? 'light' : 'dark' }).catch(() => {});
+
+    if (appThemeIcon) {
+      appThemeIcon.textContent = isLight ? '🌙' : '☀️';
+    }
+    if (settingAppTheme) {
+      settingAppTheme.value = isLight ? 'light' : 'dark';
+    }
+  }
+
+  if (btnAppThemeToggle) {
+    btnAppThemeToggle.addEventListener('click', () => {
+      const current = document.documentElement.getAttribute('data-theme') === 'light' ? 'light' : 'dark';
+      setAppTheme(current === 'light' ? 'dark' : 'light');
+    });
+  }
+
+  if (settingAppTheme) {
+    settingAppTheme.addEventListener('change', () => {
+      setAppTheme(settingAppTheme.value);
+    });
+  }
+
   // Settings Loading & Saving
   const settingDefaultExtEditor = document.getElementById('settingDefaultExtEditor');
   const settingCustomEditorRow = document.getElementById('settingCustomEditorRow');
@@ -1192,11 +1224,24 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   async function loadSettings() {
-    const data = await chrome.storage.local.get(['bridgeUrl', 'fontFamily', 'fontSize', 'terminalTheme']);
+    const data = await chrome.storage.local.get(['bridgeUrl', 'fontFamily', 'fontSize', 'terminalTheme', 'appTheme']);
     if (data.bridgeUrl) settingBridgeUrl.value = data.bridgeUrl;
-    if (data.fontFamily) settingFontFamily.value = data.fontFamily;
-    if (data.fontSize) settingFontSize.value = data.fontSize;
-    if (data.terminalTheme) settingTerminalTheme.value = data.terminalTheme;
+    if (data.fontFamily) {
+      settingFontFamily.value = data.fontFamily;
+      termManager.fontFamily = data.fontFamily;
+    }
+    if (data.fontSize) {
+      settingFontSize.value = data.fontSize;
+      termManager.fontSize = parseInt(data.fontSize, 10);
+    }
+    if (data.terminalTheme) {
+      settingTerminalTheme.value = data.terminalTheme;
+      termManager.themeName = data.terminalTheme;
+    }
+    termManager.applyAppearance();
+
+    const savedAppTheme = data.appTheme || localStorage.getItem('livekadeh_app_theme') || 'dark';
+    setAppTheme(savedAppTheme);
 
     const extEditor = localStorage.getItem('livekadeh_ext_editor') || 'default';
     const extEditorCmd = localStorage.getItem('livekadeh_ext_editor_cmd') || '';
@@ -1215,11 +1260,15 @@ document.addEventListener('DOMContentLoaded', async () => {
     const fontFamily = settingFontFamily.value;
     const fontSize = parseInt(settingFontSize.value, 10) || 14;
     const terminalTheme = settingTerminalTheme.value;
+    const appTheme = settingAppTheme ? settingAppTheme.value : (document.documentElement.getAttribute('data-theme') || 'dark');
 
-    await chrome.storage.local.set({ bridgeUrl, fontFamily, fontSize, terminalTheme });
+    await chrome.storage.local.set({ bridgeUrl, fontFamily, fontSize, terminalTheme, appTheme });
+    setAppTheme(appTheme);
+
     termManager.fontFamily = fontFamily;
     termManager.fontSize = fontSize;
     termManager.themeName = terminalTheme;
+    termManager.applyAppearance();
 
     if (settingDefaultExtEditor) {
       localStorage.setItem('livekadeh_ext_editor', settingDefaultExtEditor.value);
