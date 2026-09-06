@@ -3798,6 +3798,19 @@ html[dir="rtl"] .transfer-file-name {
   font-family: var(--font-mono);
 }
 
+.download-bar.indeterminate,
+.upload-bar.indeterminate,
+.transfer-progress-bar.indeterminate {
+  background: linear-gradient(90deg, #38bdf8, #818cf8, #fbbf24, #38bdf8) !important;
+  background-size: 200% 100% !important;
+  animation: progressShimmer 1.5s infinite linear !important;
+}
+
+@keyframes progressShimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
 
 
 

@@ -7,6 +7,7 @@
 class TransferManager {
   constructor() {
     this.tasks = new Map();
+    this.simulatedTimers = new Map();
     this.drawerEl = null;
     this.backdropEl = null;
     this.floatingTabEl = null;
@@ -43,6 +44,31 @@ class TransferManager {
     const btnClearFinished = document.getElementById('btnClearFinishedTransfers');
     if (btnClearFinished) {
       btnClearFinished.addEventListener('click', () => this.clearFinished());
+    }
+
+    // Event Delegation for Task Actions (No inline onclick to respect Chrome Extension CSP)
+    if (this.listContainerEl) {
+      this.listContainerEl.addEventListener('click', (e) => {
+        const cancelBtn = e.target.closest('.btn-task-cancel');
+        if (cancelBtn) {
+          e.stopPropagation();
+          const card = cancelBtn.closest('.transfer-card');
+          if (card && card.dataset.taskId) {
+            this.cancelTask(card.dataset.taskId);
+          }
+          return;
+        }
+
+        const removeBtn = e.target.closest('.btn-task-remove');
+        if (removeBtn) {
+          e.stopPropagation();
+          const card = removeBtn.closest('.transfer-card');
+          if (card && card.dataset.taskId) {
+            this.removeTask(card.dataset.taskId);
+          }
+          return;
+        }
+      });
     }
 
     this.initDraggableFloatingTab();
@@ -160,7 +186,7 @@ class TransferManager {
     const taskId = id || ('transfer-' + Date.now() + '-' + Math.random().toString(36).substr(2, 6));
     const isPersian = window.i18n && window.i18n.currentLang === 'fa';
 
-    let defaultStatus = isPersian ? 'در حال اجرا...' : 'Running...';
+    let defaultStatus = isPersian ? 'در حال پردازش...' : 'Processing...';
     if (type === 'copy') defaultStatus = isPersian ? 'در حال کپی داخلی سیستم‌عامل...' : 'Native OS copy running...';
     else if (type === 'move') defaultStatus = isPersian ? 'در حال انتقال داخلی سیستم‌عامل...' : 'Native OS move running...';
     else if (type === 'download') defaultStatus = isPersian ? 'در حال دریافت فایل...' : 'Downloading...';
@@ -172,8 +198,8 @@ class TransferManager {
       id: taskId,
       type,
       name: name || 'unnamed',
-      status: 'running', // 'running' | 'completed' | 'error' | 'cancelled'
-      percent: 0,
+      status: 'running',
+      percent: 5,
       transferredBytes: 0,
       totalBytes: totalBytes || 0,
       speed: 0,
@@ -186,14 +212,45 @@ class TransferManager {
     };
 
     this.tasks.set(taskId, task);
+
+    // If task has indeterminate progress (e.g. server-side copy/move/archive), start progressive simulated animation
+    if (type === 'copy' || type === 'move' || type === 'compress' || type === 'extract') {
+      this.startSimulatedProgress(taskId);
+    }
+
     this.scheduleRender();
 
-    // Auto-pulse floating tab when new task starts
     if (this.floatingTabEl) {
       this.floatingTabEl.classList.add('has-active-transfers');
     }
 
     return task;
+  }
+
+  startSimulatedProgress(taskId) {
+    if (this.simulatedTimers.has(taskId)) return;
+    let cur = 15;
+    const timer = setInterval(() => {
+      const t = this.tasks.get(taskId);
+      if (!t || t.status !== 'running') {
+        clearInterval(timer);
+        this.simulatedTimers.delete(taskId);
+        return;
+      }
+      if (cur < 92) {
+        cur += Math.max(1, Math.round((92 - cur) * 0.12));
+        t.percent = cur;
+        this.scheduleRender();
+      }
+    }, 400);
+    this.simulatedTimers.set(taskId, timer);
+  }
+
+  stopSimulatedProgress(taskId) {
+    if (this.simulatedTimers.has(taskId)) {
+      clearInterval(this.simulatedTimers.get(taskId));
+      this.simulatedTimers.delete(taskId);
+    }
   }
 
   updateTask(id, updates = {}) {
@@ -208,6 +265,7 @@ class TransferManager {
     if (updates.status !== undefined) task.status = updates.status;
 
     if (task.percent >= 100 && task.status === 'running') {
+      this.stopSimulatedProgress(id);
       task.status = 'completed';
       task.endTime = Date.now();
       const isPersian = window.i18n && window.i18n.currentLang === 'fa';
@@ -218,6 +276,7 @@ class TransferManager {
   }
 
   completeTask(id, message = null) {
+    this.stopSimulatedProgress(id);
     const task = this.tasks.get(id);
     if (!task) return;
     const isPersian = window.i18n && window.i18n.currentLang === 'fa';
@@ -232,6 +291,7 @@ class TransferManager {
   }
 
   errorTask(id, error = null) {
+    this.stopSimulatedProgress(id);
     const task = this.tasks.get(id);
     if (!task) return;
     const isPersian = window.i18n && window.i18n.currentLang === 'fa';
@@ -246,13 +306,14 @@ class TransferManager {
   }
 
   cancelTask(id) {
+    this.stopSimulatedProgress(id);
     const task = this.tasks.get(id);
     if (!task || task.status !== 'running') return;
     const isPersian = window.i18n && window.i18n.currentLang === 'fa';
 
     task.status = 'cancelled';
     task.speed = 0;
-    task.statusText = isPersian ? 'توسط کاربر لغو شد' : 'Cancelled by user';
+    task.statusText = isPersian ? 'توسط کاربر لغو شد ✕' : 'Cancelled by user ✕';
     task.endTime = Date.now();
 
     if (typeof task.onCancel === 'function') {
@@ -263,10 +324,16 @@ class TransferManager {
       }
     }
 
+    // Also trigger global SFTP cancel if matching
+    if (window.sftpManager && typeof window.sftpManager.cancelOperation === 'function') {
+      window.sftpManager.cancelOperation();
+    }
+
     this.scheduleRender();
   }
 
   removeTask(id) {
+    this.stopSimulatedProgress(id);
     this.tasks.delete(id);
     this.scheduleRender();
   }
@@ -274,6 +341,7 @@ class TransferManager {
   clearFinished() {
     for (const [id, task] of this.tasks.entries()) {
       if (task.status === 'completed' || task.status === 'cancelled' || task.status === 'error') {
+        this.stopSimulatedProgress(id);
         this.tasks.delete(id);
       }
     }
@@ -452,6 +520,8 @@ class TransferManager {
         speedInfo = `⚡ ${this.formatSpeed(task.speed)}`;
       }
 
+      const isIndeterminate = isRunning && (task.type === 'copy' || task.type === 'move' || task.type === 'compress' || task.type === 'extract');
+
       html += `
         <div class="transfer-card status-${task.status}" data-task-id="${this.escapeHtml(task.id)}">
           <div class="transfer-card-header">
@@ -465,15 +535,15 @@ class TransferManager {
             <div class="transfer-header-right">
               <span class="transfer-status-badge ${statusBadgeClass}">${this.escapeHtml(statusText)}</span>
               ${isRunning && task.canCancel ? `
-                <button class="btn-task-action btn-task-cancel" title="${isPersian ? 'لغو عملیات' : 'Cancel task'}" onclick="window.transferManager.cancelTask('${this.escapeHtml(task.id)}')">✕</button>
+                <button class="btn-task-action btn-task-cancel" title="${isPersian ? 'لغو عملیات' : 'Cancel task'}">✕</button>
               ` : `
-                <button class="btn-task-action btn-task-remove" title="${isPersian ? 'حذف از لیست' : 'Remove'}" onclick="window.transferManager.removeTask('${this.escapeHtml(task.id)}')">✕</button>
+                <button class="btn-task-action btn-task-remove" title="${isPersian ? 'حذف از لیست' : 'Remove'}">✕</button>
               `}
             </div>
           </div>
 
           <div class="transfer-progress-track">
-            <div class="transfer-progress-bar" style="width: ${percent}%;"></div>
+            <div class="transfer-progress-bar ${isIndeterminate ? 'indeterminate' : ''}" style="width: ${percent}%;"></div>
           </div>
 
           <div class="transfer-card-footer">

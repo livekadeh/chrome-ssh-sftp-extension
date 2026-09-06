@@ -364,6 +364,11 @@ class SFTPManager {
   }
 
   sendRequest(payload, options = {}) {
+    if (typeof options === 'number') {
+      options = { timeout: options, signal: this.activeDownloadController ? this.activeDownloadController.signal : null };
+    } else if (typeof options === 'object' && options !== null && !options.signal && this.activeDownloadController) {
+      options.signal = this.activeDownloadController.signal;
+    }
     return this.sendRequestToSession(this.activeSessionId, payload, options);
   }
 
@@ -379,12 +384,19 @@ class SFTPManager {
 
       let timeoutDuration = 60000;
       let onMessage = null;
+      let signal = null;
 
       if (typeof options === 'number') {
         timeoutDuration = options;
       } else if (typeof options === 'object' && options !== null) {
         if (typeof options.timeout === 'number') timeoutDuration = options.timeout;
         if (typeof options.onMessage === 'function') onMessage = options.onMessage;
+        if (options.signal) signal = options.signal;
+      }
+
+      if (signal && signal.aborted) {
+        reject(new Error('Operation cancelled by user'));
+        return;
       }
 
       const callbacks = session ? session.pendingCallbacks : this.pendingCallbacks;
@@ -414,6 +426,17 @@ class SFTPManager {
         if (callbackEntry.timeoutTimer) clearTimeout(callbackEntry.timeoutTimer);
         armTimeout();
       };
+
+      if (signal) {
+        const onAbort = () => {
+          if (callbacks.has(id)) {
+            if (callbackEntry.timeoutTimer) clearTimeout(callbackEntry.timeoutTimer);
+            callbacks.delete(id);
+            reject(new Error('Operation cancelled by user'));
+          }
+        };
+        signal.addEventListener('abort', onAbort, { once: true });
+      }
 
       armTimeout();
       callbacks.set(id, callbackEntry);
@@ -1227,12 +1250,22 @@ class SFTPManager {
   cancelOperation() {
     this.isDownloadCancelled = true;
     this.isOperationCancelled = true;
+    this.isUploadCancelled = true;
     if (this.activeDownloadController) {
       try { this.activeDownloadController.abort(); } catch (e) {}
       this.activeDownloadController = null;
     }
+    if (window.transferManager) {
+      for (const task of window.transferManager.tasks.values()) {
+        if (task.status === 'running') {
+          window.transferManager.cancelTask(task.id);
+        }
+      }
+    }
     const progressContainer = document.getElementById('sftpDownloadProgressContainer');
     if (progressContainer) progressContainer.style.display = 'none';
+    const uploadContainer = document.getElementById('sftpUploadProgressContainer');
+    if (uploadContainer) uploadContainer.style.display = 'none';
     const isPersian = window.i18n && window.i18n.currentLang === 'fa';
     this.updateStatus(isPersian ? 'عملیات لغو شد ⚠️' : 'Operation cancelled ⚠️');
   }
@@ -2138,16 +2171,33 @@ class SFTPManager {
             ? (isPersian ? 'کپی داخلی سیستم‌عامل (OS Native cp ⚡)' : 'Native OS Fast Copy (cp -r) ⚡')
             : (isPersian ? 'انتقال داخلی سیستم‌عامل (OS Native mv ⚡)' : 'Native OS Fast Move (mv) ⚡');
         }
-        if (percentEl) percentEl.textContent = isPersian ? 'در حال اجرا...' : 'Running...';
-        if (barEl) barEl.style.width = '75%';
+        if (percentEl) percentEl.textContent = '20%';
+        if (barEl) {
+          barEl.classList.add('indeterminate');
+          barEl.style.width = '20%';
+        }
         if (sizeEl) sizeEl.textContent = isPersian ? `${items.length} مورد مستقیم در هسته سیستم‌عامل...` : `Direct OS execution for ${items.length} item(s)...`;
         if (speedEl) speedEl.textContent = isPersian ? 'دستور مستقیم هسته لینوکس ⚡' : 'OS Kernel cp/mv ⚡';
 
-        if (action === 'copy') {
-          await this.sendRequest({ type: 'sftp-copy', items }, 180000);
-        } else {
-          await this.sendRequest({ type: 'sftp-move', items }, 180000);
-          this.clipboard = null;
+        let simPct = 20;
+        const simTimer = setInterval(() => {
+          if (simPct < 90) {
+            simPct += Math.max(1, Math.round((90 - simPct) * 0.15));
+            if (percentEl) percentEl.textContent = `${simPct}%`;
+            if (barEl) barEl.style.width = `${simPct}%`;
+          }
+        }, 300);
+
+        try {
+          if (action === 'copy') {
+            await this.sendRequest({ type: 'sftp-copy', items }, 180000);
+          } else {
+            await this.sendRequest({ type: 'sftp-move', items }, 180000);
+            this.clipboard = null;
+          }
+        } finally {
+          clearInterval(simTimer);
+          if (barEl) barEl.classList.remove('indeterminate');
         }
 
         if (percentEl) percentEl.textContent = '100% ✔';
@@ -2430,14 +2480,31 @@ class SFTPManager {
     if (pulseIconEl) pulseIconEl.textContent = '🚚';
     if (fileNameEl) fileNameEl.textContent = items.length === 1 ? items[0].filename : (isPersian ? `${items.length} فایل و پوشه` : `${items.length} items`);
     if (counterEl) counterEl.textContent = isPersian ? 'انتقال داخلی سیستم‌عامل (OS Native mv ⚡)' : 'Native OS Fast Move (mv) ⚡';
-    if (percentEl) percentEl.textContent = isPersian ? 'در حال انتقال...' : 'Moving...';
-    if (barEl) barEl.style.width = '75%';
+    if (percentEl) percentEl.textContent = '20%';
+    if (barEl) {
+      barEl.classList.add('indeterminate');
+      barEl.style.width = '20%';
+    }
     if (sizeEl) sizeEl.textContent = isPersian ? `${items.length} مورد مستقیم در سیستم‌عامل...` : `Direct OS move for ${items.length} item(s)...`;
     if (speedEl) speedEl.textContent = isPersian ? 'دستور مستقیم هسته لینوکس ⚡' : 'OS Kernel mv ⚡';
 
     try {
-      this.updateStatus(isPersian ? 'در حال انتقال با دستور مستقیم سیستم‌عامل...' : 'Moving with native OS command...');
-      await this.sendRequest({ type: 'sftp-move', items }, 180000);
+      let simMovePct = 20;
+      const simMoveTimer = setInterval(() => {
+        if (simMovePct < 90) {
+          simMovePct += Math.max(1, Math.round((90 - simMovePct) * 0.15));
+          if (percentEl) percentEl.textContent = `${simMovePct}%`;
+          if (barEl) barEl.style.width = `${simMovePct}%`;
+        }
+      }, 300);
+
+      try {
+        this.updateStatus(isPersian ? 'در حال انتقال با دستور مستقیم سیستم‌عامل...' : 'Moving with native OS command...');
+        await this.sendRequest({ type: 'sftp-move', items }, 180000);
+      } finally {
+        clearInterval(simMoveTimer);
+        if (barEl) barEl.classList.remove('indeterminate');
+      }
 
       if (percentEl) percentEl.textContent = '100% ✔';
       if (barEl) barEl.style.width = '100%';
