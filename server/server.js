@@ -30,7 +30,7 @@ app.get('/', (req, res) => {
   res.json({
     status: 'online',
     service: 'LiveKadeh SSH & SFTP Bridge Server',
-    version: '1.4.3',
+    version: '1.5.0',
     uptime: process.uptime(),
     timestamp: new Date().toISOString(),
     endpoints: {
@@ -51,17 +51,17 @@ app.use('/download', express.static(rootDir));
 app.get('/downloads', (req, res) => {
   const files = [
     {
-      name: 'LiveKadeh-SSH-SFTP-Portable-v1.4.3.exe',
+      name: 'LiveKadeh-SSH-SFTP-Portable-v1.5.0.exe',
       title: 'نسخه پرتابل ویندوز (Desktop Portable x64)',
-      path: path.join(distDir, 'LiveKadeh-SSH-SFTP-Portable-v1.4.3.exe'),
-      url: '/download/LiveKadeh-SSH-SFTP-Portable-v1.4.3.exe',
+      path: path.join(distDir, 'LiveKadeh-SSH-SFTP-Portable-v1.5.0.exe'),
+      url: '/download/LiveKadeh-SSH-SFTP-Portable-v1.5.0.exe',
       badge: 'ویندوز x64'
     },
     {
-      name: 'livekadeh-ssh-sftp-extension-v1.4.3.zip',
+      name: 'livekadeh-ssh-sftp-extension-v1.5.0.zip',
       title: 'افزونه کروم (Chrome Extension ZIP)',
-      path: path.join(rootDir, 'livekadeh-ssh-sftp-extension-v1.4.3.zip'),
-      url: '/download/livekadeh-ssh-sftp-extension-v1.4.3.zip',
+      path: path.join(rootDir, 'livekadeh-ssh-sftp-extension-v1.5.0.zip'),
+      url: '/download/livekadeh-ssh-sftp-extension-v1.5.0.zip',
       badge: 'Chrome Extension'
     },
     {

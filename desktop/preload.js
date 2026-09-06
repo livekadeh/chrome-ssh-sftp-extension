@@ -89,7 +89,7 @@ window.chrome.runtime = window.chrome.runtime || {
   },
   getManifest: function () {
     return {
-      version: '1.4.3',
+      version: '1.5.0',
       name: 'LiveKadeh SSH & SFTP Pro'
     };
   },

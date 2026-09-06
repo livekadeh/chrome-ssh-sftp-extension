@@ -1234,7 +1234,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   btnExportServers.addEventListener('click', async () => {
     const { servers = [], bridgeUrl = 'ws://localhost:3000/ws' } = await chrome.storage.local.get(['servers', 'bridgeUrl']);
     const exportData = {
-      version: (chrome.runtime && chrome.runtime.getManifest) ? chrome.runtime.getManifest().version : '1.4.3',
+      version: (chrome.runtime && chrome.runtime.getManifest) ? chrome.runtime.getManifest().version : '1.5.0',
       exportedAt: new Date().toISOString(),
       bridgeUrl,
       servers
@@ -1563,7 +1563,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   const currentManifestVersion = (chrome.runtime && chrome.runtime.getManifest) 
     ? chrome.runtime.getManifest().version 
-    : '1.4.3';
+    : '1.5.0';
 
   if (aboutVersionLabel) {
     aboutVersionLabel.textContent = `v${currentManifestVersion}`;

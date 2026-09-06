@@ -1,7 +1,7 @@
 {
   "name": "livekadeh-ssh-sftp-desktop",
   "productName": "LiveKadeh SSH & SFTP Pro",
-  "version": "1.4.3",
+  "version": "1.5.0",
   "description": "Standalone Desktop Client for LiveKadeh SSH & SFTP Pro",
   "main": "main.js",
   "author": "livekadeh",
