@@ -32,14 +32,15 @@ function createSplashWindow() {
 
   splashWindow = new BrowserWindow({
     width: 460,
-    height: 300,
+    height: 310,
     frame: false,
-    transparent: false,
+    transparent: true,
+    hasShadow: true,
     resizable: false,
     alwaysOnTop: true,
     center: true,
     show: true,
-    backgroundColor: '#0a0e17',
+    backgroundColor: '#00000000',
     icon: fs.existsSync(iconPath) ? iconPath : undefined,
     webPreferences: {
       nodeIntegration: false,
