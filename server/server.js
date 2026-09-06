@@ -34,9 +34,97 @@ app.get('/', (req, res) => {
     timestamp: new Date().toISOString(),
     endpoints: {
       health: '/health',
+      downloads: '/downloads',
       websocket: `ws://${req.headers.host || 'localhost:' + PORT}/ws`
     }
   });
+});
+
+// Serve compiled desktop artifacts from dist directory
+const distDir = path.resolve(__dirname, '../dist');
+const rootDir = path.resolve(__dirname, '..');
+app.use('/download', express.static(distDir));
+app.use('/download', express.static(rootDir));
+
+// Web download portal
+app.get('/downloads', (req, res) => {
+  const files = [
+    {
+      name: 'LiveKadeh-SSH-SFTP-Portable-v1.4.3.exe',
+      title: 'نسخه پرتابل ویندوز (Desktop Portable x64)',
+      path: path.join(distDir, 'LiveKadeh-SSH-SFTP-Portable-v1.4.3.exe'),
+      url: '/download/LiveKadeh-SSH-SFTP-Portable-v1.4.3.exe',
+      badge: 'ویندوز x64'
+    },
+    {
+      name: 'livekadeh-ssh-sftp-extension-v1.4.3.zip',
+      title: 'افزونه کروم (Chrome Extension ZIP)',
+      path: path.join(rootDir, 'livekadeh-ssh-sftp-extension-v1.4.3.zip'),
+      url: '/download/livekadeh-ssh-sftp-extension-v1.4.3.zip',
+      badge: 'Chrome Extension'
+    },
+    {
+      name: 'livekadeh-bridge-windows-x64-portable.zip',
+      title: 'سرور بریج مستقل ویندوز (Bridge Server Windows x64)',
+      path: path.join(rootDir, 'livekadeh-bridge-windows-x64-portable.zip'),
+      url: '/download/livekadeh-bridge-windows-x64-portable.zip',
+      badge: 'Windows Server'
+    },
+    {
+      name: 'livekadeh-bridge-linux-x64.tar.gz',
+      title: 'سرور بریج لینوکس (Bridge Server Linux x64)',
+      path: path.join(rootDir, 'livekadeh-bridge-linux-x64.tar.gz'),
+      url: '/download/livekadeh-bridge-linux-x64.tar.gz',
+      badge: 'Linux Server'
+    }
+  ];
+
+  const items = files.map(f => {
+    let sizeStr = 'N/A';
+    if (fs.existsSync(f.path)) {
+      const bytes = fs.statSync(f.path).size;
+      sizeStr = (bytes / (1024 * 1024)).toFixed(2) + ' MB';
+    }
+    return `
+      <div class="card">
+        <div class="file-info">
+          <div class="file-name"><span class="badge">${f.badge}</span> ${f.title}</div>
+          <div class="file-meta">${f.name} &bull; <strong>${sizeStr}</strong></div>
+        </div>
+        <a href="${f.url}" class="btn-download" download>دانلود مستقیم</a>
+      </div>
+    `;
+  }).join('');
+
+  res.send(`<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>دانلود LiveKadeh SSH & SFTP Pro</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Tahoma, sans-serif; background: #0b0f19; color: #f1f5f9; padding: 32px 16px; margin: 0; }
+    .container { max-width: 680px; margin: 0 auto; }
+    h1 { font-size: 22px; color: #38bdf8; margin-bottom: 6px; display: flex; align-items: center; gap: 8px; }
+    p.desc { font-size: 14px; color: #94a3b8; margin-top: 0; margin-bottom: 24px; }
+    .card { background: #131b2e; border: 1px solid #1e293b; border-radius: 12px; padding: 16px 20px; margin-bottom: 14px; display: flex; align-items: center; justify-content: space-between; gap: 16px; transition: border-color 0.2s; }
+    .card:hover { border-color: #38bdf8; }
+    .file-name { font-weight: 600; font-size: 15px; color: #f8fafc; margin-bottom: 4px; }
+    .file-meta { font-size: 12px; color: #94a3b8; font-family: monospace; }
+    .badge { background: #0284c7; color: #fff; font-size: 11px; padding: 2px 8px; border-radius: 6px; font-weight: bold; margin-left: 6px; }
+    .btn-download { background: #2563eb; color: #fff; text-decoration: none; padding: 10px 20px; border-radius: 8px; font-weight: 600; font-size: 13px; white-space: nowrap; transition: background 0.2s; }
+    .btn-download:hover { background: #1d4ed8; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>⚡ پرتال دانلود LiveKadeh SSH & SFTP Pro</h1>
+    <p class="desc">نسخه‌های رسمی کامپایل‌شده نسخه ۱.۴.۳ همراه با پشتیبانی کامل BiDi و فونت وزیر</p>
+    ${items}
+  </div>
+</body>
+</html>`);
 });
 
 app.get('/health', (req, res) => {
