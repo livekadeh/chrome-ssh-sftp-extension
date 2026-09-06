@@ -2,7 +2,11 @@ const { app, BrowserWindow, shell, ipcMain } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const net = require('net');
+const http = require('http');
 
+const APP_VERSION = '1.4.3';
+
+let splashWindow = null;
 let mainWindow = null;
 let activeBridgePort = 3000;
 let activeBridgeUrl = 'ws://127.0.0.1:3000/ws';
@@ -18,6 +22,42 @@ if (!gotTheLock) {
       mainWindow.focus();
     }
   });
+}
+
+// ---------------------------------------------------------
+// Splash Screen Management
+// ---------------------------------------------------------
+function createSplashWindow() {
+  const iconPath = path.join(__dirname, 'icon.png');
+
+  splashWindow = new BrowserWindow({
+    width: 460,
+    height: 300,
+    frame: false,
+    transparent: true,
+    resizable: false,
+    alwaysOnTop: true,
+    center: true,
+    backgroundColor: '#00000000',
+    icon: fs.existsSync(iconPath) ? iconPath : undefined,
+    webPreferences: {
+      nodeIntegration: false,
+      contextIsolation: true,
+      preload: path.join(__dirname, 'splash-preload.js')
+    }
+  });
+
+  splashWindow.loadFile(path.join(__dirname, 'splash.html'));
+
+  splashWindow.on('closed', () => {
+    splashWindow = null;
+  });
+}
+
+function updateSplash(message, progress) {
+  if (splashWindow && !splashWindow.isDestroyed()) {
+    splashWindow.webContents.send('splash:update', { message, progress });
+  }
 }
 
 // ---------------------------------------------------------
@@ -106,33 +146,111 @@ ipcMain.on('bridge:get-sync', (event) => {
 });
 
 // ---------------------------------------------------------
-// Port Discovery & Bridge Server Initialization
+// Port Discovery & Version Verification
 // ---------------------------------------------------------
-function findAvailablePort(preferredPort = 3000) {
+function isPortInUse(port, host = '127.0.0.1') {
   return new Promise((resolve) => {
-    const tester = net.createServer()
-      .once('error', () => {
-        const altTester = net.createServer()
-          .once('listening', () => {
-            const port = altTester.address().port;
-            altTester.close(() => resolve(port));
-          })
-          .listen(0, '127.0.0.1');
-      })
-      .once('listening', () => {
-        tester.close(() => resolve(preferredPort));
-      })
-      .listen(preferredPort, '127.0.0.1');
+    const socket = new net.Socket();
+    socket.setTimeout(400);
+
+    socket.once('connect', () => {
+      socket.destroy();
+      resolve(true); // Port is occupied
+    });
+
+    socket.once('timeout', () => {
+      socket.destroy();
+      resolve(false);
+    });
+
+    socket.once('error', () => {
+      resolve(false); // Port is free
+    });
+
+    socket.connect(port, host);
   });
 }
 
+function checkLiveKadehBridgeVersion(port) {
+  return new Promise((resolve) => {
+    const req = http.get(`http://127.0.0.1:${port}/`, { timeout: 600 }, (res) => {
+      let data = '';
+      res.on('data', (chunk) => { data += chunk; });
+      res.on('end', () => {
+        try {
+          const json = JSON.parse(data);
+          if (json && json.service && json.service.includes('LiveKadeh')) {
+            resolve({ isBridge: true, version: json.version || '0.0.0' });
+          } else {
+            resolve({ isBridge: false, version: null });
+          }
+        } catch (e) {
+          resolve({ isBridge: false, version: null });
+        }
+      });
+    });
+
+    req.on('error', () => resolve({ isBridge: false, version: null }));
+    req.on('timeout', () => {
+      req.destroy();
+      resolve({ isBridge: false, version: null });
+    });
+  });
+}
+
+function findFreePort(startPort = 3000) {
+  return new Promise((resolve) => {
+    const testNext = (currentPort) => {
+      const server = net.createServer();
+      server.once('error', () => {
+        testNext(currentPort + 1);
+      });
+      server.once('listening', () => {
+        server.close(() => resolve(currentPort));
+      });
+      server.listen(currentPort, '127.0.0.1');
+    };
+    testNext(startPort);
+  });
+}
+
+async function resolveOptimalBridgePort() {
+  updateSplash('Checking network ports & bridge...', 30);
+
+  const defaultPort = 3000;
+  const inUse = await isPortInUse(defaultPort);
+
+  if (!inUse) {
+    console.log(`[Desktop] Port ${defaultPort} is free. Using default port.`);
+    return defaultPort;
+  }
+
+  // Port 3000 is in use: Inspect who is using it
+  updateSplash('Inspecting port 3000 activity...', 40);
+  const bridgeCheck = await checkLiveKadehBridgeVersion(defaultPort);
+
+  if (bridgeCheck.isBridge) {
+    console.log(`[Desktop] Port ${defaultPort} has an active LiveKadeh Bridge (version: ${bridgeCheck.version}).`);
+    // If an older or external instance is detected, start a dedicated isolated port for this desktop app
+    console.log(`[Desktop] Spawning dedicated fresh port for desktop session to prevent conflicts...`);
+  } else {
+    console.log(`[Desktop] Port ${defaultPort} is occupied by an external service. Finding next available port...`);
+  }
+
+  updateSplash('Finding clean isolated port...', 50);
+  const freshPort = await findFreePort(3001);
+  console.log(`[Desktop] Selected clean bridge port: ${freshPort}`);
+  return freshPort;
+}
+
 async function startInternalBridge() {
-  activeBridgePort = await findAvailablePort(3000);
+  activeBridgePort = await resolveOptimalBridgePort();
   activeBridgeUrl = `ws://127.0.0.1:${activeBridgePort}/ws`;
 
   process.env.PORT = String(activeBridgePort);
   process.env.HOST = '127.0.0.1';
 
+  updateSplash(`Starting Bridge Engine on port ${activeBridgePort}...`, 65);
   console.log(`[Desktop] Starting internal WebSocket Bridge on port ${activeBridgePort}...`);
 
   const serverScriptPath = fs.existsSync(path.join(__dirname, 'server', 'server.js'))
@@ -148,9 +266,11 @@ async function startInternalBridge() {
 }
 
 // ---------------------------------------------------------
-// Browser Window Setup
+// Main Browser Window Setup
 // ---------------------------------------------------------
 function createMainWindow() {
+  updateSplash('Loading UI Workspace...', 85);
+
   const iconPath = path.join(__dirname, 'icon.png');
 
   mainWindow = new BrowserWindow({
@@ -158,6 +278,7 @@ function createMainWindow() {
     height: 860,
     minWidth: 960,
     minHeight: 650,
+    show: false, // Keep hidden until fully loaded
     title: 'LiveKadeh SSH & SFTP Pro',
     backgroundColor: '#0a0e17',
     icon: fs.existsSync(iconPath) ? iconPath : undefined,
@@ -178,6 +299,31 @@ function createMainWindow() {
 
   mainWindow.loadFile(appHtmlPath);
 
+  // Smooth transition from Splash to Main Window when DOM and scripts are ready
+  mainWindow.webContents.once('did-finish-load', () => {
+    updateSplash('Ready!', 100);
+    setTimeout(() => {
+      if (mainWindow) {
+        mainWindow.show();
+      }
+      if (splashWindow && !splashWindow.isDestroyed()) {
+        splashWindow.destroy();
+        splashWindow = null;
+      }
+    }, 400);
+  });
+
+  // Safety fallback timeout: Show window after 8s even if did-finish-load stalled
+  setTimeout(() => {
+    if (mainWindow && !mainWindow.isVisible()) {
+      mainWindow.show();
+      if (splashWindow && !splashWindow.isDestroyed()) {
+        splashWindow.destroy();
+        splashWindow = null;
+      }
+    }
+  }, 8000);
+
   // Open external links in user's default web browser
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
     if (url.startsWith('http:') || url.startsWith('https:')) {
@@ -196,6 +342,9 @@ function createMainWindow() {
 // App Lifecycle
 // ---------------------------------------------------------
 app.whenReady().then(async () => {
+  createSplashWindow();
+  updateSplash('Initializing Desktop Core...', 15);
+
   loadStorage();
   await startInternalBridge();
   createMainWindow();

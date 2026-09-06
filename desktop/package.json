@@ -45,6 +45,8 @@
     "files": [
       "main.js",
       "preload.js",
+      "splash.html",
+      "splash-preload.js",
       "icon.png",
       "extension/**/*",
       "server/**/*"

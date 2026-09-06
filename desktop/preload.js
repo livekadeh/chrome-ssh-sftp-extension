@@ -13,9 +13,16 @@ try {
 
 window.DESKTOP_ENV = true;
 window.DESKTOP_BRIDGE_URL = bridgeInfo.bridgeUrl;
+window.DESKTOP_BRIDGE_PORT = bridgeInfo.port;
 
 // Initialize window.chrome namespace
 window.chrome = window.chrome || {};
+
+// Helper to determine if a bridge URL is a local instance
+function isLocalBridgeUrl(url) {
+  if (!url) return true;
+  return url.includes('localhost') || url.includes('127.0.0.1');
+}
 
 // Polyfill chrome.storage.local backed by persistent disk storage via Electron IPC
 window.chrome.storage = window.chrome.storage || {};
@@ -23,12 +30,26 @@ window.chrome.storage.local = {
   get: function (keys, callback) {
     return ipcRenderer.invoke('storage:get', keys).then((data) => {
       const res = data || {};
-      // Ensure bridgeUrl defaults to internal desktop bridge if unset
-      if (!res.bridgeUrl) {
-        if (!keys || keys === 'bridgeUrl' || (Array.isArray(keys) && keys.includes('bridgeUrl'))) {
+
+      // If bridgeUrl points to local bridge or is unset, route to current active desktop port
+      if (!keys) {
+        if (isLocalBridgeUrl(res.bridgeUrl)) {
+          res.bridgeUrl = window.DESKTOP_BRIDGE_URL;
+        }
+      } else if (keys === 'bridgeUrl') {
+        if (isLocalBridgeUrl(res.bridgeUrl)) {
+          res.bridgeUrl = window.DESKTOP_BRIDGE_URL;
+        }
+      } else if (Array.isArray(keys) && keys.includes('bridgeUrl')) {
+        if (isLocalBridgeUrl(res.bridgeUrl)) {
+          res.bridgeUrl = window.DESKTOP_BRIDGE_URL;
+        }
+      } else if (typeof keys === 'object' && 'bridgeUrl' in keys) {
+        if (isLocalBridgeUrl(res.bridgeUrl)) {
           res.bridgeUrl = window.DESKTOP_BRIDGE_URL;
         }
       }
+
       if (typeof callback === 'function') {
         try { callback(res); } catch (err) { console.error(err); }
       }

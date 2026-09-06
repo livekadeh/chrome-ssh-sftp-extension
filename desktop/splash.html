@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LiveKadeh SSH & SFTP Pro</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+    }
+
+    body {
+      background: transparent;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      overflow: hidden;
+      height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .splash-container {
+      width: 440px;
+      height: 280px;
+      background: #0a0e17;
+      border: 1px solid rgba(0, 240, 255, 0.35);
+      border-radius: 16px;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.8), 0 0 30px rgba(0, 240, 255, 0.15);
+      padding: 30px 24px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: space-between;
+      position: relative;
+      overflow: hidden;
+      -webkit-app-region: drag;
+    }
+
+    /* Ambient background glowing circle */
+    .glow-bg {
+      position: absolute;
+      top: -40px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 220px;
+      height: 120px;
+      background: radial-gradient(circle, rgba(0, 240, 255, 0.2) 0%, rgba(10, 14, 23, 0) 70%);
+      pointer-events: none;
+    }
+
+    .brand-section {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      z-index: 2;
+    }
+
+    .logo-badge {
+      width: 58px;
+      height: 58px;
+      background: linear-gradient(135deg, rgba(0, 240, 255, 0.2), rgba(0, 255, 157, 0.1));
+      border: 1px solid rgba(0, 240, 255, 0.5);
+      border-radius: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 28px;
+      margin-bottom: 12px;
+      box-shadow: 0 0 20px rgba(0, 240, 255, 0.3);
+      animation: pulseGlow 2.5s infinite ease-in-out;
+    }
+
+    @keyframes pulseGlow {
+      0%, 100% {
+        box-shadow: 0 0 15px rgba(0, 240, 255, 0.25);
+        transform: scale(1);
+      }
+      50% {
+        box-shadow: 0 0 28px rgba(0, 240, 255, 0.55);
+        transform: scale(1.04);
+      }
+    }
+
+    .brand-title {
+      font-size: 20px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      color: #ffffff;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .brand-title span.accent {
+      color: #00f0ff;
+      text-shadow: 0 0 10px rgba(0, 240, 255, 0.5);
+    }
+
+    .brand-sub {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 1.2px;
+      text-transform: uppercase;
+      color: #00ff9d;
+      margin-top: 2px;
+    }
+
+    .progress-section {
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      z-index: 2;
+      margin-top: 10px;
+    }
+
+    .progress-bar-track {
+      width: 100%;
+      height: 6px;
+      background: rgba(255, 255, 255, 0.08);
+      border-radius: 999px;
+      overflow: hidden;
+      position: relative;
+      border: 1px solid rgba(0, 240, 255, 0.15);
+    }
+
+    .progress-bar-fill {
+      height: 100%;
+      width: 25%;
+      background: linear-gradient(90deg, #00f0ff, #00ff9d);
+      border-radius: 999px;
+      transition: width 0.35s ease;
+      box-shadow: 0 0 10px rgba(0, 240, 255, 0.6);
+    }
+
+    .status-row {
+      width: 100%;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 10px;
+      font-size: 12px;
+    }
+
+    .status-text {
+      color: #a0aec0;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .status-dot {
+      width: 6px;
+      height: 6px;
+      background: #00f0ff;
+      border-radius: 50%;
+      box-shadow: 0 0 6px #00f0ff;
+      animation: blink 1s infinite alternate;
+    }
+
+    @keyframes blink {
+      0% { opacity: 0.3; }
+      100% { opacity: 1; }
+    }
+
+    .version-tag {
+      color: #718096;
+      font-size: 11px;
+      font-family: monospace;
+    }
+  </style>
+</head>
+<body>
+  <div class="splash-container">
+    <div class="glow-bg"></div>
+
+    <div class="brand-section">
+      <div class="logo-badge">⚡</div>
+      <div class="brand-title">LiveKadeh <span class="accent">SSH & SFTP</span></div>
+      <div class="brand-sub">Standalone Desktop Pro</div>
+    </div>
+
+    <div class="progress-section">
+      <div class="progress-bar-track">
+        <div id="progressFill" class="progress-bar-fill"></div>
+      </div>
+      <div class="status-row">
+        <div class="status-text">
+          <span class="status-dot"></span>
+          <span id="statusLabel">Initializing Desktop Core...</span>
+        </div>
+        <div class="version-tag">v1.4.3</div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    if (window.splashAPI && window.splashAPI.onUpdate) {
+      window.splashAPI.onUpdate(({ message, progress }) => {
+        if (message) {
+          document.getElementById('statusLabel').textContent = message;
+        }
+        if (typeof progress === 'number') {
+          document.getElementById('progressFill').style.width = progress + '%';
+        }
+      });
+    }
+  </script>
+</body>
+</html>
