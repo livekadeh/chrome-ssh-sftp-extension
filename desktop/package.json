@@ -47,6 +47,7 @@
       "preload.js",
       "splash.html",
       "splash-preload.js",
+      "splash.bmp",
       "icon.png",
       "extension/**/*",
       "server/**/*"
@@ -61,7 +62,8 @@
       "icon": "icon.png"
     },
     "portable": {
-      "artifactName": "LiveKadeh-SSH-SFTP-Portable-v${version}.exe"
+      "artifactName": "LiveKadeh-SSH-SFTP-Portable-v${version}.exe",
+      "splashImage": "splash.bmp"
     }
   }
 }

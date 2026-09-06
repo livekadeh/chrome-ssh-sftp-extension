@@ -558,10 +558,25 @@ class SFTPManager {
         </td>
       `;
 
-      tr.addEventListener('click', (e) => {
-        if (e.target.tagName === 'BUTTON' || e.target.tagName === 'INPUT') return;
-        this.toggleSelect(file.filename, tr);
-      });
+      const chk = tr.querySelector('.file-chk');
+      if (chk) {
+        chk.addEventListener('change', (e) => {
+          e.stopPropagation();
+          this.toggleSelect(file.filename, chk.checked);
+        });
+      }
+
+      if (tr.firstElementChild) {
+        tr.firstElementChild.addEventListener('click', (e) => {
+          if (e.target !== chk) {
+            e.stopPropagation();
+            if (chk) {
+              chk.checked = !chk.checked;
+              this.toggleSelect(file.filename, chk.checked);
+            }
+          }
+        });
+      }
 
       tr.addEventListener('dblclick', () => {
         if (isDir) {
@@ -633,10 +648,16 @@ class SFTPManager {
           <div class="grid-card-size">${sizeStr}</div>
         `;
 
-        card.addEventListener('click', (e) => {
-          if (e.target.tagName === 'INPUT') return;
-          this.toggleSelect(file.filename, card);
-        });
+        const cardChk = card.querySelector('.file-chk');
+        if (cardChk) {
+          cardChk.addEventListener('change', (e) => {
+            e.stopPropagation();
+            this.toggleSelect(file.filename, cardChk.checked);
+          });
+          cardChk.addEventListener('click', (e) => {
+            e.stopPropagation();
+          });
+        }
 
         card.addEventListener('dblclick', () => {
           if (isDir) {
@@ -676,8 +697,8 @@ class SFTPManager {
     this.applyViewMode();
   }
 
-  toggleSelect(filename) {
-    const isNowSelected = !this.selectedFiles.has(filename);
+  toggleSelect(filename, forceState) {
+    const isNowSelected = (typeof forceState === 'boolean') ? forceState : !this.selectedFiles.has(filename);
     if (isNowSelected) {
       this.selectedFiles.add(filename);
     } else {

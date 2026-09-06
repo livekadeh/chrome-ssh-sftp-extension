@@ -34,11 +34,12 @@ function createSplashWindow() {
     width: 460,
     height: 300,
     frame: false,
-    transparent: true,
+    transparent: false,
     resizable: false,
     alwaysOnTop: true,
     center: true,
-    backgroundColor: '#00000000',
+    show: true,
+    backgroundColor: '#0a0e17',
     icon: fs.existsSync(iconPath) ? iconPath : undefined,
     webPreferences: {
       nodeIntegration: false,
@@ -341,13 +342,17 @@ function createMainWindow() {
 // ---------------------------------------------------------
 // App Lifecycle
 // ---------------------------------------------------------
-app.whenReady().then(async () => {
+app.whenReady().then(() => {
+  // Show splash window instantly as first priority
   createSplashWindow();
-  updateSplash('Initializing Desktop Core...', 15);
 
-  loadStorage();
-  await startInternalBridge();
-  createMainWindow();
+  // Defer storage and network operations to next tick so splash renders without blocking
+  setImmediate(async () => {
+    updateSplash('Initializing Desktop Core...', 15);
+    loadStorage();
+    await startInternalBridge();
+    createMainWindow();
+  });
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
