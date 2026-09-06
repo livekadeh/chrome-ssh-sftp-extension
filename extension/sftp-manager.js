@@ -547,7 +547,7 @@ class SFTPManager {
         <td>
           <div class="file-name-cell">
             <span class="file-icon">${icon}</span>
-            <span class="file-title" style="font-weight: ${isDir ? '700' : '400'}; color: ${isDir ? '#00f0ff' : '#f8fafc'};">${file.filename}</span>
+            <span class="file-title ${isDir ? 'is-dir' : 'is-file'}">${file.filename}</span>
           </div>
         </td>
         <td class="mono-cell">${sizeStr}</td>
@@ -647,7 +647,7 @@ class SFTPManager {
         card.innerHTML = `
           <input type="checkbox" class="grid-card-chk file-chk" data-name="${file.filename}" ${this.selectedFiles.has(file.filename) ? 'checked' : ''}>
           <div class="grid-card-icon">${icon}</div>
-          <div class="grid-card-name" title="${file.filename}" style="color: ${isDir ? '#00f0ff' : '#f8fafc'}; font-weight: ${isDir ? '700' : '400'};">${file.filename}</div>
+          <div class="grid-card-name ${isDir ? 'is-dir' : 'is-file'}" title="${file.filename}">${file.filename}</div>
           <div class="grid-card-size">${sizeStr}</div>
         `;
 
@@ -780,11 +780,9 @@ class SFTPManager {
     if (btnDelete) {
       btnDelete.disabled = disabled;
       if (count > 1) {
-        btnDelete.innerHTML = isPersian ? `🗑️ حذف همه (${count})` : `🗑️ Delete All (${count})`;
         btnDelete.title = isPersian ? `حذف تمام ${count} مورد انتخاب‌شده` : `Delete all ${count} selected items`;
       } else {
-        btnDelete.innerHTML = isPersian ? `🗑️ حذف` : `🗑️ Delete`;
-        btnDelete.title = isPersian ? `حذف مورد انتخاب‌شده` : `Delete selected item`;
+        btnDelete.title = isPersian ? `حذف موارد انتخاب‌شده` : `Delete selected item`;
       }
     }
 
@@ -1299,7 +1297,7 @@ class SFTPManager {
         container.innerHTML = `
           <div class="media-audio-card">
             <div class="media-audio-disc">🎵</div>
-            <div style="font-weight: 600; color: #f8fafc; font-size: 15px; margin-bottom: 4px;">${filename}</div>
+            <div style="font-weight: 600; color: var(--text-main); font-size: 15px; margin-bottom: 4px;">${filename}</div>
             <div style="color: #64748b; font-size: 12px; margin-bottom: 14px;">${fileObj ? this.formatBytes(fileObj.attrs.size) : ''}</div>
             <audio src="${streamUrl}" controls autoplay></audio>
           </div>
@@ -1349,7 +1347,7 @@ class SFTPManager {
         container.innerHTML = `
           <div class="media-audio-card">
             <div class="media-audio-disc">🎵</div>
-            <div style="font-weight: 600; color: #f8fafc; font-size: 15px; margin-bottom: 4px;">${filename}</div>
+            <div style="font-weight: 600; color: var(--text-main); font-size: 15px; margin-bottom: 4px;">${filename}</div>
             <div style="color: #64748b; font-size: 12px; margin-bottom: 14px;">${fileObj ? this.formatBytes(fileObj.attrs.size) : ''}</div>
             <audio src="${this.currentMediaUrl}" controls autoplay></audio>
           </div>

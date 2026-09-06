@@ -90,43 +90,154 @@
   color: #0f172a;
 }
 
+[data-theme="light"] .sftp-table-container {
+  background: #ffffff;
+}
+
 [data-theme="light"] .sftp-table th {
   background: #f1f5f9;
   color: #334155;
   border-color: #e2e8f0;
 }
 
+[data-theme="light"] .sftp-table td {
+  border-bottom-color: #f1f5f9;
+  color: #0f172a;
+}
+
 [data-theme="light"] .sftp-row {
   border-color: #f1f5f9;
+  color: #0f172a;
 }
 
 [data-theme="light"] .sftp-row:hover {
-  background: #f8fafc;
+  background: #e0f2fe !important;
+}
+
+[data-theme="light"] .sftp-row:hover .file-title.is-file {
+  color: #0f172a !important;
+}
+
+[data-theme="light"] .sftp-row:hover .file-title.is-dir {
+  color: #0369a1 !important;
+}
+
+[data-theme="light"] .sftp-row:hover .mono-cell {
+  color: #334155 !important;
 }
 
 [data-theme="light"] .sftp-row.selected {
-  background: rgba(2, 132, 199, 0.12) !important;
+  background: #bae6fd !important;
+}
+
+[data-theme="light"] .sftp-row.selected .file-title.is-file {
+  color: #0369a1 !important;
+}
+
+[data-theme="light"] .sftp-row.selected .file-title.is-dir {
+  color: #0284c7 !important;
+}
+
+[data-theme="light"] .sftp-row.selected .mono-cell {
+  color: #0284c7 !important;
+}
+
+[data-theme="light"] .file-title.is-dir {
+  color: #0284c7;
+}
+
+[data-theme="light"] .file-title.is-file {
+  color: #0f172a;
 }
 
 [data-theme="light"] .sftp-grid-card {
   background: #ffffff;
   border-color: #e2e8f0;
+  color: #0f172a;
 }
 
 [data-theme="light"] .sftp-grid-card:hover {
   border-color: #0284c7;
-  background: #f8fafc;
-  box-shadow: 0 4px 14px rgba(2, 132, 199, 0.12);
+  background: #e0f2fe !important;
+  box-shadow: 0 4px 14px rgba(2, 132, 199, 0.15);
+}
+
+[data-theme="light"] .sftp-grid-card:hover .grid-card-name.is-file {
+  color: #0f172a !important;
+}
+
+[data-theme="light"] .sftp-grid-card:hover .grid-card-name.is-dir {
+  color: #0369a1 !important;
+}
+
+[data-theme="light"] .sftp-grid-card:hover .grid-card-size {
+  color: #475569 !important;
 }
 
 [data-theme="light"] .sftp-grid-card.selected {
   border-color: #0284c7;
-  background: rgba(2, 132, 199, 0.08);
+  background: #bae6fd !important;
 }
 
-[data-theme="light"] .sftp-toolbar {
-  background: #ffffff;
+[data-theme="light"] .sftp-grid-card.selected .grid-card-name {
+  color: #0369a1 !important;
+}
+
+[data-theme="light"] .grid-card-name.is-dir {
+  color: #0284c7;
+}
+
+[data-theme="light"] .grid-card-name.is-file {
+  color: #0f172a;
+}
+
+[data-theme="light"] .grid-card-size {
+  color: #64748b;
+}
+
+[data-theme="light"] .sftp-toolbar,
+[data-theme="light"] .sftp-actions-bar,
+[data-theme="light"] .sftp-nav-bar {
+  background: #f8fafc;
   border-bottom: 1px solid #e2e8f0;
+}
+
+[data-theme="light"] .btn-sftp-action {
+  background: #ffffff;
+  border-color: #cbd5e1;
+  color: #334155;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+[data-theme="light"] .btn-sftp-action:hover:not(:disabled) {
+  background: #e0f2fe;
+  border-color: #0284c7;
+  color: #0284c7;
+  box-shadow: 0 0 8px rgba(2, 132, 199, 0.2);
+}
+
+[data-theme="light"] .btn-sftp-action.btn-sftp-upload {
+  background: #e0f2fe;
+  border-color: #7dd3fc;
+  color: #0284c7;
+}
+
+[data-theme="light"] .btn-sftp-action.btn-sftp-upload:hover {
+  background: #bae6fd;
+}
+
+[data-theme="light"] .btn-sftp-action.btn-sftp-danger {
+  color: #dc2626;
+}
+
+[data-theme="light"] .btn-sftp-action.btn-sftp-danger:hover:not(:disabled) {
+  background: #fee2e2;
+  border-color: #f87171;
+  color: #b91c1c;
+}
+
+[data-theme="light"] .toolbar-divider {
+  background: #cbd5e1;
 }
 
 [data-theme="light"] .sftp-path-bar {
@@ -828,18 +939,104 @@ kbd {
 }
 
 .sftp-actions-bar {
-  padding: 8px 16px;
+  padding: 5px 14px;
   background: rgba(14, 21, 33, 0.6);
   border-bottom: 1px solid var(--border-glass);
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 8px;
+  min-height: 40px;
 }
 
 .action-group {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 5px;
+}
+
+/* SFTP Compact Action Buttons */
+.btn-sftp-action {
+  width: 30px;
+  height: 30px;
+  min-width: 30px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border-glass);
+  border-radius: var(--radius-xs);
+  color: var(--text-main);
+  cursor: pointer;
+  transition: var(--transition);
+  position: relative;
+  user-select: none;
+}
+
+.btn-sftp-action svg {
+  pointer-events: none;
+  transition: transform 0.15s ease;
+}
+
+.btn-sftp-action:hover:not(:disabled) {
+  background: rgba(0, 240, 255, 0.12);
+  border-color: var(--accent-cyan);
+  color: var(--accent-cyan);
+  box-shadow: 0 0 8px var(--accent-cyan-glow);
+}
+
+.btn-sftp-action:hover:not(:disabled) svg {
+  transform: scale(1.1);
+}
+
+.btn-sftp-action:active:not(:disabled) {
+  transform: scale(0.95);
+}
+
+.btn-sftp-action:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.btn-sftp-action.btn-sftp-upload {
+  background: rgba(0, 240, 255, 0.1);
+  border-color: rgba(0, 240, 255, 0.3);
+  color: var(--accent-cyan);
+}
+
+.btn-sftp-action.btn-sftp-upload:hover {
+  background: rgba(0, 240, 255, 0.22);
+  box-shadow: 0 0 10px var(--accent-cyan-glow);
+}
+
+.btn-sftp-action.btn-sftp-preview {
+  color: var(--accent-emerald);
+}
+
+.btn-sftp-action.btn-sftp-preview:hover:not(:disabled) {
+  background: rgba(0, 255, 157, 0.15);
+  border-color: var(--accent-emerald);
+  box-shadow: 0 0 8px var(--accent-emerald-glow);
+}
+
+.btn-sftp-action.btn-sftp-danger {
+  color: var(--accent-danger);
+}
+
+.btn-sftp-action.btn-sftp-danger:hover:not(:disabled) {
+  background: rgba(239, 68, 68, 0.15);
+  border-color: var(--accent-danger);
+  box-shadow: 0 0 8px rgba(239, 68, 68, 0.35);
+}
+
+/* Toolbar Divider */
+.toolbar-divider {
+  width: 1px;
+  height: 18px;
+  background: var(--border-glass);
+  margin: 0 3px;
 }
 
 .sftp-table-container {
@@ -940,6 +1137,22 @@ html[dir="rtl"] .sort-indicator {
 
 .file-icon {
   font-size: 14px;
+}
+
+.file-title {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  transition: color 0.15s ease;
+}
+
+.file-title.is-dir {
+  font-weight: 700;
+  color: var(--accent-cyan);
+}
+
+.file-title.is-file {
+  font-weight: 400;
+  color: var(--text-main);
 }
 
 .mono-cell {
@@ -1947,6 +2160,17 @@ input:focus, select:focus, textarea:focus {
   white-space: nowrap;
   margin-bottom: 4px;
   width: 100%;
+  transition: color 0.15s ease;
+}
+
+.grid-card-name.is-dir {
+  font-weight: 700;
+  color: var(--accent-cyan);
+}
+
+.grid-card-name.is-file {
+  font-weight: 400;
+  color: var(--text-main);
 }
 
 .grid-card-size {
