@@ -9,6 +9,7 @@ const path = require('path');
 const fs = require('fs');
 const os = require('os');
 const { spawn } = require('child_process');
+const crypto = require('crypto');
 const express = require('express');
 const { WebSocketServer } = require('ws');
 const { Client } = require('ssh2');
@@ -17,6 +18,8 @@ require('dotenv').config();
 
 const PORT = process.env.PORT || 3000;
 const HOST = process.env.HOST || '0.0.0.0';
+
+const activeSftpSessions = new Map();
 
 const app = express();
 app.use(cors());
@@ -45,6 +48,99 @@ app.get('/health', (req, res) => {
   });
 });
 
+// HTTP SFTP Media Streaming Endpoint with Range / HTTP 206 support
+app.get('/stream', (req, res) => {
+  const { sessionId, path: filePath } = req.query;
+  if (!sessionId || !filePath) {
+    return res.status(400).send('Missing sessionId or path parameter');
+  }
+
+  const session = activeSftpSessions.get(sessionId);
+  if (!session || !session.sftpSession) {
+    return res.status(404).send('Active SFTP session not found or closed. Please reconnect.');
+  }
+
+  const sftp = session.sftpSession;
+
+  sftp.stat(filePath, (err, stats) => {
+    if (err) {
+      return res.status(404).send('File not found or inaccessible: ' + err.message);
+    }
+
+    const isDir = (stats.mode & 0o170000) === 0o040000;
+    if (isDir) {
+      return res.status(400).send('Cannot stream directory');
+    }
+
+    const fileSize = stats.size;
+    const range = req.headers.range;
+
+    const ext = path.extname(filePath).toLowerCase().replace('.', '');
+    const mimeTypes = {
+      mp4: 'video/mp4',
+      webm: 'video/webm',
+      mov: 'video/quicktime',
+      mkv: 'video/x-matroska',
+      avi: 'video/x-msvideo',
+      mp3: 'audio/mpeg',
+      wav: 'audio/wav',
+      ogg: 'audio/ogg',
+      m4a: 'audio/mp4',
+      aac: 'audio/aac',
+      flac: 'audio/flac',
+      png: 'image/png',
+      jpg: 'image/jpeg',
+      jpeg: 'image/jpeg',
+      gif: 'image/gif',
+      webp: 'image/webp',
+      svg: 'image/svg+xml'
+    };
+    const contentType = mimeTypes[ext] || 'application/octet-stream';
+
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Range');
+    res.setHeader('Accept-Ranges', 'bytes');
+
+    if (req.method === 'OPTIONS') {
+      return res.sendStatus(200);
+    }
+
+    if (range) {
+      const parts = range.replace(/bytes=/, '').split('-');
+      const start = parseInt(parts[0], 10);
+      const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
+
+      if (start >= fileSize || end >= fileSize || start > end) {
+        res.status(416).setHeader('Content-Range', `bytes */${fileSize}`).send('Requested range not satisfiable');
+        return;
+      }
+
+      const chunksize = (end - start) + 1;
+      res.status(206);
+      res.setHeader('Content-Range', `bytes ${start}-${end}/${fileSize}`);
+      res.setHeader('Content-Length', chunksize);
+      res.setHeader('Content-Type', contentType);
+
+      const stream = sftp.createReadStream(filePath, { start, end });
+      stream.on('error', (sErr) => {
+        if (!res.headersSent) res.status(500).send(sErr.message);
+      });
+      stream.pipe(res);
+    } else {
+      res.status(200);
+      res.setHeader('Content-Length', fileSize);
+      res.setHeader('Content-Type', contentType);
+
+      const stream = sftp.createReadStream(filePath);
+      stream.on('error', (sErr) => {
+        if (!res.headersSent) res.status(500).send(sErr.message);
+      });
+      stream.pipe(res);
+    }
+  });
+});
+
 const server = http.createServer(app);
 const wss = new WebSocketServer({ server, path: '/ws' });
 
@@ -58,6 +154,7 @@ wss.on('connection', (ws, req) => {
   let sshStream = null;
   let sftpSession = null;
   let isConnected = false;
+  let currentBridgeSessionId = null;
   const uploadHandles = new Map();
   const activeExternalWatchers = new Map();
 
@@ -100,6 +197,10 @@ wss.on('connection', (ws, req) => {
     if (sshClient) {
       try { sshClient.end(); } catch (e) {}
       sshClient = null;
+    }
+    if (currentBridgeSessionId) {
+      activeSftpSessions.delete(currentBridgeSessionId);
+      currentBridgeSessionId = null;
     }
     isConnected = false;
   };
@@ -257,7 +358,15 @@ wss.on('connection', (ws, req) => {
 
           sftpSession = sftp;
           isConnected = true;
-          safeSend({ type: 'sftp-status', status: 'connected', message: 'SFTP Session Established' });
+          currentBridgeSessionId = crypto.randomBytes(16).toString('hex');
+          activeSftpSessions.set(currentBridgeSessionId, { sftpSession, ws });
+
+          safeSend({
+            type: 'sftp-status',
+            status: 'connected',
+            message: 'SFTP Session Established',
+            sessionId: currentBridgeSessionId
+          });
         });
       });
 
@@ -353,7 +462,7 @@ wss.on('connection', (ws, req) => {
     if (type === 'sftp-read') {
       const { path: filePath, id } = msg;
       const requestedMax = Number(msg.maxBytes) || (50 * 1024 * 1024);
-      const maxLimit = Math.min(requestedMax, 150 * 1024 * 1024);
+      const maxLimit = Math.min(requestedMax, 500 * 1024 * 1024);
       if (!checkSftp(id)) return;
 
       sftpSession.stat(filePath, (sErr, stats) => {

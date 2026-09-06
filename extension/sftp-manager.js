@@ -418,6 +418,9 @@ class SFTPManager {
     if (msg.type === 'sftp-status') {
       if (msg.status === 'connected') {
         session.isConnected = true;
+        if (msg.sessionId) {
+          session.bridgeSessionId = msg.sessionId;
+        }
         if (this.activeSessionId === session.id) {
           this.isConnected = true;
           document.getElementById('sftpEmptyState').style.display = 'none';
@@ -1271,13 +1274,50 @@ class SFTPManager {
       btnDl.onclick = () => this.downloadFile(filename);
     }
 
-    this.updateStatus(isPersian ? `در حال بارگذاری ${filename}...` : `Loading media ${filename}...`);
+    const activeSession = this.activeSessionId ? this.sessions.get(this.activeSessionId) : null;
+    const bridgeSessionId = activeSession ? activeSession.bridgeSessionId : null;
+    const bridgeUrl = (activeSession && activeSession.bridgeUrl) ? activeSession.bridgeUrl : this.bridgeUrl;
+
+    // Use direct HTTP streaming endpoint if active bridge session is available (unlimited size, instant range seek)
+    if (bridgeSessionId) {
+      let base = (bridgeUrl || 'ws://localhost:3000/ws')
+        .replace(/^ws:\/\//i, 'http://')
+        .replace(/^wss:\/\//i, 'https://')
+        .replace(/\/ws\/?$/i, '');
+      const streamUrl = `${base}/stream?sessionId=${encodeURIComponent(bridgeSessionId)}&path=${encodeURIComponent(targetPath)}`;
+
+      if (this.currentMediaUrl) {
+        URL.revokeObjectURL(this.currentMediaUrl);
+        this.currentMediaUrl = null;
+      }
+
+      if (media.type === 'video') {
+        container.innerHTML = `<video src="${streamUrl}" class="media-preview-video" controls autoplay playsinline></video>`;
+        this.updateStatus(isPersian ? `پخش زنده استریم ${filename} ✔` : `Streaming ${filename} ✔`);
+        return;
+      } else if (media.type === 'audio') {
+        container.innerHTML = `
+          <div class="media-audio-card">
+            <div class="media-audio-disc">🎵</div>
+            <div style="font-weight: 600; color: #f8fafc; font-size: 15px; margin-bottom: 4px;">${filename}</div>
+            <div style="color: #64748b; font-size: 12px; margin-bottom: 14px;">${fileObj ? this.formatBytes(fileObj.attrs.size) : ''}</div>
+            <audio src="${streamUrl}" controls autoplay></audio>
+          </div>
+        `;
+        this.updateStatus(isPersian ? `پخش زنده استریم ${filename} ✔` : `Streaming ${filename} ✔`);
+        return;
+      } else if (media.type === 'image') {
+        container.innerHTML = `<img src="${streamUrl}" class="media-preview-img" alt="${filename}">`;
+        this.updateStatus(isPersian ? `نمایش ${filename} ✔` : `Previewing ${filename} ✔`);
+        return;
+      }
+    }
 
     try {
       const res = await this.sendRequest({
         type: 'sftp-read',
         path: targetPath,
-        maxBytes: 100 * 1024 * 1024
+        maxBytes: 500 * 1024 * 1024
       });
 
       if (!res || !res.content) {
