@@ -1,3 +1,27 @@
+@font-face {
+  font-family: 'Vazirmatn';
+  src: url('fonts/Vazirmatn-Regular.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Vazirmatn';
+  src: url('fonts/Vazirmatn-Bold.woff2') format('woff2');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Vazir Code';
+  src: url('fonts/Vazir-Code.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
 @import url('https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&family=Fira+Code:wght@400;500;600&display=swap');
 
 :root {
@@ -21,8 +45,8 @@
   --radius-sm: 8px;
   --radius-md: 12px;
   --radius-lg: 16px;
-  --font-mono: 'JetBrains Mono', monospace;
-  --terminal-font: 'Cascadia Code', 'Consolas', 'JetBrains Mono', 'Fira Code', monospace;
+  --font-mono: 'Vazir Code', 'JetBrains Mono', monospace;
+  --terminal-font: 'Vazir Code', 'Cascadia Code', 'Consolas', 'JetBrains Mono', 'Fira Code', monospace;
   --transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
@@ -634,9 +658,8 @@ body {
 .xterm-rows div,
 .xterm-rows span,
 .xterm-char-measure-element {
-  font-family: var(--terminal-font, 'Cascadia Code', 'Consolas', 'JetBrains Mono', monospace) !important;
-  font-feature-settings: "liga" 0 !important;
-  font-variant-ligatures: none !important;
+  font-family: var(--terminal-font, 'Vazir Code', 'Cascadia Code', 'Consolas', 'JetBrains Mono', monospace) !important;
+  font-feature-settings: "calt" 0;
   letter-spacing: 0px !important;
   word-spacing: 0px !important;
 }
@@ -647,11 +670,10 @@ body {
   background: rgba(0, 240, 255, 0.1) !important;
 }
 
-/* Persian lines right alignment */
+/* Persian lines keep grid alignment to avoid cursor desynchronization */
 .persian-line,
 .xterm-rows > div.persian-line {
-  text-align: right !important;
-  text-align-last: right !important;
+  unicode-bidi: plaintext;
 }
 
 .terminal-container {
@@ -1142,6 +1164,7 @@ html[dir="rtl"] .sort-indicator {
 .file-title {
   font-family: var(--font-mono);
   font-size: 13px;
+  unicode-bidi: plaintext;
   transition: color 0.15s ease;
 }
 
@@ -1491,6 +1514,8 @@ html[dir="rtl"] .sort-indicator {
   padding: 16px;
   outline: none;
   resize: none;
+  unicode-bidi: plaintext;
+  text-align: start;
 }
 
 .modal-footer {

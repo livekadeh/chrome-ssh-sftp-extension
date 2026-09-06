@@ -47,27 +47,34 @@ const ARABIC_PERSIAN_TABLE = {
   0x0626: [0xFE89, 0xFE8B, 0xFE8C, 0xFE8A, 1], // ئ (Ye with Hamza)
   0x0624: [0xFE85, 0xFE85, 0xFE86, 0xFE86, 0], // ؤ (Vav with Hamza)
   0x0629: [0xFE93, 0xFE93, 0xFE94, 0xFE94, 0], // ة (Te Marbuta)
-  0x0671: [0xFB50, 0xFB50, 0xFB51, 0xFB51, 0], // ٱ (Alef Wasla)
+  0x0671: [0xFB50, 0xFB50, 0xFB51, 0xFB51, 0], // Alef Wasla
+  0x0621: [0xFE80, 0xFE80, 0xFE80, 0xFE80, 0], // Hamza
 };
 
 const LAM = 0x0644;
 const LAM_ALEF_MAP = {
-  0x0622: [0xFEF5, 0xFEF5, 0xFEF6, 0xFEF6], // آ
-  0x0627: [0xFEFB, 0xFEFB, 0xFEFC, 0xFEFC], // ا
-  0x0623: [0xFEF7, 0xFEF7, 0xFEF8, 0xFEF8], // أ
-  0x0625: [0xFEF9, 0xFEF9, 0xFEFA, 0xFEFA], // إ
+  0x0622: [0xFEF5, 0xFEF5, 0xFEF6, 0xFEF6], // Alef Mad
+  0x0627: [0xFEFB, 0xFEFB, 0xFEFC, 0xFEFC], // Alef
+  0x0623: [0xFEF7, 0xFEF7, 0xFEF8, 0xFEF8], // Alef Hamza Above
+  0x0625: [0xFEF9, 0xFEF9, 0xFEFA, 0xFEFA], // Alef Hamza Below
 };
 
+function isTashkeel(code) {
+  return (code >= 0x064B && code <= 0x0652) || code === 0x0670;
+}
+
 function isArabicPersianChar(code) {
-  return (code >= 0x0600 && code <= 0x06FF) || (code >= 0xFB50 && code <= 0xFDFF) || (code >= 0xFE70 && code <= 0xFEFF);
+  return (code >= 0x0600 && code <= 0x06FF) || (code >= 0xFB50 && code <= 0xFDFF) || (code >= 0xFE70 && code <= 0xFEFF) || code === 0x200C;
 }
 
 function isJoiner(code) {
+  if (code === 0x200C) return false;
   const entry = ARABIC_PERSIAN_TABLE[code];
   return entry ? entry[4] === 1 : false;
 }
 
 function canConnectPrevious(code) {
+  if (code === 0x200C) return false;
   return ARABIC_PERSIAN_TABLE[code] !== undefined;
 }
 
@@ -78,15 +85,45 @@ function shapeArabicPersianWord(word) {
 
   for (let i = 0; i < len; i++) {
     const code = chars[i].charCodeAt(0);
-    const nextCode = (i + 1 < len) ? chars[i + 1].charCodeAt(0) : 0;
-    const prevCode = (i > 0) ? chars[i - 1].charCodeAt(0) : 0;
+
+    // Pass through ZWNJ and tashkeel directly
+    if (code === 0x200C || isTashkeel(code)) {
+      shaped.push(chars[i]);
+      continue;
+    }
+
+    // Find non-tashkeel next code
+    let nextCode = 0;
+    for (let ni = i + 1; ni < len; ni++) {
+      const nc = chars[ni].charCodeAt(0);
+      if (!isTashkeel(nc)) {
+        nextCode = nc;
+        break;
+      }
+    }
+
+    // Find non-tashkeel previous code
+    let prevCode = 0;
+    for (let pi = i - 1; pi >= 0; pi--) {
+      const pc = chars[pi].charCodeAt(0);
+      if (!isTashkeel(pc)) {
+        prevCode = pc;
+        break;
+      }
+    }
 
     // Lam-Alef ligature
     if (code === LAM && LAM_ALEF_MAP[nextCode]) {
-      const prevConnected = (i > 0) && isJoiner(prevCode);
+      const prevConnected = prevCode !== 0 && isJoiner(prevCode);
       const formIdx = prevConnected ? 2 : 0;
       shaped.push(String.fromCharCode(LAM_ALEF_MAP[nextCode][formIdx]));
-      i++; // Skip alef
+      // Skip the alef
+      for (let skip = i + 1; skip < len; skip++) {
+        if (!isTashkeel(chars[skip].charCodeAt(0))) {
+          i = skip;
+          break;
+        }
+      }
       continue;
     }
 
@@ -96,8 +133,8 @@ function shapeArabicPersianWord(word) {
       continue;
     }
 
-    const prevConnected = (i > 0) && isJoiner(prevCode);
-    const nextConnected = (i + 1 < len) && canConnectPrevious(nextCode);
+    const prevConnected = prevCode !== 0 && isJoiner(prevCode);
+    const nextConnected = nextCode !== 0 && canConnectPrevious(nextCode);
 
     let formIndex = 0; // isolated
     if (prevConnected && nextConnected && entry[4] === 1) {
@@ -117,24 +154,18 @@ function shapeArabicPersianWord(word) {
 }
 
 /**
- * Process a line or text segment for BiDi display in LTR terminal emulator.
- * Supports line right-alignment when rightAlign is true and line contains Persian.
+ * Process a line or text segment for BiDi display in terminal emulator.
  */
 function processBiDiTerminalText(text, termCols = 80, rightAlign = false) {
   if (!text || typeof text !== 'string') return text;
   
-  // Check if text contains Arabic/Persian characters
   let hasRTL = false;
-  let rtlCount = 0;
-  let totalChars = 0;
-
   for (let i = 0; i < text.length; i++) {
     const c = text.charCodeAt(i);
-    if ((c >= 0x0600 && c <= 0x06FF) || (c >= 0xFB50 && c <= 0xFEFC)) {
+    if ((c >= 0x0600 && c <= 0x06FF) || (c >= 0xFB50 && c <= 0xFEFC) || c === 0x200C) {
       hasRTL = true;
-      rtlCount++;
+      break;
     }
-    if (c > 32) totalChars++;
   }
 
   if (!hasRTL) return text;
@@ -147,53 +178,23 @@ function processBiDiTerminalText(text, termCols = 80, rightAlign = false) {
     // Split by ANSI escape sequences to avoid breaking terminal control codes
     const parts = line.split(/(\x1b\[[0-9;?]*[a-zA-Z]|\x1b\].*?\x07|\x1b[()][A-Z0-9])/g);
 
-    let visibleLength = 0;
-    let lineRtlCount = 0;
-
     for (let p = 0; p < parts.length; p++) {
       const part = parts[p];
       if (!part || part.startsWith('\x1b')) continue;
 
-      const rtlRegex = /([\u0600-\u06FF\uFB50-\uFEFC][\u0600-\u06FF\uFB50-\uFEFC\s0-9\u0660-\u0669\u06F0-\u06F9«»()\-.:،؛؟]*[\u0600-\u06FF\uFB50-\uFEFC]|[\u0600-\u06FF\uFB50-\uFEFC])/g;
-
-      parts[p] = part.replace(rtlRegex, (match) => {
-        lineRtlCount += match.length;
-        const tokens = match.split(/(\s+|[0-9]+|[«»()\-.:،؛؟]+)/);
-        const shapedTokens = tokens.map(token => {
-          let containsArabic = false;
-          for (let i = 0; i < token.length; i++) {
-            const c = token.charCodeAt(i);
-            if ((c >= 0x0600 && c <= 0x06FF) || (c >= 0xFB50 && c <= 0xFEFC)) {
-              containsArabic = true;
-              break;
-            }
-          }
-          if (containsArabic) {
-            const shaped = shapeArabicPersianWord(token);
-            return Array.from(shaped).reverse().join('');
-          }
-          if (token === '(') return ')';
-          if (token === ')') return '(';
-          if (token === '[') return ']';
-          if (token === ']') return '[';
-          if (token === '{') return '}';
-          if (token === '}') return '{';
-          if (token === '«') return '»';
-          if (token === '»') return '«';
-          return token;
-        });
-
-        return shapedTokens.reverse().join('');
-      });
-
-      visibleLength += parts[p].length;
+      const rtlRegex = /([\u0600-\u06FF\uFB50-\uFEFC\u200C]+)/g;
+      parts[p] = part.replace(rtlRegex, (match) => shapeArabicPersianWord(match));
     }
 
-    let result = parts.join('');
-    return result;
+    return parts.join('');
   });
 
   return processedLines.join('');
+}
+
+if (typeof window !== 'undefined') {
+  window.shapeArabicPersianWord = shapeArabicPersianWord;
+  window.processBiDiTerminalText = processBiDiTerminalText;
 }
 
 if (typeof module !== 'undefined' && module.exports) {

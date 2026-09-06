@@ -9,7 +9,7 @@ class SSHTerminalManager {
     this.sessions = new Map();
     this.activeSessionId = null;
     this.fontSize = 14;
-    this.fontFamily = "'Cascadia Code', 'Consolas', 'JetBrains Mono', 'Fira Code', monospace, 'Vazirmatn'";
+    this.fontFamily = "'Vazir Code', 'Cascadia Code', 'Consolas', 'JetBrains Mono', monospace";
     this.themeName = 'cyberpunk';
     this.rtlAlignEnabled = true;
     try {
@@ -403,18 +403,14 @@ class SSHTerminalManager {
     term.loadAddon(fitAddon);
     term.open(termDiv);
 
-    // Apply text-align-last: right on lines containing Persian/Arabic text
+    // Mark Persian rows for natural unicode-bidi presentation
     term.onRender(() => {
       const rows = termDiv.querySelectorAll('.xterm-rows > div');
       rows.forEach(row => {
-        if (/[\u0600-\u06FF\uFB50-\uFEFC]/.test(row.textContent || '')) {
+        if (/[\u0600-\u06FF\uFB50-\uFEFC\u200C]/.test(row.textContent || '')) {
           row.classList.add('persian-line');
-          row.style.setProperty('text-align-last', 'right', 'important');
-          row.style.setProperty('text-align', 'right', 'important');
         } else {
           row.classList.remove('persian-line');
-          row.style.removeProperty('text-align-last');
-          row.style.removeProperty('text-align');
         }
       });
     });
