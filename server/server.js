@@ -237,6 +237,56 @@ app.get('/stream', (req, res) => {
   });
 });
 
+// Streaming upload endpoint for fast file write and cross-server transfers
+app.put('/stream', (req, res) => {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, HEAD, PUT, POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Range, Content-Type, Content-Length');
+
+  const sessionId = req.query.sessionId;
+  const filePath = req.query.path;
+
+  if (!sessionId || !filePath) {
+    return res.status(400).json({ success: false, error: 'Missing sessionId or path' });
+  }
+
+  const sftp = sftpSessions.get(sessionId);
+  if (!sftp) {
+    return res.status(404).json({ success: false, error: 'SFTP session not found or closed' });
+  }
+
+  const writeStream = sftp.createWriteStream(filePath);
+  let hasClosed = false;
+
+  req.pipe(writeStream);
+
+  writeStream.on('close', () => {
+    if (!hasClosed) {
+      hasClosed = true;
+      res.json({ success: true });
+    }
+  });
+
+  writeStream.on('error', (err) => {
+    if (!hasClosed && !res.headersSent) {
+      hasClosed = true;
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
+  req.on('error', () => {
+    writeStream.destroy();
+  });
+});
+
+app.options('/stream', (req, res) => {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, HEAD, PUT, POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Range, Content-Type, Content-Length');
+  res.setHeader('Access-Control-Expose-Headers', 'Content-Range, Content-Length, Accept-Ranges, Content-Disposition');
+  res.sendStatus(200);
+});
+
 const server = http.createServer(app);
 const wss = new WebSocketServer({ server, path: '/ws' });
 
@@ -896,7 +946,7 @@ wss.on('connection', (ws, req) => {
       return;
     }
 
-    // --- SFTP MOVE (BATCH / SINGLE) ---
+    // --- SFTP MOVE (OS NATIVE OR SFTP FALLBACK) ---
     if (type === 'sftp-move') {
       const { items, srcPath, destPath, id } = msg;
       if (!checkSftp(id)) return;
@@ -911,45 +961,48 @@ wss.on('connection', (ws, req) => {
       }
 
       const escapeShell = (str) => "'" + str.replace(/'/g, "'\\''") + "'";
-      let index = 0;
 
-      function moveNext() {
-        if (index >= moveList.length) {
-          safeSend({ type: 'sftp-move-res', id, success: true, count: moveList.length });
-          return;
-        }
+      // Strategy 1: Fast OS native move via SSH exec
+      if (sshClient && isConnected) {
+        const mvCmds = moveList.map(item => `mv ${escapeShell(item.src)} ${escapeShell(item.dest)}`).join(' && ');
+        sshClient.exec(mvCmds, (err, stream) => {
+          if (err) {
+            fallbackSftpMove();
+            return;
+          }
+          let stderr = '';
+          stream.stderr.on('data', (d) => { stderr += d.toString(); });
+          stream.on('close', (code) => {
+            if (code === 0) {
+              safeSend({ type: 'sftp-move-res', id, success: true, count: moveList.length });
+            } else {
+              fallbackSftpMove(stderr || `Move command exited with code ${code}`);
+            }
+          });
+        });
+        return;
+      }
 
-        const current = moveList[index++];
-        sftpSession.rename(current.src, current.dest, (err) => {
-          if (!err) {
-            moveNext();
-          } else {
-            // Fallback via SSH mv if available
-            if (sshClient && isConnected) {
-              const mvCmd = `mv ${escapeShell(current.src)} ${escapeShell(current.dest)}`;
-              sshClient.exec(mvCmd, (mvErr, stream) => {
-                if (mvErr) {
-                  safeSend({ type: 'sftp-move-res', id, success: false, error: mvErr.message });
-                  return;
-                }
-                let stderr = '';
-                stream.stderr.on('data', (d) => { stderr += d.toString(); });
-                stream.on('close', (code) => {
-                  if (code === 0) {
-                    moveNext();
-                  } else {
-                    safeSend({ type: 'sftp-move-res', id, success: false, error: stderr || `Move failed with code ${code}` });
-                  }
-                });
-              });
+      fallbackSftpMove();
+
+      function fallbackSftpMove() {
+        let index = 0;
+        function moveNext() {
+          if (index >= moveList.length) {
+            safeSend({ type: 'sftp-move-res', id, success: true, count: moveList.length });
+            return;
+          }
+          const current = moveList[index++];
+          sftpSession.rename(current.src, current.dest, (err) => {
+            if (!err) {
+              moveNext();
             } else {
               safeSend({ type: 'sftp-move-res', id, success: false, error: err.message });
             }
-          }
-        });
+          });
+        }
+        moveNext();
       }
-
-      moveNext();
       return;
     }
 

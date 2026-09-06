@@ -27,6 +27,7 @@ class SFTPManager {
     this.isUploadCancelled = false;
     this.activeDownloadController = null;
     this.isDownloadCancelled = false;
+    this.isOperationCancelled = false;
     this.currentMediaUrl = null;
     this.clipboard = null;
 
@@ -363,9 +364,13 @@ class SFTPManager {
   }
 
   sendRequest(payload, options = {}) {
+    return this.sendRequestToSession(this.activeSessionId, payload, options);
+  }
+
+  sendRequestToSession(sessionId, payload, options = {}) {
     return new Promise((resolve, reject) => {
-      const activeSession = this.sessions.get(this.activeSessionId);
-      const ws = activeSession ? activeSession.ws : this.ws;
+      const session = sessionId ? this.sessions.get(sessionId) : null;
+      const ws = session ? session.ws : this.ws;
 
       if (!ws || ws.readyState !== WebSocket.OPEN) {
         reject(new Error('SFTP connection is not open'));
@@ -382,8 +387,8 @@ class SFTPManager {
         if (typeof options.onMessage === 'function') onMessage = options.onMessage;
       }
 
-      const callbacks = activeSession ? activeSession.pendingCallbacks : this.pendingCallbacks;
-      const id = 'req-' + (activeSession ? (activeSession.callbackSeq++) : (this.callbackSeq++));
+      const callbacks = session ? session.pendingCallbacks : this.pendingCallbacks;
+      const id = 'req-' + (session ? (session.callbackSeq++) : (this.callbackSeq++));
       payload.id = id;
 
       const callbackEntry = {
@@ -1125,7 +1130,12 @@ class SFTPManager {
   }
 
   cancelDownload() {
+    this.cancelOperation();
+  }
+
+  cancelOperation() {
     this.isDownloadCancelled = true;
+    this.isOperationCancelled = true;
     if (this.activeDownloadController) {
       try { this.activeDownloadController.abort(); } catch (e) {}
       this.activeDownloadController = null;
@@ -1133,7 +1143,7 @@ class SFTPManager {
     const progressContainer = document.getElementById('sftpDownloadProgressContainer');
     if (progressContainer) progressContainer.style.display = 'none';
     const isPersian = window.i18n && window.i18n.currentLang === 'fa';
-    this.updateStatus(isPersian ? 'دانلود لغو شد ⚠️' : 'Download cancelled ⚠️');
+    this.updateStatus(isPersian ? 'عملیات لغو شد ⚠️' : 'Operation cancelled ⚠️');
   }
 
   async downloadFile(filename, isDir) {
@@ -1157,12 +1167,15 @@ class SFTPManager {
     // UI Progress Elements
     const progressContainer = document.getElementById('sftpDownloadProgressContainer');
     const uploadContainer = document.getElementById('sftpUploadProgressContainer');
+    const pulseIconEl = document.getElementById('downloadProgressPulseIcon');
     const fileNameEl = document.getElementById('downloadProgressFileName');
     const counterEl = document.getElementById('downloadProgressCounter');
     const percentEl = document.getElementById('downloadProgressPercent');
     const barEl = document.getElementById('downloadProgressBar');
     const sizeEl = document.getElementById('downloadProgressSize');
     const speedEl = document.getElementById('downloadProgressSpeed');
+
+    if (pulseIconEl) pulseIconEl.textContent = '📥';
 
     if (progressContainer) {
       if (uploadContainer && uploadContainer.style.display !== 'none') {
@@ -1793,16 +1806,23 @@ class SFTPManager {
     const filesToCopy = this.resolveActionTarget(targetFilename);
     if (filesToCopy.length === 0) return;
 
+    const activeSession = this.activeSessionId ? this.sessions.get(this.activeSessionId) : null;
+    const sessionName = activeSession ? activeSession.name : 'SFTP';
+
     this.clipboard = {
       action: 'copy',
+      sessionId: this.activeSessionId,
+      sessionName: sessionName,
+      bridgeUrl: (activeSession && activeSession.bridgeUrl) ? activeSession.bridgeUrl : this.bridgeUrl,
+      bridgeSessionId: activeSession ? activeSession.bridgeSessionId : null,
       sourceDir: this.currentPath,
       files: filesToCopy
     };
 
     const isPersian = window.i18n && window.i18n.currentLang === 'fa';
     const msg = isPersian
-      ? `${filesToCopy.length} مورد کپی شد. به مسیر مقصد رفته و Paste را بزنید.`
-      : `${filesToCopy.length} item(s) copied. Navigate to destination and click Paste.`;
+      ? `${filesToCopy.length} مورد کپی شد (${sessionName}). به مسیر مقصد رفته و Paste را بزنید.`
+      : `${filesToCopy.length} item(s) copied (${sessionName}). Navigate to destination and click Paste.`;
     this.updateStatus(msg);
     this.updateSelectionUI();
     this.renderFiles(this.currentFiles);
@@ -1812,16 +1832,23 @@ class SFTPManager {
     const filesToCut = this.resolveActionTarget(targetFilename);
     if (filesToCut.length === 0) return;
 
+    const activeSession = this.activeSessionId ? this.sessions.get(this.activeSessionId) : null;
+    const sessionName = activeSession ? activeSession.name : 'SFTP';
+
     this.clipboard = {
       action: 'cut',
+      sessionId: this.activeSessionId,
+      sessionName: sessionName,
+      bridgeUrl: (activeSession && activeSession.bridgeUrl) ? activeSession.bridgeUrl : this.bridgeUrl,
+      bridgeSessionId: activeSession ? activeSession.bridgeSessionId : null,
       sourceDir: this.currentPath,
       files: filesToCut
     };
 
     const isPersian = window.i18n && window.i18n.currentLang === 'fa';
     const msg = isPersian
-      ? `${filesToCut.length} مورد آماده برش و انتقال. به مسیر مقصد رفته و Paste را بزنید.`
-      : `${filesToCut.length} item(s) cut for move. Navigate to destination and click Paste.`;
+      ? `${filesToCut.length} مورد آماده برش و انتقال (${sessionName}). به مسیر مقصد رفته و Paste را بزنید.`
+      : `${filesToCut.length} item(s) cut for move (${sessionName}). Navigate to destination and click Paste.`;
     this.updateStatus(msg);
     this.updateSelectionUI();
     this.renderFiles(this.currentFiles);
@@ -1861,17 +1888,19 @@ class SFTPManager {
     const isPersian = window.i18n && window.i18n.currentLang === 'fa';
     const destDir = destDirOverride || this.currentPath;
     const destBase = destDir.endsWith('/') ? destDir : destDir + '/';
-    const { action, sourceDir, files } = this.clipboard;
+    const { action, sessionId: srcSessionId, sessionName: srcSessionName, bridgeUrl: srcBridgeUrl, sourceDir, files } = this.clipboard;
 
-    // Prevent cutting into same folder without action
-    if (action === 'cut' && sourceDir === destDir) {
+    const isCrossServer = srcSessionId && this.activeSessionId && (srcSessionId !== this.activeSessionId);
+
+    // Prevent cutting into same folder on same server
+    if (!isCrossServer && action === 'cut' && sourceDir === destDir) {
       this.updateStatus(isPersian ? 'مسیر مبدا و مقصد یکسان است.' : 'Source and destination directories are identical.');
       return;
     }
 
     const items = files.map(item => {
       let targetName = item.filename;
-      if (action === 'copy' && sourceDir === destDir) {
+      if (!isCrossServer && action === 'copy' && sourceDir === destDir) {
         targetName = this.generateCopyName(item.filename, item.isDir);
       }
       return {
@@ -1882,23 +1911,248 @@ class SFTPManager {
       };
     });
 
-    try {
-      this.updateStatus(isPersian ? `در حال پردازش ${items.length} فایل...` : `Processing ${items.length} item(s)...`);
+    // Setup Progress UI
+    const progressContainer = document.getElementById('sftpDownloadProgressContainer');
+    const uploadContainer = document.getElementById('sftpUploadProgressContainer');
+    const pulseIconEl = document.getElementById('downloadProgressPulseIcon');
+    const fileNameEl = document.getElementById('downloadProgressFileName');
+    const counterEl = document.getElementById('downloadProgressCounter');
+    const percentEl = document.getElementById('downloadProgressPercent');
+    const barEl = document.getElementById('downloadProgressBar');
+    const sizeEl = document.getElementById('downloadProgressSize');
+    const speedEl = document.getElementById('downloadProgressSpeed');
 
-      if (action === 'copy') {
-        await this.sendRequest({ type: 'sftp-copy', items });
-        this.updateStatus(isPersian ? `${items.length} مورد با موفقیت کپی شد ✔` : `${items.length} item(s) copied successfully ✔`);
+    this.isOperationCancelled = false;
+    this.activeDownloadController = new AbortController();
+
+    if (progressContainer) {
+      if (uploadContainer && uploadContainer.style.display !== 'none') {
+        progressContainer.classList.add('has-upload-active');
       } else {
-        await this.sendRequest({ type: 'sftp-move', items });
-        this.clipboard = null;
-        this.updateStatus(isPersian ? `${items.length} مورد با موفقیت منتقل شد ✔` : `${items.length} item(s) moved successfully ✔`);
+        progressContainer.classList.remove('has-upload-active');
+      }
+      progressContainer.style.display = 'block';
+    }
+
+    try {
+      if (!isCrossServer) {
+        // --- CASE 1: OS Native Copy/Move on Same Server ---
+        if (pulseIconEl) pulseIconEl.textContent = action === 'copy' ? '📋' : '🚚';
+        if (fileNameEl) {
+          fileNameEl.textContent = items.length === 1 ? items[0].filename : (isPersian ? `${items.length} فایل/پوشه` : `${items.length} items`);
+        }
+        if (counterEl) {
+          counterEl.textContent = action === 'copy'
+            ? (isPersian ? 'کپی داخلی سیستم‌عامل (OS Native cp ⚡)' : 'Native OS Fast Copy (cp -r) ⚡')
+            : (isPersian ? 'انتقال داخلی سیستم‌عامل (OS Native mv ⚡)' : 'Native OS Fast Move (mv) ⚡');
+        }
+        if (percentEl) percentEl.textContent = '50%';
+        if (barEl) barEl.style.width = '50%';
+        if (sizeEl) sizeEl.textContent = isPersian ? `${items.length} مورد در حال پردازش...` : `Processing ${items.length} item(s)...`;
+        if (speedEl) speedEl.textContent = isPersian ? 'مستقیم سیستم‌عامل' : 'OS Direct';
+
+        if (action === 'copy') {
+          await this.sendRequest({ type: 'sftp-copy', items }, 180000);
+        } else {
+          await this.sendRequest({ type: 'sftp-move', items }, 180000);
+          this.clipboard = null;
+        }
+
+        if (percentEl) percentEl.textContent = '100% ✔';
+        if (barEl) barEl.style.width = '100%';
+        if (sizeEl) sizeEl.textContent = isPersian ? `${items.length} مورد با موفقیت انجام شد` : `${items.length} item(s) completed`;
+        if (speedEl) speedEl.textContent = isPersian ? 'تکمیل شد ✔' : 'Completed ✔';
+
+        const successMsg = action === 'copy'
+          ? (isPersian ? `${items.length} مورد با دستور داخلی سیستم‌عامل کپی شد ✔` : `${items.length} item(s) copied natively ✔`)
+          : (isPersian ? `${items.length} مورد با دستور داخلی سیستم‌عامل منتقل شد ✔` : `${items.length} item(s) moved natively ✔`);
+        this.updateStatus(successMsg);
+
+      } else {
+        // --- CASE 2: Cross-Server SFTP Transfer ---
+        const srcSession = this.sessions.get(srcSessionId);
+        const destSession = this.sessions.get(this.activeSessionId);
+
+        if (!srcSession || !srcSession.isConnected) {
+          throw new Error(isPersian ? 'نشست سرور مبدا قطع شده است' : 'Source SFTP session is disconnected');
+        }
+
+        if (pulseIconEl) pulseIconEl.textContent = '🌐';
+        const srcTitle = srcSession.name || 'Server A';
+        const destTitle = destSession ? (destSession.name || 'Server B') : 'Server B';
+        if (counterEl) {
+          counterEl.textContent = isPersian
+            ? `انتقال بین دو سرور SFTP (${srcTitle} ➔ ${destTitle}) ⚡`
+            : `Cross-Server SFTP Transfer (${srcTitle} ➔ ${destTitle}) ⚡`;
+        }
+
+        const srcBase = (srcBridgeUrl || 'ws://localhost:3000/ws')
+          .replace(/^ws:\/\//i, 'http://')
+          .replace(/^wss:\/\//i, 'https://')
+          .replace(/\/ws\/?$/i, '');
+
+        const destBase = (this.bridgeUrl || 'ws://localhost:3000/ws')
+          .replace(/^ws:\/\//i, 'http://')
+          .replace(/^wss:\/\//i, 'https://')
+          .replace(/\/ws\/?$/i, '');
+
+        const activeDestBridgeSessionId = destSession ? destSession.bridgeSessionId : null;
+
+        for (let idx = 0; idx < items.length; idx++) {
+          if (this.isOperationCancelled) break;
+          const item = items[idx];
+
+          if (fileNameEl) fileNameEl.textContent = `${item.filename} (${idx + 1}/${items.length})`;
+          if (percentEl) percentEl.textContent = '0%';
+          if (barEl) barEl.style.width = '0%';
+
+          if (item.isDir) {
+            await this.sendRequest({ type: 'sftp-mkdir', path: item.dest });
+            await this.transferRemoteDirectory(srcSessionId, item.src, item.dest, srcBase, destBase, activeDestBridgeSessionId);
+          } else {
+            await this.transferRemoteFile(srcSessionId, item.src, item.dest, srcBase, destBase, activeDestBridgeSessionId, (transferred, total, speed) => {
+              if (total > 0) {
+                const pct = Math.min(99, Math.round((transferred / total) * 100));
+                if (percentEl) percentEl.textContent = `${pct}%`;
+                if (barEl) barEl.style.width = `${pct}%`;
+                if (sizeEl) sizeEl.textContent = `${this.formatBytes(transferred)} / ${this.formatBytes(total)}`;
+              } else {
+                if (sizeEl) sizeEl.textContent = `${this.formatBytes(transferred)}`;
+              }
+              if (speedEl) speedEl.textContent = `${this.formatBytes(speed)}/s`;
+            });
+          }
+
+          if (action === 'cut' && !this.isOperationCancelled) {
+            try {
+              if (item.isDir) {
+                await this.sendRequestToSession(srcSessionId, { type: 'sftp-rmdir', path: item.src });
+              } else {
+                await this.sendRequestToSession(srcSessionId, { type: 'sftp-unlink', path: item.src });
+              }
+            } catch (e) {}
+          }
+        }
+
+        if (this.isOperationCancelled) return;
+
+        if (action === 'cut') this.clipboard = null;
+
+        if (percentEl) percentEl.textContent = '100% ✔';
+        if (barEl) barEl.style.width = '100%';
+        if (speedEl) speedEl.textContent = isPersian ? 'تکمیل شد ✔' : 'Completed ✔';
+        this.updateStatus(isPersian ? `انتقال ${items.length} مورد بین سرورها با موفقیت پایان یافت ✔` : `Transferred ${items.length} item(s) between servers successfully ✔`);
       }
 
       this.listDirectory(this.currentPath);
       this.updateSelectionUI();
     } catch (err) {
+      if (this.isOperationCancelled) return;
       alert((isPersian ? 'خطا در عملیات: ' : 'Operation failed: ') + err.message);
       this.updateStatus(`Error: ${err.message}`);
+    } finally {
+      this.activeDownloadController = null;
+      setTimeout(() => {
+        if (progressContainer) progressContainer.style.display = 'none';
+      }, 1500);
+    }
+  }
+
+  async transferRemoteFile(srcSessionId, srcPath, destPath, srcBase, destBase, destBridgeSessionId, onProgress) {
+    const srcSession = this.sessions.get(srcSessionId);
+    const srcBridgeSessionId = srcSession ? srcSession.bridgeSessionId : null;
+    const signal = this.activeDownloadController ? this.activeDownloadController.signal : null;
+
+    if (srcBridgeSessionId && destBridgeSessionId) {
+      const srcUrl = `${srcBase}/stream?sessionId=${encodeURIComponent(srcBridgeSessionId)}&path=${encodeURIComponent(srcPath)}`;
+      const destUrl = `${destBase}/stream?sessionId=${encodeURIComponent(destBridgeSessionId)}&path=${encodeURIComponent(destPath)}`;
+
+      const response = await fetch(srcUrl, { signal });
+      if (!response.ok) {
+        throw new Error(`Source server returned ${response.status}: ${response.statusText}`);
+      }
+
+      const cl = response.headers.get('content-length');
+      const totalBytes = cl ? parseInt(cl, 10) : 0;
+
+      const reader = response.body.getReader();
+      const chunks = [];
+      let transferred = 0;
+      let lastTime = Date.now();
+      let lastBytes = 0;
+
+      while (true) {
+        if (this.isOperationCancelled) {
+          reader.cancel();
+          return;
+        }
+        const { done, value } = await reader.read();
+        if (done) break;
+        chunks.push(value);
+        transferred += value.byteLength;
+
+        const now = Date.now();
+        const elapsed = (now - lastTime) / 1000;
+        let speed = 0;
+        if (elapsed >= 0.3) {
+          speed = (transferred - lastBytes) / elapsed;
+          lastTime = now;
+          lastBytes = transferred;
+        }
+
+        if (onProgress) {
+          onProgress(transferred, totalBytes, speed);
+        }
+      }
+
+      if (this.isOperationCancelled) return;
+
+      const blob = new Blob(chunks, { type: 'application/octet-stream' });
+      const putRes = await fetch(destUrl, {
+        method: 'PUT',
+        body: blob,
+        signal
+      });
+
+      if (!putRes.ok) {
+        throw new Error(`Destination server upload failed with status ${putRes.status}`);
+      }
+      return;
+    }
+
+    // Fallback: Read from source via WebSocket and write to destination
+    const readRes = await this.sendRequestToSession(srcSessionId, { type: 'sftp-read', path: srcPath, maxBytes: 500 * 1024 * 1024 }, 180000);
+    if (this.isOperationCancelled) return;
+
+    await this.sendRequest({
+      type: 'sftp-write',
+      path: destPath,
+      content: readRes.content,
+      isBase64: !!readRes.isBinary
+    }, 180000);
+  }
+
+  async transferRemoteDirectory(srcSessionId, srcDirPath, destDirPath, srcBase, destBase, destBridgeSessionId) {
+    const listRes = await this.sendRequestToSession(srcSessionId, { type: 'sftp-list', path: srcDirPath });
+    if (!listRes || !listRes.files) return;
+
+    const srcDirClean = srcDirPath.endsWith('/') ? srcDirPath : srcDirPath + '/';
+    const destDirClean = destDirPath.endsWith('/') ? destDirPath : destDirPath + '/';
+
+    for (const file of listRes.files) {
+      if (file.filename === '.' || file.filename === '..') continue;
+      if (this.isOperationCancelled) break;
+
+      const isDir = file.attrs && file.attrs.isDirectory;
+      const childSrc = srcDirClean + file.filename;
+      const childDest = destDirClean + file.filename;
+
+      if (isDir) {
+        await this.sendRequest({ type: 'sftp-mkdir', path: childDest });
+        await this.transferRemoteDirectory(srcSessionId, childSrc, childDest, srcBase, destBase, destBridgeSessionId);
+      } else {
+        await this.transferRemoteFile(srcSessionId, childSrc, childDest, srcBase, destBase, destBridgeSessionId);
+      }
     }
   }
 
@@ -1927,9 +2181,42 @@ class SFTPManager {
       isDir: item.isDir
     }));
 
+    const progressContainer = document.getElementById('sftpDownloadProgressContainer');
+    const uploadContainer = document.getElementById('sftpUploadProgressContainer');
+    const pulseIconEl = document.getElementById('downloadProgressPulseIcon');
+    const fileNameEl = document.getElementById('downloadProgressFileName');
+    const counterEl = document.getElementById('downloadProgressCounter');
+    const percentEl = document.getElementById('downloadProgressPercent');
+    const barEl = document.getElementById('downloadProgressBar');
+    const sizeEl = document.getElementById('downloadProgressSize');
+    const speedEl = document.getElementById('downloadProgressSpeed');
+
+    if (progressContainer) {
+      if (uploadContainer && uploadContainer.style.display !== 'none') {
+        progressContainer.classList.add('has-upload-active');
+      } else {
+        progressContainer.classList.remove('has-upload-active');
+      }
+      progressContainer.style.display = 'block';
+    }
+
+    if (pulseIconEl) pulseIconEl.textContent = '🚚';
+    if (fileNameEl) fileNameEl.textContent = items.length === 1 ? items[0].filename : (isPersian ? `${items.length} فایل و پوشه` : `${items.length} items`);
+    if (counterEl) counterEl.textContent = isPersian ? 'انتقال داخلی سیستم‌عامل (OS Native mv ⚡)' : 'Native OS Fast Move (mv) ⚡';
+    if (percentEl) percentEl.textContent = '50%';
+    if (barEl) barEl.style.width = '50%';
+    if (sizeEl) sizeEl.textContent = isPersian ? `${items.length} مورد در حال انتقال...` : `Moving ${items.length} item(s)...`;
+    if (speedEl) speedEl.textContent = isPersian ? 'مستقیم سیستم‌عامل' : 'OS Direct';
+
     try {
-      this.updateStatus(isPersian ? 'در حال انتقال به مقصد...' : 'Moving items to destination...');
-      await this.sendRequest({ type: 'sftp-move', items });
+      this.updateStatus(isPersian ? 'در حال انتقال با دستور مستقیم سیستم‌عامل...' : 'Moving with native OS command...');
+      await this.sendRequest({ type: 'sftp-move', items }, 180000);
+
+      if (percentEl) percentEl.textContent = '100% ✔';
+      if (barEl) barEl.style.width = '100%';
+      if (sizeEl) sizeEl.textContent = isPersian ? `${items.length} مورد انجام شد` : `${items.length} item(s) done`;
+      if (speedEl) speedEl.textContent = isPersian ? 'تکمیل شد ✔' : 'Completed ✔';
+
       this.updateStatus(isPersian ? `${items.length} مورد با موفقیت منتقل شد ✔` : `${items.length} item(s) moved successfully ✔`);
       this.listDirectory(this.currentPath);
       this.selectedFiles.clear();
@@ -1937,6 +2224,10 @@ class SFTPManager {
     } catch (err) {
       alert((isPersian ? 'خطا در انتقال: ' : 'Error moving items: ') + err.message);
       this.updateStatus(`Error: ${err.message}`);
+    } finally {
+      setTimeout(() => {
+        if (progressContainer) progressContainer.style.display = 'none';
+      }, 1500);
     }
   }
 
