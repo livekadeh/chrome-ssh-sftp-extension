@@ -1134,10 +1134,32 @@ class SFTPManager {
 
     const targetPath = (this.currentPath.endsWith('/') ? this.currentPath : this.currentPath + '/') + filename;
     const isPersian = window.i18n && window.i18n.currentLang === 'fa';
-    this.updateStatus(isPersian ? `در حال دریافت ${filename}...` : `Downloading ${filename}...`);
+    this.updateStatus(isPersian ? `در حال آماده‌سازی دانلود ${filename}...` : `Initiating download of ${filename}...`);
+
+    const activeSession = this.activeSessionId ? this.sessions.get(this.activeSessionId) : null;
+    const bridgeSessionId = activeSession ? activeSession.bridgeSessionId : null;
+    const bridgeUrl = (activeSession && activeSession.bridgeUrl) ? activeSession.bridgeUrl : this.bridgeUrl;
+
+    // Use direct HTTP streaming download without size limits (>50MB, multi-gigabyte files)
+    if (bridgeSessionId) {
+      let base = (bridgeUrl || 'ws://localhost:3000/ws')
+        .replace(/^ws:\/\//i, 'http://')
+        .replace(/^wss:\/\//i, 'https://')
+        .replace(/\/ws\/?$/i, '');
+      const downloadUrl = `${base}/stream?sessionId=${encodeURIComponent(bridgeSessionId)}&path=${encodeURIComponent(targetPath)}&download=1`;
+
+      const a = document.createElement('a');
+      a.href = downloadUrl;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      this.updateStatus(isPersian ? `دانلود مستقیم ${filename} آغاز شد ✔` : `Direct download of ${filename} started ✔`);
+      return;
+    }
 
     try {
-      const res = await this.sendRequest({ type: 'sftp-read', path: targetPath }, 180000);
+      const res = await this.sendRequest({ type: 'sftp-read', path: targetPath, maxBytes: 500 * 1024 * 1024 }, 180000);
       let blob;
       if (res.isBinary) {
         const byteCharacters = atob(res.content);

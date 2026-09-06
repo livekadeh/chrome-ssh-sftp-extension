@@ -23,7 +23,8 @@ const activeSftpSessions = new Map();
 
 const app = express();
 app.use(cors());
-app.use(express.json({ limit: '50mb' }));
+app.use(express.json({ limit: '500mb' }));
+app.use(express.urlencoded({ limit: '500mb', extended: true }));
 
 app.get('/', (req, res) => {
   res.json({
@@ -189,6 +190,12 @@ app.get('/stream', (req, res) => {
     res.setHeader('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Range');
     res.setHeader('Accept-Ranges', 'bytes');
+
+    if (req.query.download === '1' || req.query.download === 'true') {
+      const safeFilename = path.basename(filePath);
+      const encodedFilename = encodeURIComponent(safeFilename);
+      res.setHeader('Content-Disposition', `attachment; filename="${safeFilename}"; filename*=UTF-8''${encodedFilename}`);
+    }
 
     if (req.method === 'OPTIONS') {
       return res.sendStatus(200);
@@ -549,8 +556,8 @@ wss.on('connection', (ws, req) => {
     // --- SFTP READ FILE ---
     if (type === 'sftp-read') {
       const { path: filePath, id } = msg;
-      const requestedMax = Number(msg.maxBytes) || (50 * 1024 * 1024);
-      const maxLimit = Math.min(requestedMax, 500 * 1024 * 1024);
+      const requestedMax = Number(msg.maxBytes) || (500 * 1024 * 1024);
+      const maxLimit = Math.min(requestedMax, 2048 * 1024 * 1024);
       if (!checkSftp(id)) return;
 
       sftpSession.stat(filePath, (sErr, stats) => {
