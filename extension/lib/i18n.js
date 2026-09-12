@@ -200,6 +200,7 @@ const I18N_DICTIONARY = {
     modal_btn_connect_term: 'Connect SSH ⚡',
     modal_btn_connect_sftp: 'Open SFTP 📁',
     modal_btn_cancel: 'Cancel',
+    modal_btn_confirm: 'Confirm',
 
     // Popup
     popup_quick_connect: 'Quick Connect to Server',
@@ -435,6 +436,7 @@ const I18N_DICTIONARY = {
     modal_btn_connect_term: 'اتصال SSH ⚡',
     modal_btn_connect_sftp: 'باز کردن SFTP 📁',
     modal_btn_cancel: 'انصراف',
+    modal_btn_confirm: 'تأیید',
 
     // Popup
     popup_quick_connect: 'اتصال سریع به سرور',

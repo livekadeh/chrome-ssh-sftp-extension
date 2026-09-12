@@ -872,8 +872,14 @@ class SFTPManager {
       ? `نام فایل فشرده خروجی را وارد کنید:\n(${files.length} فایل/پوشه انتخاب شده)`
       : `Enter archive filename:\n(${files.length} item(s) selected)`;
 
-    const archiveName = prompt(promptMsg, defaultName);
-    if (!archiveName) return;
+    const archiveName = (typeof window.showInputPrompt === 'function')
+      ? await window.showInputPrompt({
+          title: isPersian ? 'فشرده‌سازی فایل‌ها' : 'Compress Archive',
+          label: promptMsg,
+          defaultValue: defaultName
+        })
+      : prompt(promptMsg, defaultName);
+    if (!archiveName || !archiveName.trim()) return;
 
     this.updateStatus(isPersian ? `در حال فشرده‌سازی ${archiveName}...` : `Compressing into ${archiveName}...`);
 
@@ -1812,10 +1818,14 @@ class SFTPManager {
 
   async createNewFile() {
     const isPersian = window.i18n && window.i18n.currentLang === 'fa';
-    const name = prompt(isPersian ? 'نام فایل جدید را وارد کنید:' : 'Enter new filename:');
-    if (!name) return;
+    const title = isPersian ? 'ساخت فایل جدید' : 'New File';
+    const label = isPersian ? 'نام فایل جدید را وارد کنید:' : 'Enter new filename:';
+    const name = (typeof window.showInputPrompt === 'function')
+      ? await window.showInputPrompt({ title, label, defaultValue: 'untitled.txt' })
+      : prompt(label);
+    if (!name || !name.trim()) return;
 
-    const targetPath = (this.currentPath.endsWith('/') ? this.currentPath : this.currentPath + '/') + name;
+    const targetPath = (this.currentPath.endsWith('/') ? this.currentPath : this.currentPath + '/') + name.trim();
     try {
       await this.sendRequest({ type: 'sftp-write', path: targetPath, content: '', isBase64: false });
       this.listDirectory(this.currentPath);
@@ -1826,10 +1836,14 @@ class SFTPManager {
 
   async createNewFolder() {
     const isPersian = window.i18n && window.i18n.currentLang === 'fa';
-    const name = prompt(isPersian ? 'نام پوشه جدید را وارد کنید:' : 'Enter new folder name:');
-    if (!name) return;
+    const title = isPersian ? 'ساخت پوشه جدید' : 'New Folder';
+    const label = isPersian ? 'نام پوشه جدید را وارد کنید:' : 'Enter new folder name:';
+    const name = (typeof window.showInputPrompt === 'function')
+      ? await window.showInputPrompt({ title, label, defaultValue: isPersian ? 'پوشه_جدید' : 'new_folder' })
+      : prompt(label);
+    if (!name || !name.trim()) return;
 
-    const targetPath = (this.currentPath.endsWith('/') ? this.currentPath : this.currentPath + '/') + name;
+    const targetPath = (this.currentPath.endsWith('/') ? this.currentPath : this.currentPath + '/') + name.trim();
     try {
       await this.sendRequest({ type: 'sftp-mkdir', path: targetPath });
       this.listDirectory(this.currentPath);
@@ -1948,19 +1962,32 @@ class SFTPManager {
       oldFilename = Array.from(this.selectedFiles)[0];
     }
     const isPersian = window.i18n && window.i18n.currentLang === 'fa';
+    const title = isPersian ? 'تغییر نام' : 'Rename';
     const promptMsg = isPersian ? `نام جدید را برای "${oldFilename}" وارد کنید:` : `Enter new name for "${oldFilename}":`;
-    const newFilename = prompt(promptMsg, oldFilename);
-    if (!newFilename || newFilename === oldFilename) return;
+
+    const newFilename = (typeof window.showInputPrompt === 'function')
+      ? await window.showInputPrompt({
+          title,
+          label: promptMsg,
+          defaultValue: oldFilename
+        })
+      : prompt(promptMsg, oldFilename);
+
+    if (!newFilename || newFilename.trim() === '' || newFilename.trim() === oldFilename) return;
+    const cleanNewFilename = newFilename.trim();
 
     const base = this.currentPath.endsWith('/') ? this.currentPath : this.currentPath + '/';
     const oldPath = base + oldFilename;
-    const newPath = base + newFilename;
+    const newPath = base + cleanNewFilename;
 
     try {
+      this.updateStatus(isPersian ? `در حال تغییر نام "${oldFilename}" به "${cleanNewFilename}"...` : `Renaming "${oldFilename}" to "${cleanNewFilename}"...`);
       await this.sendRequest({ type: 'sftp-rename', oldPath, newPath });
-      this.listDirectory(this.currentPath);
+      this.updateStatus(isPersian ? `تغییر نام به "${cleanNewFilename}" انجام شد ✔` : `Renamed to "${cleanNewFilename}" ✔`);
+      await this.listDirectory(this.currentPath);
     } catch (err) {
-      alert(`Error renaming: ${err.message}`);
+      alert((isPersian ? 'خطا در تغییر نام: ' : 'Error renaming: ') + err.message);
+      this.updateStatus((isPersian ? 'خطا: ' : 'Error: ') + err.message);
     }
   }
 
@@ -1969,15 +1996,18 @@ class SFTPManager {
     if (!filename) return;
 
     const isPersian = window.i18n && window.i18n.currentLang === 'fa';
+    const title = isPersian ? 'تغییر مجوز دسترسی' : 'Change Permissions';
     const promptMsg = isPersian 
       ? `مجوز دسترسی جدید (Octal) را برای "${filename}" وارد کنید (مثلاً 0755 یا 0644):`
       : `Enter new permission mode (octal) for "${filename}" (e.g. 0755 or 0644):`;
-    const newPerm = prompt(promptMsg, '0755');
-    if (!newPerm) return;
+    const newPerm = (typeof window.showInputPrompt === 'function')
+      ? await window.showInputPrompt({ title, label: promptMsg, defaultValue: '0755' })
+      : prompt(promptMsg, '0755');
+    if (!newPerm || !newPerm.trim()) return;
 
     const targetPath = (this.currentPath.endsWith('/') ? this.currentPath : this.currentPath + '/') + filename;
     try {
-      await this.sendRequest({ type: 'sftp-chmod', path: targetPath, mode: newPerm });
+      await this.sendRequest({ type: 'sftp-chmod', path: targetPath, mode: newPerm.trim() });
       this.listDirectory(this.currentPath);
     } catch (err) {
       alert(`Error changing permissions: ${err.message}`);
@@ -2428,11 +2458,14 @@ class SFTPManager {
     if (filesToMove.length === 0) return;
 
     const isPersian = window.i18n && window.i18n.currentLang === 'fa';
+    const title = isPersian ? 'انتقال به پوشه' : 'Move to Directory';
     const promptMsg = isPersian
       ? `مسیر کامل پوشه مقصد برای انتقال ${filesToMove.length} مورد را وارد کنید:`
       : `Enter full destination directory path for ${filesToMove.length} item(s):`;
 
-    const destDir = prompt(promptMsg, this.currentPath);
+    const destDir = (typeof window.showInputPrompt === 'function')
+      ? await window.showInputPrompt({ title, label: promptMsg, defaultValue: this.currentPath })
+      : prompt(promptMsg, this.currentPath);
     if (!destDir) return;
 
     const targetDirClean = destDir.trim();

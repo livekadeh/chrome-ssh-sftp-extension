@@ -44,8 +44,11 @@ app.get('/', (req, res) => {
 // Serve compiled desktop artifacts from dist directory
 const distDir = path.resolve(__dirname, '../dist');
 const rootDir = path.resolve(__dirname, '..');
+const extensionDir = path.resolve(__dirname, '../extension');
 app.use('/download', express.static(distDir));
 app.use('/download', express.static(rootDir));
+app.use('/app', express.static(extensionDir));
+app.use('/static', express.static(extensionDir));
 
 // Web download portal
 app.get('/downloads', (req, res) => {
@@ -863,8 +866,57 @@ wss.on('connection', (ws, req) => {
       const { oldPath, newPath, id } = msg;
       if (!checkSftp(id)) return;
 
+      const escapeShell = (str) => "'" + String(str).replace(/'/g, "'\\''") + "'";
+
+      const trySshNative = (prevErr) => {
+        if (sshClient && isConnected) {
+          const mvCmd = `mv -f -- ${escapeShell(oldPath)} ${escapeShell(newPath)}`;
+          let stderr = '';
+          sshClient.exec(mvCmd, (execErr, stream) => {
+            if (execErr) {
+              safeSend({ type: 'sftp-rename-res', id, success: false, oldPath, newPath, error: prevErr ? prevErr.message : execErr.message });
+              return;
+            }
+            stream.stderr.on('data', d => { stderr += d.toString(); });
+            stream.on('close', code => {
+              if (code === 0) {
+                safeSend({ type: 'sftp-rename-res', id, success: true, oldPath, newPath });
+              } else {
+                safeSend({ type: 'sftp-rename-res', id, success: false, oldPath, newPath, error: stderr.trim() || (prevErr ? prevErr.message : `Rename failed with code ${code}`) });
+              }
+            });
+            stream.resume();
+          });
+        } else {
+          safeSend({ type: 'sftp-rename-res', id, success: false, oldPath, newPath, error: prevErr ? prevErr.message : 'Rename failed' });
+        }
+      };
+
+      const tryFallbackOrExec = (initialErr) => {
+        if (sftpSession && typeof sftpSession.ext_openssh_rename === 'function') {
+          try {
+            sftpSession.ext_openssh_rename(oldPath, newPath, (extErr) => {
+              if (!extErr) {
+                safeSend({ type: 'sftp-rename-res', id, success: true, oldPath, newPath });
+                return;
+              }
+              trySshNative(extErr);
+            });
+            return;
+          } catch (e) {
+            trySshNative(e);
+            return;
+          }
+        }
+        trySshNative(initialErr);
+      };
+
       sftpSession.rename(oldPath, newPath, err => {
-        safeSend({ type: 'sftp-rename-res', id, success: !err, oldPath, newPath, error: err ? err.message : null });
+        if (!err) {
+          safeSend({ type: 'sftp-rename-res', id, success: true, oldPath, newPath });
+        } else {
+          tryFallbackOrExec(err);
+        }
       });
       return;
     }

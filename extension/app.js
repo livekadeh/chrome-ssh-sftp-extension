@@ -1140,6 +1140,95 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
   }
 
+  // Universal Input Prompt Modal
+  window.showInputPrompt = function({ title, label, defaultValue = '', placeholder = '', confirmText = null }) {
+    return new Promise((resolve) => {
+      const modal = document.getElementById('promptModal');
+      const form = document.getElementById('promptModalForm');
+      const titleEl = document.getElementById('promptModalTitle');
+      const labelEl = document.getElementById('promptModalLabel');
+      const inputEl = document.getElementById('promptModalInput');
+      const btnCancel = document.getElementById('btnCancelPromptModal');
+      const btnClose = document.getElementById('btnClosePromptModal');
+      const btnConfirm = document.getElementById('btnConfirmPromptModal');
+
+      if (!modal || !inputEl || !form) {
+        const fallback = window.prompt(label || title, defaultValue);
+        return resolve(fallback);
+      }
+
+      const isPersian = window.i18n && window.i18n.currentLang === 'fa';
+      if (titleEl) titleEl.textContent = title || (isPersian ? 'ورودی' : 'Input');
+      if (labelEl) labelEl.textContent = label || '';
+      if (confirmText && btnConfirm) {
+        btnConfirm.textContent = confirmText;
+      } else if (btnConfirm) {
+        btnConfirm.textContent = isPersian ? 'تأیید' : 'Confirm';
+      }
+
+      inputEl.value = defaultValue || '';
+      inputEl.placeholder = placeholder || '';
+
+      let settled = false;
+
+      const cleanup = () => {
+        modal.classList.remove('active');
+        window.removeEventListener('keydown', onKeyDown);
+        form.removeEventListener('submit', onSubmit);
+        if (btnCancel) btnCancel.removeEventListener('click', onCancel);
+        if (btnClose) btnClose.removeEventListener('click', onCancel);
+        modal.removeEventListener('click', onBackdrop);
+      };
+
+      const done = (val) => {
+        if (settled) return;
+        settled = true;
+        cleanup();
+        resolve(val);
+      };
+
+      const onSubmit = (e) => {
+        e.preventDefault();
+        done(inputEl.value);
+      };
+
+      const onCancel = () => {
+        done(null);
+      };
+
+      const onBackdrop = (e) => {
+        if (e.target === modal) done(null);
+      };
+
+      const onKeyDown = (e) => {
+        if (e.key === 'Escape') {
+          e.preventDefault();
+          e.stopPropagation();
+          done(null);
+        }
+      };
+
+      form.addEventListener('submit', onSubmit);
+      if (btnCancel) btnCancel.addEventListener('click', onCancel);
+      if (btnClose) btnClose.addEventListener('click', onCancel);
+      modal.addEventListener('click', onBackdrop);
+      window.addEventListener('keydown', onKeyDown);
+
+      modal.classList.add('active');
+      setTimeout(() => {
+        inputEl.focus();
+        if (inputEl.value) {
+          const dotIdx = inputEl.value.lastIndexOf('.');
+          if (dotIdx > 0) {
+            inputEl.setSelectionRange(0, dotIdx);
+          } else {
+            inputEl.select();
+          }
+        }
+      }, 50);
+    });
+  };
+
   // Keyboard shortcut for Editor Save (Ctrl+S) and Modal Close (Escape)
   window.addEventListener('keydown', (e) => {
     if ((e.ctrlKey || e.metaKey) && e.key === 's') {

@@ -1166,6 +1166,24 @@
       </div>
     </div>
 
+    <!-- ================= UNIVERSAL PROMPT / INPUT MODAL ================= -->
+    <div id="promptModal" class="modal-backdrop">
+      <div class="modal-box" style="max-width: 440px;">
+        <div class="modal-header">
+          <h3 id="promptModalTitle">Input</h3>
+          <button class="modal-close" id="btnClosePromptModal" type="button">✕</button>
+        </div>
+        <form id="promptModalForm" class="modal-body" style="padding: 20px;">
+          <label id="promptModalLabel" style="margin-bottom: 10px; display: block; font-size: 13px; font-weight: 500; color: var(--text-muted);"></label>
+          <input type="text" id="promptModalInput" class="input-field" style="width: 100%; box-sizing: border-box; padding: 10px 14px; border-radius: var(--radius-sm); background: rgba(0,0,0,0.3); border: 1px solid var(--border-color); color: #fff; font-size: 14px;" required autocomplete="off" spellcheck="false">
+          <div class="modal-footer" style="padding: 16px 0 0 0; margin-top: 16px; display: flex; justify-content: flex-end; gap: 10px; border-top: 1px solid rgba(255,255,255,0.06);">
+            <button type="button" class="btn btn-secondary" id="btnCancelPromptModal" data-i18n="modal_btn_cancel">Cancel</button>
+            <button type="submit" class="btn btn-cyan" id="btnConfirmPromptModal" data-i18n="modal_btn_confirm">Confirm</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
     <!-- Floating Sessions Tab on Right Edge (Draggable) -->
     <div id="btnFloatingSessions" class="floating-sessions-tab" title="Active Servers Drawer / مدیریت سرورهای باز (Drag up/down to move)" role="button" tabindex="0">
       <span class="floating-drag-grip" title="Drag to move">⠿</span>
