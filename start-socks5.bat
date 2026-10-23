@@ -17,7 +17,7 @@ for /f "tokens=5" %%a in ('netstat -aon ^| findstr ":1080" ^| findstr "LISTENING
 )
 
 echo [*] Starting WebSocket tunnel (port 443) to NL server...
-start /B "" "websocat.exe" -b tcp-listen:127.0.0.1:1122 wss://nl.livekadeh.com/ssh-proxy
+start /B "" "websocat.exe" -b tcp-listen:127.0.0.1:1122 wss://YOURsERVERiP/ssh-proxy
 
 timeout /t 2 /nobreak >nul
 
