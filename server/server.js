@@ -55,29 +55,43 @@ app.use('/static', express.static(extensionDir));
 app.get('/downloads', (req, res) => {
   const files = [
     {
+      name: 'LiveKadeh-SSH-SFTP-Windows-Cpp-Portable-v1.5.1.zip',
+      title: 'نسخه پرتابل ویندوز (C++ Native Portable - سبک و سریع)',
+      path: path.join(distDir, 'LiveKadeh-SSH-SFTP-Windows-Cpp-Portable-v1.5.1.zip'),
+      url: '/download/LiveKadeh-SSH-SFTP-Windows-Cpp-Portable-v1.5.1.zip',
+      badge: 'ویندوز C++ Portable'
+    },
+    {
+      name: 'LiveKadeh-SSH-SFTP-Linux-Cpp-v1.5.1.tar.gz',
+      title: 'نسخه دسکتاپ لینوکس (C++ Native - سبک و سریع)',
+      path: path.join(distDir, 'LiveKadeh-SSH-SFTP-Linux-Cpp-v1.5.1.tar.gz'),
+      url: '/download/LiveKadeh-SSH-SFTP-Linux-Cpp-v1.5.1.tar.gz',
+      badge: 'لینوکس C++'
+    },
+    {
       name: 'LiveKadeh-SSH-SFTP-Portable-v1.5.1.exe',
-      title: 'نسخه پرتابل ویندوز (Desktop Portable x64)',
+      title: 'نسخه پرتابل ویندوز (Node.js / Electron x64)',
       path: path.join(distDir, 'LiveKadeh-SSH-SFTP-Portable-v1.5.1.exe'),
       url: '/download/LiveKadeh-SSH-SFTP-Portable-v1.5.1.exe',
-      badge: 'ویندوز x64'
+      badge: 'ویندوز Node.js'
     },
     {
       name: 'LiveKadeh-SSH-SFTP-Linux-v1.5.1.AppImage',
-      title: 'نسخه دسکتاپ لینوکس (Linux AppImage x64)',
+      title: 'نسخه دسکتاپ لینوکس (Node.js / AppImage x64)',
       path: path.join(distDir, 'LiveKadeh-SSH-SFTP-Linux-v1.5.1.AppImage'),
       url: '/download/LiveKadeh-SSH-SFTP-Linux-v1.5.1.AppImage',
-      badge: 'لینوکس AppImage'
+      badge: 'لینوکس Node.js'
     },
     {
       name: 'LiveKadeh-SSH-SFTP-Mac-arm64-v1.5.1.zip',
-      title: 'نسخه دسکتاپ مک (macOS Apple Silicon M1/M2/M3/M4)',
+      title: 'نسخه دسکتاپ مک (macOS Apple Silicon - Node.js)',
       path: path.join(distDir, 'LiveKadeh-SSH-SFTP-Mac-arm64-v1.5.1.zip'),
       url: '/download/LiveKadeh-SSH-SFTP-Mac-arm64-v1.5.1.zip',
       badge: 'مک Apple Silicon'
     },
     {
       name: 'LiveKadeh-SSH-SFTP-Mac-x64-v1.5.1.zip',
-      title: 'نسخه دسکتاپ مک اینتل (macOS Intel x64)',
+      title: 'نسخه دسکتاپ مک اینتل (macOS Intel x64 - Node.js)',
       path: path.join(distDir, 'LiveKadeh-SSH-SFTP-Mac-x64-v1.5.1.zip'),
       url: '/download/LiveKadeh-SSH-SFTP-Mac-x64-v1.5.1.zip',
       badge: 'مک Intel x64'
@@ -91,14 +105,14 @@ app.get('/downloads', (req, res) => {
     },
     {
       name: 'livekadeh-bridge-windows-x64-portable.zip',
-      title: 'سرور بریج مستقل ویندوز (Bridge Server Windows x64)',
+      title: 'سرور بریج مستقل ویندوز (Bridge Server Windows x64 - Node.js)',
       path: path.join(rootDir, 'livekadeh-bridge-windows-x64-portable.zip'),
       url: '/download/livekadeh-bridge-windows-x64-portable.zip',
       badge: 'Windows Server'
     },
     {
       name: 'livekadeh-bridge-linux-x64.tar.gz',
-      title: 'سرور بریج لینوکس (Bridge Server Linux x64)',
+      title: 'سرور بریج لینوکس (Bridge Server Linux x64 - Node.js)',
       path: path.join(rootDir, 'livekadeh-bridge-linux-x64.tar.gz'),
       url: '/download/livekadeh-bridge-linux-x64.tar.gz',
       badge: 'Linux Server'
@@ -162,19 +176,28 @@ app.get('/health', (req, res) => {
   });
 });
 
+function resolveActiveSftp(sessionId) {
+  if (sessionId && activeSftpSessions.has(sessionId)) {
+    const s = activeSftpSessions.get(sessionId);
+    if (s && s.sftpSession) return s.sftpSession;
+  }
+  for (const [, s] of activeSftpSessions.entries()) {
+    if (s && s.sftpSession) return s.sftpSession;
+  }
+  return null;
+}
+
 // HTTP SFTP Media Streaming Endpoint with Range / HTTP 206 support
 app.get('/stream', (req, res) => {
   const { sessionId, path: filePath } = req.query;
-  if (!sessionId || !filePath) {
-    return res.status(400).send('Missing sessionId or path parameter');
+  if (!filePath) {
+    return res.status(400).send('Missing path parameter');
   }
 
-  const session = activeSftpSessions.get(sessionId);
-  if (!session || !session.sftpSession) {
+  const sftp = resolveActiveSftp(sessionId);
+  if (!sftp) {
     return res.status(404).send('Active SFTP session not found or closed. Please reconnect.');
   }
-
-  const sftp = session.sftpSession;
 
   sftp.stat(filePath, (err, stats) => {
     if (err) {
@@ -186,7 +209,7 @@ app.get('/stream', (req, res) => {
       return res.status(400).send('Cannot stream directory');
     }
 
-    const fileSize = stats.size;
+    const fileSize = stats.size || 0;
     const range = req.headers.range;
 
     const ext = path.extname(filePath).toLowerCase().replace('.', '');
@@ -227,12 +250,24 @@ app.get('/stream', (req, res) => {
       return res.sendStatus(200);
     }
 
+    if (req.method === 'HEAD') {
+      res.setHeader('Content-Length', fileSize);
+      res.setHeader('Content-Type', contentType);
+      return res.status(200).end();
+    }
+
+    if (fileSize === 0) {
+      res.setHeader('Content-Length', 0);
+      res.setHeader('Content-Type', contentType);
+      return res.status(200).end();
+    }
+
     if (range) {
       const parts = range.replace(/bytes=/, '').split('-');
       const start = parseInt(parts[0], 10);
-      const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
+      const end = parts[1] ? Math.min(parseInt(parts[1], 10), fileSize - 1) : fileSize - 1;
 
-      if (start >= fileSize || end >= fileSize || start > end) {
+      if (isNaN(start) || start >= fileSize || start > end) {
         res.status(416).setHeader('Content-Range', `bytes */${fileSize}`).send('Requested range not satisfiable');
         return;
       }
@@ -271,11 +306,11 @@ app.put('/stream', (req, res) => {
   const sessionId = req.query.sessionId;
   const filePath = req.query.path;
 
-  if (!sessionId || !filePath) {
-    return res.status(400).json({ success: false, error: 'Missing sessionId or path' });
+  if (!filePath) {
+    return res.status(400).json({ success: false, error: 'Missing path parameter' });
   }
 
-  const sftp = sftpSessions.get(sessionId);
+  const sftp = resolveActiveSftp(sessionId);
   if (!sftp) {
     return res.status(404).json({ success: false, error: 'SFTP session not found or closed' });
   }

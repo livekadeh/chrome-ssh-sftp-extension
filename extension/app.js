@@ -531,8 +531,11 @@ document.addEventListener('DOMContentLoaded', async () => {
   // SFTP Action Toolbar
   btnSftpNewFile.addEventListener('click', () => sftpManager.createNewFile());
   btnSftpNewFolder.addEventListener('click', () => sftpManager.createNewFolder());
-  btnSftpDownload.addEventListener('click', () => {
-    sftpManager.selectedFiles.forEach(f => sftpManager.downloadFile(f));
+  btnSftpDownload.addEventListener('click', async () => {
+    const files = Array.from(sftpManager.selectedFiles);
+    for (const f of files) {
+      await sftpManager.downloadFile(f);
+    }
   });
   btnSftpEdit.addEventListener('click', () => {
     if (sftpManager.selectedFiles.size === 1) {
@@ -1334,8 +1337,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     const a = document.createElement('a');
     a.href = url;
     a.download = `livekadeh-servers-backup-${new Date().toISOString().slice(0, 10)}.json`;
+    document.body.appendChild(a);
     a.click();
-    URL.revokeObjectURL(url);
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 60000);
   });
 
   btnImportServers.addEventListener('click', () => {
