@@ -28,4 +28,4 @@ echo Press Ctrl+C or close this window to stop the tunnel.
 echo ========================================================
 echo.
 
-websocat.exe -b tcp-listen:127.0.0.1:1122 wss://nl.livekadeh.com/ssh-proxy
+websocat.exe -b tcp-listen:127.0.0.1:1122 wss://YOURsERVERiP/ssh-proxy
