@@ -31,7 +31,7 @@ app.get('/', (req, res) => {
   res.json({
     status: 'online',
     service: 'LiveKadeh SSH & SFTP Bridge Server',
-    version: '1.5.1',
+    version: '1.5.2',
     uptime: process.uptime(),
     timestamp: new Date().toISOString(),
     endpoints: {
@@ -97,10 +97,10 @@ app.get('/downloads', (req, res) => {
       badge: 'مک Intel x64'
     },
     {
-      name: 'livekadeh-ssh-sftp-extension-v1.5.1.zip',
+      name: 'livekadeh-ssh-sftp-extension-v1.5.2.zip',
       title: 'افزونه کروم (Chrome Extension ZIP)',
-      path: path.join(rootDir, 'livekadeh-ssh-sftp-extension-v1.5.1.zip'),
-      url: '/download/livekadeh-ssh-sftp-extension-v1.5.1.zip',
+      path: path.join(rootDir, 'livekadeh-ssh-sftp-extension-v1.5.2.zip'),
+      url: '/download/livekadeh-ssh-sftp-extension-v1.5.2.zip',
       badge: 'Chrome Extension'
     },
     {

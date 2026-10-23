@@ -1326,7 +1326,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   btnExportServers.addEventListener('click', async () => {
     const { servers = [], bridgeUrl = 'ws://localhost:3000/ws' } = await chrome.storage.local.get(['servers', 'bridgeUrl']);
     const exportData = {
-      version: (chrome.runtime && chrome.runtime.getManifest) ? chrome.runtime.getManifest().version : '1.5.1',
+      version: (chrome.runtime && chrome.runtime.getManifest) ? chrome.runtime.getManifest().version : '1.5.2',
       exportedAt: new Date().toISOString(),
       bridgeUrl,
       servers
@@ -1657,7 +1657,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   const currentManifestVersion = (chrome.runtime && chrome.runtime.getManifest) 
     ? chrome.runtime.getManifest().version 
-    : '1.5.1';
+    : '1.5.2';
 
   if (aboutVersionLabel) {
     aboutVersionLabel.textContent = `v${currentManifestVersion}`;
@@ -1710,18 +1710,27 @@ document.addEventListener('DOMContentLoaded', async () => {
       }
 
       // Fallback to raw manifest if GitHub API had rate limiting or network issue
-      if (!latestTag) {
+      try {
         const rawRes = await fetch('https://raw.githubusercontent.com/livekadeh/chrome-ssh-sftp-extension/main/extension/manifest.json?t=' + Date.now());
         if (rawRes.ok) {
           const rawManifest = await rawRes.json();
           if (rawManifest && rawManifest.version) {
-            latestTag = 'v' + rawManifest.version;
+            const rawTag = 'v' + rawManifest.version;
+            if (!latestTag || compareSemVer(rawTag, latestTag) > 0) {
+              latestTag = rawTag;
+              releaseUrl = `https://github.com/livekadeh/chrome-ssh-sftp-extension/releases/tag/${rawTag}`;
+              directDownloadUrl = `https://github.com/livekadeh/chrome-ssh-sftp-extension/releases/download/${rawTag}/livekadeh-ssh-sftp-extension-${rawTag}.zip`;
+            }
           }
         }
-      }
+      } catch (rawErr) {}
 
       if (!latestTag) {
         throw new Error('Unable to check for updates at this moment. Please check GitHub releases directly.');
+      }
+
+      if (!directDownloadUrl) {
+        directDownloadUrl = `https://github.com/livekadeh/chrome-ssh-sftp-extension/releases/download/${latestTag}/livekadeh-ssh-sftp-extension-${latestTag}.zip`;
       }
 
       const latestVer = latestTag.replace(/^v/, '');
