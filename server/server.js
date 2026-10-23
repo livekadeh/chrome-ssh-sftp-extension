@@ -5,6 +5,7 @@
  */
 
 const http = require('http');
+const net = require('net');
 const path = require('path');
 const fs = require('fs');
 const os = require('os');
@@ -312,7 +313,63 @@ app.options('/stream', (req, res) => {
 });
 
 const server = http.createServer(app);
-const wss = new WebSocketServer({ server, path: '/ws' });
+const wss = new WebSocketServer({ noServer: true });
+const rawTcpWss = new WebSocketServer({ noServer: true });
+
+server.on('upgrade', (request, socket, head) => {
+  const pathname = new URL(request.url, `http://${request.headers.host || 'localhost'}`).pathname;
+
+  if (pathname === '/ws') {
+    wss.handleUpgrade(request, socket, head, (ws) => {
+      wss.emit('connection', ws, request);
+    });
+  } else if (pathname === '/ssh-proxy') {
+    rawTcpWss.handleUpgrade(request, socket, head, (ws) => {
+      rawTcpWss.emit('connection', ws, request);
+    });
+  } else {
+    socket.destroy();
+  }
+});
+
+// Raw TCP over WebSocket proxy for external clients (websocat, putty, openssh)
+rawTcpWss.on('connection', (ws, req) => {
+  const clientIp = req.socket.remoteAddress;
+  console.log(`[Raw TCP Proxy] Client connected from ${clientIp}`);
+
+  const targetSocket = net.connect({ host: '127.0.0.1', port: 1122 }, () => {
+    console.log(`[Raw TCP Proxy] Connected to local SSH daemon (127.0.0.1:1122)`);
+  });
+
+  targetSocket.on('data', (chunk) => {
+    if (ws.readyState === ws.OPEN) {
+      ws.send(chunk);
+    }
+  });
+
+  ws.on('message', (data, isBinary) => {
+    if (!targetSocket.destroyed) {
+      targetSocket.write(data);
+    }
+  });
+
+  const closeBoth = () => {
+    if (!targetSocket.destroyed) targetSocket.destroy();
+    if (ws.readyState === ws.OPEN || ws.readyState === ws.CONNECTING) ws.close();
+  };
+
+  targetSocket.on('close', closeBoth);
+  targetSocket.on('error', (err) => {
+    console.error(`[Raw TCP Proxy] TCP socket error: ${err.message}`);
+    closeBoth();
+  });
+
+  ws.on('close', closeBoth);
+  ws.on('error', (err) => {
+    console.error(`[Raw TCP Proxy] WebSocket error: ${err.message}`);
+    closeBoth();
+  });
+});
 
 console.log(`[Bridge Server] Initializing WebSocket SSH & SFTP Bridge on port ${PORT}...`);
 
