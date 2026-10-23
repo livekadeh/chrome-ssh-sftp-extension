@@ -10,6 +10,8 @@
 #include <atomic>
 #include <mutex>
 #include <iostream>
+#include <fstream>
+#include <cstdlib>
 #include <filesystem>
 #include <chrono>
 
@@ -117,6 +119,18 @@ private:
     }
 
     void handleHttpRequest(struct mg_connection* c, struct mg_http_message* hm) {
+        // Handle CORS preflight OPTIONS requests
+        if (mg_strcasecmp(hm->method, mg_str("OPTIONS")) == 0) {
+            mg_http_reply(
+                c, 204,
+                "Access-Control-Allow-Origin: *\r\n"
+                "Access-Control-Allow-Methods: GET, POST, PUT, HEAD, OPTIONS\r\n"
+                "Access-Control-Allow-Headers: Range, Content-Type\r\n"
+                "Access-Control-Expose-Headers: Content-Range, Accept-Ranges, Content-Length\r\n",
+                "");
+            return;
+        }
+
         // Upgrade WebSocket connection
         if (mg_match(hm->uri, mg_str("/ws"), nullptr)) {
             mg_ws_upgrade(c, hm, nullptr);
@@ -128,6 +142,236 @@ private:
         if (mg_match(hm->uri, mg_str("/health"), nullptr) || mg_match(hm->uri, mg_str("/api/health"), nullptr)) {
             std::string reply = "{\"status\":\"online\",\"service\":\"LiveKadeh Embedded C++ Bridge Server\",\"version\":\"1.5.1\"}\n";
             mg_http_reply(c, 200, "Content-Type: application/json\r\nAccess-Control-Allow-Origin: *\r\n", "%s", reply.c_str());
+            return;
+        }
+
+        // Direct local file save endpoint for Desktop WebView (Windows WebView2 & Linux WebKitGTK)
+        if (mg_match(hm->uri, mg_str("/api/save-file"), nullptr)) {
+            char fnameBuf[512] = {0};
+            char appendBuf[16] = {0};
+            mg_http_get_var(&hm->query, "filename", fnameBuf, sizeof(fnameBuf));
+            mg_http_get_var(&hm->query, "append", appendBuf, sizeof(appendBuf));
+
+            std::string rawFilename = fnameBuf;
+            if (rawFilename.empty()) rawFilename = "download.bin";
+
+            // Sanitize filename to basename only
+            size_t lastSlash = rawFilename.find_last_of("/\\");
+            std::string safeName = (lastSlash == std::string::npos) ? rawFilename : rawFilename.substr(lastSlash + 1);
+            if (safeName.empty() || safeName == "." || safeName == "..") {
+                safeName = "download.bin";
+            }
+
+            std::string downloadsDir;
+#ifdef _WIN32
+            const char* userProfile = std::getenv("USERPROFILE");
+            if (userProfile && *userProfile) {
+                downloadsDir = std::string(userProfile) + "\\Downloads";
+            } else {
+                downloadsDir = ".";
+            }
+#else
+            const char* homeDir = std::getenv("HOME");
+            if (homeDir && *homeDir) {
+                downloadsDir = std::string(homeDir) + "/Downloads";
+            } else {
+                downloadsDir = "/tmp";
+            }
+#endif
+            std::error_code ec;
+            fs::create_directories(downloadsDir, ec);
+            fs::path fullPath = fs::path(downloadsDir) / safeName;
+
+            bool isAppend = (std::string(appendBuf) == "1" || std::string(appendBuf) == "true");
+            std::ios::openmode mode = std::ios::binary | (isAppend ? std::ios::app : std::ios::trunc);
+            std::ofstream ofs(fullPath, mode);
+            if (!ofs.is_open()) {
+                nlohmann::json errRes = {{"success", false}, {"error", "Failed to open local file for writing"}};
+                std::string s = errRes.dump();
+                mg_http_reply(c, 500, "Content-Type: application/json\r\nAccess-Control-Allow-Origin: *\r\n", "%s", s.c_str());
+                return;
+            }
+
+            if (hm->body.len > 0) {
+                ofs.write(hm->body.buf, static_cast<std::streamsize>(hm->body.len));
+            }
+            ofs.close();
+
+            nlohmann::json okRes = {
+                {"success", true},
+                {"path", fullPath.string()},
+                {"filename", safeName}
+            };
+            std::string s = okRes.dump();
+            mg_http_reply(c, 200, "Content-Type: application/json\r\nAccess-Control-Allow-Origin: *\r\n", "%s", s.c_str());
+            return;
+        }
+
+        // Direct HTTP SFTP Stream endpoint (/stream?sessionId=...&path=...)
+        if (mg_match(hm->uri, mg_str("/stream"), nullptr)) {
+            char sidBuf[128] = {0};
+            char pathBuf[2048] = {0};
+            mg_http_get_var(&hm->query, "sessionId", sidBuf, sizeof(sidBuf));
+            mg_http_get_var(&hm->query, "path", pathBuf, sizeof(pathBuf));
+
+            std::string sid(sidBuf);
+            std::string remotePath(pathBuf);
+
+            if (remotePath.empty()) {
+                mg_http_reply(c, 400, "Content-Type: application/json\r\nAccess-Control-Allow-Origin: *\r\n",
+                              "%s", "{\"error\":\"Missing path parameter\"}");
+                return;
+            }
+
+            std::shared_ptr<BridgeSession> session = getSessionBySftpId(sid);
+            if (!session || !session->hasSftp()) {
+                mg_http_reply(c, 404, "Content-Type: application/json\r\nAccess-Control-Allow-Origin: *\r\n",
+                              "%s", "{\"error\":\"Invalid or expired SFTP sessionId\"}");
+                return;
+            }
+
+            // PUT /stream -> Direct binary upload
+            if (mg_strcasecmp(hm->method, mg_str("PUT")) == 0) {
+                std::string errMsg;
+                const unsigned char* rawPtr = reinterpret_cast<const unsigned char*>(hm->body.buf);
+                if (session->writeFileRaw(remotePath, rawPtr, hm->body.len, errMsg)) {
+                    mg_http_reply(c, 200, "Content-Type: application/json\r\nAccess-Control-Allow-Origin: *\r\n",
+                                  "%s", "{\"success\":true}");
+                } else {
+                    nlohmann::json errJson = {{"error", errMsg.empty() ? "Upload failed" : errMsg}};
+                    std::string s = errJson.dump();
+                    mg_http_reply(c, 500, "Content-Type: application/json\r\nAccess-Control-Allow-Origin: *\r\n",
+                                  "%s", s.c_str());
+                }
+                return;
+            }
+
+            // Stat remote file for HEAD / GET
+            uint64_t fileSize = 0;
+            bool isDir = false;
+            std::string statErr;
+            if (!session->statFileRaw(remotePath, fileSize, isDir, statErr)) {
+                mg_http_reply(c, 404, "Content-Type: application/json\r\nAccess-Control-Allow-Origin: *\r\n",
+                              "%s", "{\"error\":\"File not found on remote server\"}");
+                return;
+            }
+
+            if (isDir) {
+                mg_http_reply(c, 400, "Content-Type: application/json\r\nAccess-Control-Allow-Origin: *\r\n",
+                              "%s", "{\"error\":\"Cannot stream a directory via /stream\"}");
+                return;
+            }
+
+            // HEAD /stream -> Return exact file size and Range capability
+            if (mg_strcasecmp(hm->method, mg_str("HEAD")) == 0) {
+                mg_printf(c,
+                          "HTTP/1.1 200 OK\r\n"
+                          "Accept-Ranges: bytes\r\n"
+                          "Content-Length: %llu\r\n"
+                          "Content-Type: application/octet-stream\r\n"
+                          "Access-Control-Allow-Origin: *\r\n"
+                          "Access-Control-Expose-Headers: Content-Range, Accept-Ranges, Content-Length\r\n"
+                          "\r\n",
+                          static_cast<unsigned long long>(fileSize));
+                c->is_resp = 0;
+                return;
+            }
+
+            // GET /stream -> Support Range header (206 Partial Content) or full file (200 OK)
+            uint64_t startByte = 0;
+            uint64_t endByte = (fileSize > 0) ? (fileSize - 1) : 0;
+            bool hasRange = false;
+
+            struct mg_str* rangeHdr = mg_http_get_header(hm, "Range");
+            if (!rangeHdr) rangeHdr = mg_http_get_header(hm, "range");
+            if (rangeHdr && rangeHdr->len > 6 && fileSize > 0) {
+                std::string rStr(rangeHdr->buf, rangeHdr->len);
+                if (rStr.compare(0, 6, "bytes=") == 0) {
+                    hasRange = true;
+                    std::string spec = rStr.substr(6);
+                    size_t dashPos = spec.find('-');
+                    if (dashPos != std::string::npos) {
+                        std::string sPart = spec.substr(0, dashPos);
+                        std::string ePart = spec.substr(dashPos + 1);
+                        try {
+                            if (!sPart.empty()) startByte = std::stoull(sPart);
+                            if (!ePart.empty()) endByte = std::stoull(ePart);
+                        } catch (...) {}
+                    }
+                }
+            }
+
+            if (fileSize == 0) {
+                mg_printf(c,
+                          "HTTP/1.1 200 OK\r\n"
+                          "Accept-Ranges: bytes\r\n"
+                          "Content-Length: 0\r\n"
+                          "Content-Type: application/octet-stream\r\n"
+                          "Access-Control-Allow-Origin: *\r\n"
+                          "Access-Control-Expose-Headers: Content-Range, Accept-Ranges, Content-Length\r\n"
+                          "\r\n");
+                c->is_resp = 0;
+                return;
+            }
+
+            if (startByte >= fileSize || startByte > endByte) {
+                mg_printf(c,
+                          "HTTP/1.1 416 Range Not Satisfiable\r\n"
+                          "Content-Range: bytes */%llu\r\n"
+                          "Content-Length: 0\r\n"
+                          "Access-Control-Allow-Origin: *\r\n"
+                          "\r\n",
+                          static_cast<unsigned long long>(fileSize));
+                c->is_resp = 0;
+                return;
+            }
+
+            if (endByte >= fileSize) {
+                endByte = fileSize - 1;
+            }
+
+            size_t chunkLen = static_cast<size_t>(endByte - startByte + 1);
+            std::vector<unsigned char> data;
+            std::string errMsg;
+            if (!session->readFileSlice(remotePath, startByte, chunkLen, data, errMsg)) {
+                nlohmann::json errJson = {{"error", errMsg.empty() ? "Failed to read file slice" : errMsg}};
+                std::string s = errJson.dump();
+                mg_http_reply(c, 500, "Content-Type: application/json\r\nAccess-Control-Allow-Origin: *\r\n",
+                              "%s", s.c_str());
+                return;
+            }
+
+            if (hasRange) {
+                uint64_t actualEnd = startByte + (data.empty() ? 0 : (data.size() - 1));
+                mg_printf(c,
+                          "HTTP/1.1 206 Partial Content\r\n"
+                          "Accept-Ranges: bytes\r\n"
+                          "Content-Range: bytes %llu-%llu/%llu\r\n"
+                          "Content-Length: %llu\r\n"
+                          "Content-Type: application/octet-stream\r\n"
+                          "Access-Control-Allow-Origin: *\r\n"
+                          "Access-Control-Expose-Headers: Content-Range, Accept-Ranges, Content-Length\r\n"
+                          "\r\n",
+                          static_cast<unsigned long long>(startByte),
+                          static_cast<unsigned long long>(actualEnd),
+                          static_cast<unsigned long long>(fileSize),
+                          static_cast<unsigned long long>(data.size()));
+            } else {
+                mg_printf(c,
+                          "HTTP/1.1 200 OK\r\n"
+                          "Accept-Ranges: bytes\r\n"
+                          "Content-Length: %llu\r\n"
+                          "Content-Type: application/octet-stream\r\n"
+                          "Access-Control-Allow-Origin: *\r\n"
+                          "Access-Control-Expose-Headers: Content-Range, Accept-Ranges, Content-Length\r\n"
+                          "\r\n",
+                          static_cast<unsigned long long>(data.size()));
+            }
+
+            if (!data.empty()) {
+                mg_send(c, data.data(), data.size());
+            }
+            c->is_resp = 0;
             return;
         }
 
@@ -284,9 +528,35 @@ private:
             size_t maxBytes = msg.value("maxBytes", (size_t)0);
             std::thread([session, path, id, maxBytes]() {
                 try {
-                    session->readFile(path, id, maxBytes);
+                    session->readFile(path, id, maxBytes, "sftp-read-res", false);
                 } catch (const std::exception& e) {
                     std::cerr << "readFile error: " << e.what() << std::endl;
+                } catch (...) {}
+            }).detach();
+            return;
+        }
+
+        if (type == "sftp-download") {
+            std::string path = msg.value("path", "");
+            std::string id = msg.value("id", "");
+            std::thread([session, path, id]() {
+                try {
+                    session->readFile(path, id, 0, "sftp-download-res", true);
+                } catch (const std::exception& e) {
+                    std::cerr << "downloadFile error: " << e.what() << std::endl;
+                } catch (...) {}
+            }).detach();
+            return;
+        }
+
+        if (type == "sftp-download-dir") {
+            std::string path = msg.value("path", "");
+            std::string id = msg.value("id", "");
+            std::thread([session, path, id]() {
+                try {
+                    session->downloadDirectory(path, id);
+                } catch (const std::exception& e) {
+                    std::cerr << "downloadDirectory error: " << e.what() << std::endl;
                 } catch (...) {}
             }).detach();
             return;
@@ -343,6 +613,19 @@ private:
                     session->chunkEnd(uploadId, id);
                 } catch (const std::exception& e) {
                     std::cerr << "chunkEnd error: " << e.what() << std::endl;
+                } catch (...) {}
+            }).detach();
+            return;
+        }
+
+        if (type == "sftp-chunk-abort") {
+            std::string uploadId = msg.value("uploadId", "");
+            std::string id = msg.value("id", "");
+            std::thread([session, uploadId, id]() {
+                try {
+                    session->chunkAbort(uploadId, id);
+                } catch (const std::exception& e) {
+                    std::cerr << "chunkAbort error: " << e.what() << std::endl;
                 } catch (...) {}
             }).detach();
             return;
@@ -429,12 +712,18 @@ private:
         }
 
         if (type == "sftp-copy") {
-            std::string srcPath = msg.value("srcPath", "");
-            std::string destPath = msg.value("destPath", "");
+            std::vector<std::pair<std::string, std::string>> items;
+            if (msg.contains("items") && msg["items"].is_array()) {
+                for (const auto& item : msg["items"]) {
+                    items.emplace_back(item.value("srcPath", ""), item.value("destPath", ""));
+                }
+            } else {
+                items.emplace_back(msg.value("srcPath", ""), msg.value("destPath", ""));
+            }
             std::string id = msg.value("id", "");
-            std::thread([session, srcPath, destPath, id]() {
+            std::thread([session, items, id]() {
                 try {
-                    session->copyItems(srcPath, destPath, id);
+                    session->copyItems(items, id);
                 } catch (const std::exception& e) {
                     std::cerr << "copyItems error: " << e.what() << std::endl;
                 } catch (...) {}
@@ -443,14 +732,67 @@ private:
         }
 
         if (type == "sftp-move") {
-            std::string srcPath = msg.value("srcPath", "");
-            std::string destPath = msg.value("destPath", "");
+            std::vector<std::pair<std::string, std::string>> items;
+            if (msg.contains("items") && msg["items"].is_array()) {
+                for (const auto& item : msg["items"]) {
+                    items.emplace_back(item.value("srcPath", ""), item.value("destPath", ""));
+                }
+            } else {
+                items.emplace_back(msg.value("srcPath", ""), msg.value("destPath", ""));
+            }
             std::string id = msg.value("id", "");
-            std::thread([session, srcPath, destPath, id]() {
+            std::thread([session, items, id]() {
                 try {
-                    session->moveItems(srcPath, destPath, id);
+                    session->moveItems(items, id);
                 } catch (const std::exception& e) {
                     std::cerr << "moveItems error: " << e.what() << std::endl;
+                } catch (...) {}
+            }).detach();
+            return;
+        }
+
+        if (type == "sftp-compress") {
+            std::vector<std::string> paths;
+            if (msg.contains("paths") && msg["paths"].is_array()) {
+                for (const auto& p : msg["paths"]) {
+                    if (p.is_string()) paths.push_back(p.get<std::string>());
+                }
+            }
+            std::string archivePath = msg.value("archivePath", "");
+            std::string format = msg.value("format", "zip");
+            std::string id = msg.value("id", "");
+            std::thread([session, paths, archivePath, format, id]() {
+                try {
+                    session->compressItems(paths, archivePath, format, id);
+                } catch (const std::exception& e) {
+                    std::cerr << "compressItems error: " << e.what() << std::endl;
+                } catch (...) {}
+            }).detach();
+            return;
+        }
+
+        if (type == "sftp-extract") {
+            std::string archivePath = msg.value("archivePath", "");
+            std::string targetDir = msg.value("targetDir", "");
+            std::string id = msg.value("id", "");
+            std::thread([session, archivePath, targetDir, id]() {
+                try {
+                    session->extractArchive(archivePath, targetDir, id);
+                } catch (const std::exception& e) {
+                    std::cerr << "extractArchive error: " << e.what() << std::endl;
+                } catch (...) {}
+            }).detach();
+            return;
+        }
+
+        if (type == "sftp-du") {
+            std::string path = msg.value("path", "");
+            std::string id = msg.value("id", "");
+            std::thread([session, path, id]() {
+                try {
+                    session->diskUsage(path, id);
+                } catch (const std::exception& e) {
+                    std::cerr << "diskUsage error: " << e.what() << std::endl;
                 } catch (...) {}
             }).detach();
             return;
@@ -482,6 +824,24 @@ private:
         auto it = sessions_.find(connId);
         if (it != sessions_.end()) {
             return it->second;
+        }
+        return nullptr;
+    }
+
+    std::shared_ptr<BridgeSession> getSessionBySftpId(const std::string& sftpSessionId) {
+        std::lock_guard<std::mutex> lock(sessionsMutex_);
+        if (!sftpSessionId.empty()) {
+            for (const auto& pair : sessions_) {
+                if (pair.second && pair.second->getSessionId() == sftpSessionId && pair.second->hasSftp()) {
+                    return pair.second;
+                }
+            }
+        }
+        // Fallback to any active SFTP session if sessionId was not matched
+        for (const auto& pair : sessions_) {
+            if (pair.second && pair.second->hasSftp()) {
+                return pair.second;
+            }
         }
         return nullptr;
     }

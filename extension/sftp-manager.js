@@ -1344,135 +1344,146 @@ class SFTPManager {
 
     try {
       if (bridgeSessionId) {
-        let base = (bridgeUrl || 'ws://localhost:3000/ws')
-          .replace(/^ws:\/\//i, 'http://')
-          .replace(/^wss:\/\//i, 'https://')
-          .replace(/\/ws\/?$/i, '');
-        const streamUrl = `${base}/stream?sessionId=${encodeURIComponent(bridgeSessionId)}&path=${encodeURIComponent(targetPath)}`;
+        try {
+          let base = (bridgeUrl || 'ws://localhost:3000/ws')
+            .replace(/^ws:\/\//i, 'http://')
+            .replace(/^wss:\/\//i, 'https://')
+            .replace(/\/ws\/?$/i, '');
+          const streamUrl = `${base}/stream?sessionId=${encodeURIComponent(bridgeSessionId)}&path=${encodeURIComponent(targetPath)}`;
 
-        // Determine total size
-        let totalSize = (fileObj && fileObj.attrs && fileObj.attrs.size) ? fileObj.attrs.size : 0;
-        if (!totalSize) {
-          try {
-            const headRes = await fetch(streamUrl, { method: 'HEAD', signal });
-            const cl = headRes.headers.get('content-length');
-            if (cl) totalSize = parseInt(cl, 10);
-          } catch (e) {}
-        }
-
-        if (transferTask && window.transferManager && totalSize > 0) {
-          window.transferManager.updateTask(transferTask.id, { totalBytes: totalSize });
-        }
-
-        // Multi-segment configuration
-        const numThreads = (totalSize >= 4 * 1024 * 1024) ? 4 : 1;
-        if (counterEl) {
-          counterEl.textContent = numThreads > 1
-            ? (isPersian ? `دانلود پرسرعت (${numThreads} رشته موازی) ⚡` : `Multi-segment (${numThreads} parallel threads) ⚡`)
-            : (isPersian ? 'دانلود مستقیم استریم ⚡' : 'High-speed stream ⚡');
-        }
-
-        const segments = [];
-        if (numThreads > 1 && totalSize > 0) {
-          const segSize = Math.ceil(totalSize / numThreads);
-          for (let i = 0; i < numThreads; i++) {
-            const start = i * segSize;
-            const end = Math.min(start + segSize - 1, totalSize - 1);
-            segments.push({ start, end });
-          }
-        } else {
-          segments.push({ start: 0, end: totalSize > 0 ? totalSize - 1 : undefined });
-        }
-
-        let totalDownloaded = 0;
-        let lastTime = Date.now();
-        let lastBytes = 0;
-        const segmentData = new Array(segments.length);
-
-        const onChunkReceived = (chunkLength) => {
-          if (this.isDownloadCancelled) return;
-          totalDownloaded += chunkLength;
-          const now = Date.now();
-          const elapsed = (now - lastTime) / 1000;
-          let currentSpeed = 0;
-          if (elapsed >= 0.4) {
-            const diff = totalDownloaded - lastBytes;
-            currentSpeed = diff / elapsed;
-            lastTime = now;
-            lastBytes = totalDownloaded;
-            if (speedEl) speedEl.textContent = `${this.formatBytes(currentSpeed)}/s`;
+          // Determine total size
+          let totalSize = (fileObj && fileObj.attrs && fileObj.attrs.size) ? fileObj.attrs.size : 0;
+          if (!totalSize) {
+            try {
+              const headRes = await fetch(streamUrl, { method: 'HEAD', signal });
+              if (headRes.ok) {
+                const cl = headRes.headers.get('content-length');
+                if (cl) totalSize = parseInt(cl, 10);
+              }
+            } catch (e) {}
           }
 
-          const pct = totalSize > 0 ? Math.min(99, Math.floor((totalDownloaded / totalSize) * 100)) : 0;
+          if (transferTask && window.transferManager && totalSize > 0) {
+            window.transferManager.updateTask(transferTask.id, { totalBytes: totalSize });
+          }
+
+          // Split into 1MB Range segments with up to 4 parallel workers
+          const segSize = 1024 * 1024;
+          const segments = [];
           if (totalSize > 0) {
-            if (percentEl) percentEl.textContent = `${pct}%`;
-            if (barEl) barEl.style.width = `${pct}%`;
-            if (sizeEl) sizeEl.textContent = `${this.formatBytes(totalDownloaded)} / ${this.formatBytes(totalSize)}`;
+            for (let start = 0; start < totalSize; start += segSize) {
+              const end = Math.min(start + segSize - 1, totalSize - 1);
+              segments.push({ start, end });
+            }
           } else {
-            if (sizeEl) sizeEl.textContent = `${this.formatBytes(totalDownloaded)}`;
+            segments.push({ start: 0, end: undefined });
           }
+
+          const concurrency = Math.min(4, segments.length);
+          if (counterEl) {
+            counterEl.textContent = concurrency > 1
+              ? (isPersian ? `دانلود پرسرعت (${concurrency} رشته موازی) ⚡` : `Multi-segment (${concurrency} parallel threads) ⚡`)
+              : (isPersian ? 'دانلود مستقیم استریم ⚡' : 'High-speed stream ⚡');
+          }
+
+          let totalDownloaded = 0;
+          let lastTime = Date.now();
+          let lastBytes = 0;
+          const segmentData = new Array(segments.length);
+
+          const onChunkReceived = (chunkLength) => {
+            if (this.isDownloadCancelled) return;
+            totalDownloaded += chunkLength;
+            const now = Date.now();
+            const elapsed = (now - lastTime) / 1000;
+            let currentSpeed = 0;
+            if (elapsed >= 0.4) {
+              const diff = totalDownloaded - lastBytes;
+              currentSpeed = diff / elapsed;
+              lastTime = now;
+              lastBytes = totalDownloaded;
+              if (speedEl) speedEl.textContent = `${this.formatBytes(currentSpeed)}/s`;
+            }
+
+            const pct = totalSize > 0 ? Math.min(99, Math.floor((totalDownloaded / totalSize) * 100)) : 0;
+            if (totalSize > 0) {
+              if (percentEl) percentEl.textContent = `${pct}%`;
+              if (barEl) barEl.style.width = `${pct}%`;
+              if (sizeEl) sizeEl.textContent = `${this.formatBytes(totalDownloaded)} / ${this.formatBytes(totalSize)}`;
+            } else {
+              if (sizeEl) sizeEl.textContent = `${this.formatBytes(totalDownloaded)}`;
+            }
+
+            if (transferTask && window.transferManager) {
+              window.transferManager.updateTask(transferTask.id, {
+                transferredBytes: totalDownloaded,
+                totalBytes: totalSize,
+                percent: pct,
+                speed: currentSpeed
+              });
+            }
+          };
+
+          let nextSegIdx = 0;
+          const workers = Array.from({ length: concurrency }, async () => {
+            while (nextSegIdx < segments.length) {
+              if (this.isDownloadCancelled) break;
+              const idx = nextSegIdx++;
+              const seg = segments[idx];
+              const headers = (seg.end !== undefined) ? { Range: `bytes=${seg.start}-${seg.end}` } : {};
+              const response = await fetch(streamUrl, { headers, signal });
+              if (!response.ok && response.status !== 206) {
+                throw new Error(`Server returned ${response.status}: ${response.statusText}`);
+              }
+
+              const reader = response.body.getReader();
+              const chunks = [];
+              while (true) {
+                if (this.isDownloadCancelled) {
+                  reader.cancel();
+                  break;
+                }
+                const { done, value } = await reader.read();
+                if (done) break;
+                chunks.push(value);
+                onChunkReceived(value.byteLength);
+              }
+              segmentData[idx] = chunks;
+            }
+          });
+
+          await Promise.all(workers);
+
+          if (this.isDownloadCancelled) return;
+
+          // Concatenate all segments into final Blob
+          const allBuffers = segmentData.flat();
+          const blob = new Blob(allBuffers, { type: 'application/octet-stream' });
+
+          const savedPath = await this.saveDownloadedBlob(blob, filename);
+
+          if (percentEl) percentEl.textContent = '100% ✔';
+          if (barEl) barEl.style.width = '100%';
+          if (speedEl) speedEl.textContent = isPersian ? 'تکمیل شد' : 'Complete';
+          const statusMsg = savedPath
+            ? (isPersian ? `ذخیره شد در: ${savedPath} ✔` : `Saved to: ${savedPath} ✔`)
+            : (isPersian ? `دانلود ${filename} با موفقیت پایان یافت ✔` : `Downloaded ${filename} successfully ✔`);
+          this.updateStatus(statusMsg);
 
           if (transferTask && window.transferManager) {
-            window.transferManager.updateTask(transferTask.id, {
-              transferredBytes: totalDownloaded,
-              totalBytes: totalSize,
-              percent: pct,
-              speed: currentSpeed
-            });
-          }
-        };
-
-        // Fetch segments in parallel
-        await Promise.all(segments.map(async (seg, idx) => {
-          const headers = (seg.end !== undefined) ? { Range: `bytes=${seg.start}-${seg.end}` } : {};
-          const response = await fetch(streamUrl, { headers, signal });
-          if (!response.ok && response.status !== 206) {
-            throw new Error(`Server returned ${response.status}: ${response.statusText}`);
+            window.transferManager.completeTask(transferTask.id, statusMsg);
           }
 
-          const reader = response.body.getReader();
-          const chunks = [];
-          while (true) {
-            if (this.isDownloadCancelled) {
-              reader.cancel();
-              break;
-            }
-            const { done, value } = await reader.read();
-            if (done) break;
-            chunks.push(value);
-            onChunkReceived(value.byteLength);
+          setTimeout(() => {
+            if (progressContainer) progressContainer.style.display = 'none';
+          }, 1500);
+          return;
+        } catch (streamErr) {
+          if (streamErr.name === 'AbortError' || this.isDownloadCancelled) {
+            throw streamErr;
           }
-          segmentData[idx] = chunks;
-        }));
-
-        if (this.isDownloadCancelled) return;
-
-        // Concatenate all segments into final Blob
-        const allBuffers = segmentData.flat();
-        const blob = new Blob(allBuffers, { type: 'application/octet-stream' });
-
-        if (percentEl) percentEl.textContent = '100% ✔';
-        if (barEl) barEl.style.width = '100%';
-        if (speedEl) speedEl.textContent = isPersian ? 'تکمیل شد' : 'Complete';
-        this.updateStatus(isPersian ? `دانلود ${filename} با موفقیت پایان یافت ✔` : `Downloaded ${filename} successfully ✔`);
-
-        if (transferTask && window.transferManager) {
-          window.transferManager.completeTask(transferTask.id, isPersian ? `دانلود ${filename} با موفقیت تکمیل شد ✔` : `Downloaded ${filename} successfully ✔`);
+          console.warn('[SFTP] Stream download failed, falling back to WebSocket sftp-read:', streamErr);
         }
-
-        const blobUrl = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = blobUrl;
-        a.download = filename;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(blobUrl);
-
-        setTimeout(() => {
-          if (progressContainer) progressContainer.style.display = 'none';
-        }, 1500);
-        return;
       }
 
       // Fallback via WebSocket
@@ -1482,30 +1493,26 @@ class SFTPManager {
       let blob;
       if (res.isBinary) {
         const byteCharacters = atob(res.content);
-        const byteNumbers = new Array(byteCharacters.length);
+        const byteNumbers = new Uint8Array(byteCharacters.length);
         for (let i = 0; i < byteCharacters.length; i++) {
           byteNumbers[i] = byteCharacters.charCodeAt(i);
         }
-        blob = new Blob([new Uint8Array(byteNumbers)], { type: 'application/octet-stream' });
+        blob = new Blob([byteNumbers], { type: 'application/octet-stream' });
       } else {
         blob = new Blob([res.content], { type: 'text/plain;charset=utf-8' });
       }
 
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = filename;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
+      const savedPath = await this.saveDownloadedBlob(blob, filename);
 
       if (percentEl) percentEl.textContent = '100% ✔';
       if (barEl) barEl.style.width = '100%';
-      this.updateStatus(isPersian ? `دانلود ${filename} انجام شد ✔` : `Downloaded ${filename} successfully ✔`);
+      const statusMsg = savedPath
+        ? (isPersian ? `ذخیره شد در: ${savedPath} ✔` : `Saved to: ${savedPath} ✔`)
+        : (isPersian ? `دانلود ${filename} انجام شد ✔` : `Downloaded ${filename} successfully ✔`);
+      this.updateStatus(statusMsg);
 
       if (transferTask && window.transferManager) {
-        window.transferManager.completeTask(transferTask.id, isPersian ? `دانلود ${filename} انجام شد ✔` : `Downloaded ${filename} successfully ✔`);
+        window.transferManager.completeTask(transferTask.id, statusMsg);
       }
 
       setTimeout(() => {
@@ -1529,6 +1536,67 @@ class SFTPManager {
     } finally {
       this.activeDownloadController = null;
     }
+  }
+
+  async saveDownloadedBlob(blob, filename) {
+    const isCppDesktop = typeof window.nativeGetPlatform === 'function';
+    if (isCppDesktop) {
+      try {
+        const activeSession = this.activeSessionId ? this.sessions.get(this.activeSessionId) : null;
+        const bridgeUrl = (activeSession && activeSession.bridgeUrl) ? activeSession.bridgeUrl : this.bridgeUrl;
+        const base = (bridgeUrl || 'ws://127.0.0.1:3000/ws')
+          .replace(/^ws:\/\//i, 'http://')
+          .replace(/^wss:\/\//i, 'https://')
+          .replace(/\/ws\/?$/i, '');
+
+        const chunkSize = 2 * 1024 * 1024;
+        let offset = 0;
+        let savedPath = '';
+
+        if (blob.size === 0) {
+          const res = await fetch(`${base}/api/save-file?filename=${encodeURIComponent(filename)}&append=0`, {
+            method: 'POST',
+            body: new Uint8Array(0)
+          });
+          if (res.ok) {
+            const data = await res.json();
+            if (data && data.success) savedPath = data.path || '';
+          }
+        } else {
+          while (offset < blob.size) {
+            const slice = blob.slice(offset, offset + chunkSize);
+            const buf = await slice.arrayBuffer();
+            const append = offset > 0 ? 1 : 0;
+            const res = await fetch(`${base}/api/save-file?filename=${encodeURIComponent(filename)}&append=${append}`, {
+              method: 'POST',
+              body: buf
+            });
+            if (!res.ok) {
+              throw new Error(`Save API returned ${res.status}`);
+            }
+            const data = await res.json();
+            if (data && data.path) savedPath = data.path;
+            offset += chunkSize;
+          }
+        }
+
+        if (savedPath) {
+          return savedPath;
+        }
+      } catch (e) {
+        console.warn('[SFTP] Direct desktop file save failed, falling back to anchor download:', e);
+      }
+    }
+
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 60000);
+    return '';
   }
 
   async downloadDirectory(folderName) {
@@ -1576,7 +1644,8 @@ class SFTPManager {
                 });
               }
             } else if (msg.type === 'sftp-download-dir-chunk') {
-              const binaryString = atob(msg.chunk);
+              const b64Data = msg.chunk || msg.data || '';
+              const binaryString = atob(b64Data);
               const len = binaryString.length;
               const bytes = new Uint8Array(len);
               for (let i = 0; i < len; i++) {
@@ -1584,7 +1653,7 @@ class SFTPManager {
               }
               chunks.push(bytes);
 
-              const current = msg.streamedBytes || 0;
+              const current = msg.streamedBytes || msg.transferred || 0;
               const pct = totalBytes > 0 ? Math.min(100, Math.round((current / totalBytes) * 100)) : 0;
               this.updateStatus(isPersian 
                 ? `در حال دریافت "${folderName}": %${pct} (${this.formatBytes(current)} از ${this.formatBytes(totalBytes)})` 
@@ -1610,20 +1679,16 @@ class SFTPManager {
       const mimeType = downloadFilename.endsWith('.tar.gz') ? 'application/gzip' : 'application/zip';
       const blob = new Blob(chunks, { type: mimeType });
 
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = downloadFilename;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
+      const savedPath = await this.saveDownloadedBlob(blob, downloadFilename);
 
       const sizeStr = totalBytes > 0 ? ` (${this.formatBytes(totalBytes)})` : '';
-      this.updateStatus(isPersian ? `دانلود پوشه "${folderName}" با موفقیت تکمیل شد${sizeStr} ✔` : `Folder "${folderName}" downloaded successfully${sizeStr} ✔`);
+      const statusMsg = savedPath
+        ? (isPersian ? `پوشه در "${savedPath}" ذخیره شد${sizeStr} ✔` : `Folder saved to "${savedPath}"${sizeStr} ✔`)
+        : (isPersian ? `دانلود پوشه "${folderName}" با موفقیت تکمیل شد${sizeStr} ✔` : `Folder "${folderName}" downloaded successfully${sizeStr} ✔`);
+      this.updateStatus(statusMsg);
 
       if (transferTask && window.transferManager) {
-        window.transferManager.completeTask(transferTask.id, isPersian ? `دانلود پوشه با موفقیت تکمیل شد ✔` : `Folder downloaded successfully ✔`);
+        window.transferManager.completeTask(transferTask.id, statusMsg);
       }
     } catch (err) {
       console.error('Directory download failed:', err);

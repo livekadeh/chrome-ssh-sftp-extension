@@ -8,7 +8,7 @@ ifeq ($(UNAME_S),Linux)
     PKG_CONFIG ?= pkg-config
     GTK_FLAGS := $(shell $(PKG_CONFIG) --cflags gtk+-3.0 webkit2gtk-4.1 2>/dev/null || $(PKG_CONFIG) --cflags gtk+-3.0 webkit2gtk-4.0)
     GTK_LIBS := $(shell $(PKG_CONFIG) --libs gtk+-3.0 webkit2gtk-4.1 2>/dev/null || $(PKG_CONFIG) --libs gtk+-3.0 webkit2gtk-4.0)
-    CXXFLAGS += $(GTK_FLAGS) -DMG_ENABLE_LINES=1
+    CXXFLAGS += $(GTK_FLAGS) -DMG_ENABLE_LINES=1 -DMG_MAX_RECV_SIZE=52428800UL
     LDFLAGS += $(GTK_LIBS) -lssh2 -lpthread
 endif
 
@@ -35,8 +35,8 @@ WIN_TARGET = bin/LiveKadeh-SSH-SFTP.exe
 windows:
 	@mkdir -p bin
 	x86_64-w64-mingw32-windres -i res/app.rc -o res/app.res.o -O coff --include-dir=res
-	$(MINGW_CC) -c src/bridge/mongoose.c -o src/bridge/mongoose.o -Iinclude -O3 -DMG_ENABLE_LINES=1
-	$(MINGW_CXX) -std=c++17 -Iinclude -Isrc -c src/main.cpp -o src/main.o -O3
+	$(MINGW_CC) -c src/bridge/mongoose.c -o src/bridge/mongoose.o -Iinclude -O3 -DMG_ENABLE_LINES=1 -DMG_MAX_RECV_SIZE=52428800UL
+	$(MINGW_CXX) -std=c++17 -Iinclude -Isrc -c src/main.cpp -o src/main.o -O3 -DMG_MAX_RECV_SIZE=52428800UL
 	$(MINGW_CXX) -std=c++17 src/main.o src/bridge/mongoose.o res/app.res.o lib/libssh2.a \
 	  -Llib/x64 -lWebView2LoaderStatic \
 	  -lole32 -loleaut32 -lshlwapi -lversion -lws2_32 -lbcrypt -lcrypt32 \

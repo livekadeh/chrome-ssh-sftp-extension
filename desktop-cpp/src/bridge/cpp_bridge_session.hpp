@@ -66,6 +66,33 @@ public:
     unsigned long getConnId() const { return connId_; }
     const std::string& getSessionId() const { return sessionId_; }
     bool isConnected() const { return isConnected_; }
+    bool hasSftp() const { return sftpSession_ != nullptr; }
+
+    static std::string safeDump(const nlohmann::json& j) {
+        return j.dump(-1, ' ', false, nlohmann::json::error_handler_t::replace);
+    }
+
+    static bool isValidUtf8(const unsigned char* bytes, size_t len) {
+        size_t i = 0;
+        while (i < len) {
+            if (bytes[i] == 0) return false;
+            if (bytes[i] <= 0x7F) {
+                i += 1;
+            } else if ((bytes[i] & 0xE0) == 0xC0) {
+                if (i + 1 >= len || (bytes[i + 1] & 0xC0) != 0x80 || (bytes[i] & 0xFE) == 0xC0) return false;
+                i += 2;
+            } else if ((bytes[i] & 0xF0) == 0xE0) {
+                if (i + 2 >= len || (bytes[i + 1] & 0xC0) != 0x80 || (bytes[i + 2] & 0xC0) != 0x80) return false;
+                i += 3;
+            } else if ((bytes[i] & 0xF8) == 0xF0) {
+                if (i + 3 >= len || (bytes[i + 1] & 0xC0) != 0x80 || (bytes[i + 2] & 0xC0) != 0x80 || (bytes[i + 3] & 0xC0) != 0x80) return false;
+                i += 4;
+            } else {
+                return false;
+            }
+        }
+        return true;
+    }
 
     // Connect socket to remote host and port with timeout and detailed diagnostics
     socket_t connectSocket(const std::string& host, int port, std::string& outError) {
@@ -575,82 +602,197 @@ public:
         }.dump());
     }
 
-    // SFTP Read file
-    void readFile(const std::string& path, const std::string& id, size_t maxBytes) {
-        if (!sftpSession_) return;
+    // SFTP Stat raw helper for HTTP streaming
+    bool statFileRaw(const std::string& path, uint64_t& outSize, bool& outIsDir, std::string& outError) {
+        if (!sftpSession_) {
+            outError = "SFTP session not active";
+            return false;
+        }
         std::lock_guard<std::mutex> lock(sftpMutex_);
 
         LIBSSH2_SFTP_ATTRIBUTES attrs;
         if (libssh2_sftp_stat(sftpSession_, path.c_str(), &attrs) != 0) {
-            sendMsg_(nlohmann::json{
-                {"type", "sftp-read-res"},
+            outError = "File not found or inaccessible";
+            return false;
+        }
+
+        outIsDir = (attrs.flags & LIBSSH2_SFTP_ATTR_PERMISSIONS) && ((attrs.permissions & 0170000) == 0040000);
+        outSize = (attrs.flags & LIBSSH2_SFTP_ATTR_SIZE) ? attrs.filesize : 0;
+        return true;
+    }
+
+    // SFTP Read slice helper for HTTP streaming & Range requests
+    bool readFileSlice(const std::string& path, uint64_t startOffset, uint64_t length, std::vector<unsigned char>& outData, std::string& outError) {
+        if (!sftpSession_) {
+            outError = "SFTP session not active";
+            return false;
+        }
+        std::lock_guard<std::mutex> lock(sftpMutex_);
+
+        LIBSSH2_SFTP_HANDLE* handle = libssh2_sftp_open(sftpSession_, path.c_str(), LIBSSH2_FXF_READ, 0);
+        if (!handle) {
+            outError = "Could not open file for reading";
+            return false;
+        }
+
+        if (startOffset > 0) {
+            libssh2_sftp_seek64(handle, startOffset);
+        }
+
+        outData.clear();
+        if (length == 0) {
+            libssh2_sftp_close(handle);
+            return true;
+        }
+
+        outData.reserve(static_cast<size_t>(std::min<uint64_t>(length, 16 * 1024 * 1024)));
+        std::vector<char> chunk(65536);
+        uint64_t remaining = length;
+
+        while (remaining > 0) {
+            size_t toRead = static_cast<size_t>(std::min<uint64_t>(remaining, chunk.size()));
+            ssize_t n = libssh2_sftp_read(handle, chunk.data(), toRead);
+            if (n > 0) {
+                outData.insert(outData.end(), chunk.data(), chunk.data() + n);
+                remaining -= static_cast<uint64_t>(n);
+            } else if (n == 0) {
+                break;
+            } else {
+                outError = "SFTP read error";
+                libssh2_sftp_close(handle);
+                return false;
+            }
+        }
+
+        libssh2_sftp_close(handle);
+        return true;
+    }
+
+    // SFTP Write raw helper for HTTP PUT /stream
+    bool writeFileRaw(const std::string& path, const unsigned char* data, size_t len, std::string& outError) {
+        if (!sftpSession_) {
+            outError = "SFTP session not active";
+            return false;
+        }
+        std::lock_guard<std::mutex> lock(sftpMutex_);
+
+        LIBSSH2_SFTP_HANDLE* handle = libssh2_sftp_open(
+            sftpSession_,
+            path.c_str(),
+            LIBSSH2_FXF_WRITE | LIBSSH2_FXF_CREAT | LIBSSH2_FXF_TRUNC,
+            0644
+        );
+        if (!handle) {
+            outError = "Failed to open remote file for writing";
+            return false;
+        }
+
+        size_t offset = 0;
+        while (offset < len) {
+            size_t chunk = std::min<size_t>(len - offset, 65536);
+            ssize_t written = libssh2_sftp_write(handle, reinterpret_cast<const char*>(data + offset), chunk);
+            if (written > 0) {
+                offset += static_cast<size_t>(written);
+            } else {
+                outError = "SFTP write stream error";
+                libssh2_sftp_close(handle);
+                return false;
+            }
+        }
+
+        libssh2_sftp_close(handle);
+        return true;
+    }
+
+    // SFTP Read file
+    void readFile(const std::string& path, const std::string& id, size_t maxBytes, const std::string& resType = "sftp-read-res", bool forceBase64 = false) {
+        if (!sftpSession_) {
+            sendMsg_(safeDump(nlohmann::json{
+                {"type", resType},
+                {"id", id},
+                {"success", false},
+                {"error", "SFTP session not active"}
+            }));
+            return;
+        }
+        std::lock_guard<std::mutex> lock(sftpMutex_);
+
+        LIBSSH2_SFTP_ATTRIBUTES attrs;
+        if (libssh2_sftp_stat(sftpSession_, path.c_str(), &attrs) != 0) {
+            sendMsg_(safeDump(nlohmann::json{
+                {"type", resType},
                 {"id", id},
                 {"success", false},
                 {"error", "File not found"}
-            }.dump());
+            }));
+            return;
+        }
+
+        bool isDir = (attrs.flags & LIBSSH2_SFTP_ATTR_PERMISSIONS) && ((attrs.permissions & 0170000) == 0040000);
+        if (isDir) {
+            sendMsg_(safeDump(nlohmann::json{
+                {"type", resType},
+                {"id", id},
+                {"success", false},
+                {"isDir", true},
+                {"error", "Target is a directory. Please use directory download (Zip)."}
+            }));
             return;
         }
 
         size_t fileSize = (attrs.flags & LIBSSH2_SFTP_ATTR_SIZE) ? attrs.filesize : 0;
         size_t limit = maxBytes > 0 ? maxBytes : (500 * 1024 * 1024);
         if (fileSize > limit) {
-            sendMsg_(nlohmann::json{
-                {"type", "sftp-read-res"},
+            sendMsg_(safeDump(nlohmann::json{
+                {"type", resType},
                 {"id", id},
                 {"success", false},
                 {"error", "File exceeds maximum size limit"}
-            }.dump());
+            }));
             return;
         }
 
         LIBSSH2_SFTP_HANDLE* handle = libssh2_sftp_open(sftpSession_, path.c_str(), LIBSSH2_FXF_READ, 0);
         if (!handle) {
-            sendMsg_(nlohmann::json{
-                {"type", "sftp-read-res"},
+            sendMsg_(safeDump(nlohmann::json{
+                {"type", resType},
                 {"id", id},
                 {"success", false},
                 {"error", "Could not open file for reading"}
-            }.dump());
+            }));
             return;
         }
 
         std::vector<unsigned char> data;
         data.reserve(fileSize > 0 ? fileSize : 4096);
 
-        char chunk[32768];
+        std::vector<char> chunk(65536);
         while (true) {
-            ssize_t n = libssh2_sftp_read(handle, chunk, sizeof(chunk));
+            ssize_t n = libssh2_sftp_read(handle, chunk.data(), chunk.size());
             if (n > 0) {
-                data.insert(data.end(), chunk, chunk + n);
+                data.insert(data.end(), chunk.data(), chunk.data() + n);
             } else {
                 break;
             }
         }
         libssh2_sftp_close(handle);
 
-        // Detect if content is binary
-        bool isBinary = false;
-        size_t inspectLen = std::min<size_t>(data.size(), 512);
-        for (size_t i = 0; i < inspectLen; ++i) {
-            if (data[i] == 0) {
-                isBinary = true;
-                break;
-            }
-        }
+        // Detect if content is binary or contains non-UTF8 bytes
+        bool isBinary = forceBase64 || !isValidUtf8(data.data(), data.size());
 
         std::string content = isBinary ?
             base64_encode(data.data(), data.size()) :
             std::string(reinterpret_cast<const char*>(data.data()), data.size());
 
-        sendMsg_(nlohmann::json{
-            {"type", "sftp-read-res"},
+        sendMsg_(safeDump(nlohmann::json{
+            {"type", resType},
             {"id", id},
             {"success", true},
             {"path", path},
             {"size", data.size()},
             {"isBinary", isBinary},
             {"content", content}
-        }.dump());
+        }));
     }
 
     // SFTP Write file
@@ -828,6 +970,188 @@ public:
                 {"id", id},
                 {"success", false},
                 {"error", "Handle not found"}
+            }.dump());
+        }
+    }
+
+    // SFTP Chunked Upload: Abort
+    void chunkAbort(const std::string& uploadId, const std::string& id) {
+        LIBSSH2_SFTP_HANDLE* handle = nullptr;
+        std::string path;
+
+        {
+            std::lock_guard<std::mutex> hlock(handlesMutex_);
+            auto it = uploadHandles_.find(uploadId);
+            if (it != uploadHandles_.end()) {
+                handle = it->second;
+                path = uploadPaths_[uploadId];
+                uploadHandles_.erase(it);
+                uploadOffsets_.erase(uploadId);
+                uploadPaths_.erase(uploadId);
+            }
+        }
+
+        if (handle) {
+            std::lock_guard<std::mutex> lock(sftpMutex_);
+            libssh2_sftp_close(handle);
+            if (!path.empty() && sftpSession_) {
+                libssh2_sftp_unlink(sftpSession_, path.c_str());
+            }
+        }
+
+        sendMsg_(nlohmann::json{
+            {"type", "sftp-chunk-abort-res"},
+            {"id", id},
+            {"success", true},
+            {"uploadId", uploadId}
+        }.dump());
+    }
+
+    // SFTP Download Directory (Compress on server and stream chunks)
+    void downloadDirectory(const std::string& dirPath, const std::string& id) {
+        if (!sftpSession_ || !sshSession_) {
+            sendMsg_(nlohmann::json{
+                {"type", "sftp-download-dir-end"},
+                {"id", id},
+                {"path", dirPath},
+                {"success", false},
+                {"error", "SFTP session not active"}
+            }.dump());
+            return;
+        }
+
+        sendMsg_(nlohmann::json{
+            {"type", "sftp-download-dir-progress"},
+            {"id", id},
+            {"path", dirPath},
+            {"stage", "compressing"}
+        }.dump());
+
+        // Split parent directory and folder name
+        std::string cleanPath = dirPath;
+        while (cleanPath.size() > 1 && cleanPath.back() == '/') {
+            cleanPath.pop_back();
+        }
+        size_t slashPos = cleanPath.find_last_of('/');
+        std::string parentDir = (slashPos == std::string::npos || slashPos == 0) ? "/" : cleanPath.substr(0, slashPos);
+        std::string folderName = (slashPos == std::string::npos) ? cleanPath : cleanPath.substr(slashPos + 1);
+        if (folderName.empty()) folderName = "root";
+
+        std::string randSuffix = generateSessionId().substr(0, 8);
+        std::string tempZip = "/tmp/sftp_dl_" + randSuffix + ".zip";
+        std::string tempTar = "/tmp/sftp_dl_" + randSuffix + ".tar.gz";
+        std::string archiveFile;
+        std::string downloadName;
+
+        {
+            std::lock_guard<std::mutex> lock(sftpMutex_);
+            std::string output;
+            std::string zipCmd = "cd '" + escapeShell(parentDir) + "' && ("
+                "zip -rq '" + escapeShell(tempZip) + "' '" + escapeShell(folderName) + "' 2>/dev/null || "
+                "python3 -m zipfile -c '" + escapeShell(tempZip) + "' '" + escapeShell(folderName) + "' 2>/dev/null || "
+                "python -m zipfile -c '" + escapeShell(tempZip) + "' '" + escapeShell(folderName) + "' 2>/dev/null || "
+                "7z a -tzip '" + escapeShell(tempZip) + "' '" + escapeShell(folderName) + "' >/dev/null 2>&1"
+                ")";
+
+            if (executeCommand(zipCmd, output)) {
+                archiveFile = tempZip;
+                downloadName = folderName + ".zip";
+            } else {
+                output.clear();
+                std::string tarCmd = "cd '" + escapeShell(parentDir) + "' && tar -czf '" + escapeShell(tempTar) + "' '" + escapeShell(folderName) + "' 2>/dev/null";
+                if (executeCommand(tarCmd, output)) {
+                    archiveFile = tempTar;
+                    downloadName = folderName + ".tar.gz";
+                }
+            }
+        }
+
+        if (archiveFile.empty()) {
+            sendMsg_(nlohmann::json{
+                {"type", "sftp-download-dir-end"},
+                {"id", id},
+                {"path", dirPath},
+                {"success", false},
+                {"error", "Failed to compress directory on server (zip/tar not available)"}
+            }.dump());
+            return;
+        }
+
+        uint64_t totalSize = 0;
+        bool isDir = false;
+        std::string statErr;
+        if (!statFileRaw(archiveFile, totalSize, isDir, statErr)) {
+            std::lock_guard<std::mutex> lock(sftpMutex_);
+            libssh2_sftp_unlink(sftpSession_, archiveFile.c_str());
+            sendMsg_(nlohmann::json{
+                {"type", "sftp-download-dir-end"},
+                {"id", id},
+                {"path", dirPath},
+                {"success", false},
+                {"error", "Failed to stat temporary archive on server"}
+            }.dump());
+            return;
+        }
+
+        sendMsg_(nlohmann::json{
+            {"type", "sftp-download-dir-start"},
+            {"id", id},
+            {"path", dirPath},
+            {"filename", downloadName},
+            {"totalSize", totalSize}
+        }.dump());
+
+        const size_t chunkSize = 256 * 1024;
+        uint64_t offset = 0;
+        bool readOk = true;
+        std::string errMsg;
+
+        while (offset < totalSize) {
+            size_t toRead = (totalSize - offset > chunkSize) ? chunkSize : static_cast<size_t>(totalSize - offset);
+            std::vector<unsigned char> chunkData;
+            if (!readFileSlice(archiveFile, offset, toRead, chunkData, errMsg)) {
+                readOk = false;
+                break;
+            }
+            if (chunkData.empty()) break;
+
+            offset += chunkData.size();
+            std::string b64Chunk = base64_encode(chunkData.data(), chunkData.size());
+            sendMsg_(nlohmann::json{
+                {"type", "sftp-download-dir-chunk"},
+                {"id", id},
+                {"path", dirPath},
+                {"chunk", b64Chunk},
+                {"data", b64Chunk},
+                {"streamedBytes", offset},
+                {"transferred", offset},
+                {"totalSize", totalSize}
+            }.dump());
+        }
+
+        // Clean up temporary archive on remote server
+        {
+            std::lock_guard<std::mutex> lock(sftpMutex_);
+            if (sftpSession_) {
+                libssh2_sftp_unlink(sftpSession_, archiveFile.c_str());
+            }
+        }
+
+        if (readOk) {
+            sendMsg_(nlohmann::json{
+                {"type", "sftp-download-dir-end"},
+                {"id", id},
+                {"path", dirPath},
+                {"filename", downloadName},
+                {"success", true}
+            }.dump());
+        } else {
+            sendMsg_(nlohmann::json{
+                {"type", "sftp-download-dir-end"},
+                {"id", id},
+                {"path", dirPath},
+                {"success", false},
+                {"error", errMsg.empty() ? "Failed while streaming directory archive" : errMsg}
             }.dump());
         }
     }
@@ -1012,51 +1336,154 @@ public:
             snprintf(permOctal, sizeof(permOctal), "%03o", (unsigned int)(attrs.permissions & 0777));
         }
 
+        nlohmann::json statObj = {
+            {"size", (attrs.flags & LIBSSH2_SFTP_ATTR_SIZE) ? attrs.filesize : 0},
+            {"mode", (attrs.flags & LIBSSH2_SFTP_ATTR_PERMISSIONS) ? attrs.permissions : 0},
+            {"mtime", (attrs.flags & LIBSSH2_SFTP_ATTR_ACMODTIME) ? attrs.mtime : 0},
+            {"isDirectory", isDir},
+            {"permissions", std::string(permOctal)}
+        };
+
         sendMsg_(nlohmann::json{
             {"type", "sftp-stat-res"},
             {"id", id},
             {"success", true},
             {"path", path},
-            {"stats", {
-                {"size", (attrs.flags & LIBSSH2_SFTP_ATTR_SIZE) ? attrs.filesize : 0},
-                {"mode", (attrs.flags & LIBSSH2_SFTP_ATTR_PERMISSIONS) ? attrs.permissions : 0},
-                {"mtime", (attrs.flags & LIBSSH2_SFTP_ATTR_ACMODTIME) ? attrs.mtime : 0},
-                {"isDirectory", isDir},
-                {"permissions", std::string(permOctal)}
-            }}
+            {"stat", statObj},
+            {"stats", statObj}
         }.dump());
     }
 
     // SFTP Server-side Copy via SSH exec
-    void copyItems(const std::string& srcPath, const std::string& destPath, const std::string& id) {
+    void copyItems(const std::vector<std::pair<std::string, std::string>>& items, const std::string& id) {
         std::lock_guard<std::mutex> lock(sftpMutex_);
-        std::string output;
-        std::string cmd = "cp -r -- '" + escapeShell(srcPath) + "' '" + escapeShell(destPath) + "'";
-        bool ok = executeCommand(cmd, output);
+        int successCount = 0;
+        for (const auto& pair : items) {
+            if (pair.first.empty() || pair.second.empty()) continue;
+            std::string output;
+            std::string cmd = "cp -r -- '" + escapeShell(pair.first) + "' '" + escapeShell(pair.second) + "'";
+            if (executeCommand(cmd, output)) {
+                successCount++;
+            }
+        }
+        bool ok = (successCount > 0 && successCount == static_cast<int>(items.size()));
         nlohmann::json res = {
             {"type", "sftp-copy-res"},
             {"id", id},
             {"success", ok},
-            {"count", ok ? 1 : 0}
+            {"count", successCount}
         };
-        if (!ok) res["error"] = "Copy operation failed";
+        if (!ok) res["error"] = "Copy operation failed for one or more items";
         sendMsg_(res.dump());
     }
 
     // SFTP Server-side Move via SSH exec
-    void moveItems(const std::string& srcPath, const std::string& destPath, const std::string& id) {
+    void moveItems(const std::vector<std::pair<std::string, std::string>>& items, const std::string& id) {
         std::lock_guard<std::mutex> lock(sftpMutex_);
-        std::string output;
-        std::string cmd = "mv -f -- '" + escapeShell(srcPath) + "' '" + escapeShell(destPath) + "'";
-        bool ok = executeCommand(cmd, output);
+        int successCount = 0;
+        for (const auto& pair : items) {
+            if (pair.first.empty() || pair.second.empty()) continue;
+            std::string output;
+            std::string cmd = "mv -f -- '" + escapeShell(pair.first) + "' '" + escapeShell(pair.second) + "'";
+            if (executeCommand(cmd, output)) {
+                successCount++;
+            }
+        }
+        bool ok = (successCount > 0 && successCount == static_cast<int>(items.size()));
         nlohmann::json res = {
             {"type", "sftp-move-res"},
             {"id", id},
             {"success", ok},
-            {"count", ok ? 1 : 0}
+            {"count", successCount}
         };
-        if (!ok) res["error"] = "Move operation failed";
+        if (!ok) res["error"] = "Move operation failed for one or more items";
         sendMsg_(res.dump());
+    }
+
+    // SFTP Server-side Compress
+    void compressItems(const std::vector<std::string>& paths, const std::string& archivePath, const std::string& format, const std::string& id) {
+        std::lock_guard<std::mutex> lock(sftpMutex_);
+        if (paths.empty() || archivePath.empty()) {
+            sendMsg_(nlohmann::json{
+                {"type", "sftp-compress-res"},
+                {"id", id},
+                {"success", false},
+                {"error", "Invalid paths for compression"}
+            }.dump());
+            return;
+        }
+
+        size_t slashPos = paths[0].find_last_of('/');
+        std::string parentDir = (slashPos == std::string::npos || slashPos == 0) ? "/" : paths[0].substr(0, slashPos);
+        std::string namesArg;
+        for (const auto& p : paths) {
+            size_t pos = p.find_last_of('/');
+            std::string name = (pos == std::string::npos) ? p : p.substr(pos + 1);
+            if (!name.empty()) {
+                namesArg += " '" + escapeShell(name) + "'";
+            }
+        }
+
+        std::string cmd;
+        if (format == "zip") {
+            cmd = "cd '" + escapeShell(parentDir) + "' && (zip -rq '" + escapeShell(archivePath) + "' " + namesArg +
+                  " || python3 -m zipfile -c '" + escapeShell(archivePath) + "' " + namesArg + ")";
+        } else if (format == "tar") {
+            cmd = "cd '" + escapeShell(parentDir) + "' && tar -cf '" + escapeShell(archivePath) + "' " + namesArg;
+        } else {
+            cmd = "cd '" + escapeShell(parentDir) + "' && tar -czf '" + escapeShell(archivePath) + "' " + namesArg;
+        }
+
+        std::string output;
+        bool ok = executeCommand(cmd, output);
+        nlohmann::json res = {
+            {"type", "sftp-compress-res"},
+            {"id", id},
+            {"success", ok},
+            {"archivePath", archivePath}
+        };
+        if (!ok) res["error"] = "Compression failed on server";
+        sendMsg_(res.dump());
+    }
+
+    // SFTP Server-side Extract
+    void extractArchive(const std::string& archivePath, const std::string& targetDir, const std::string& id) {
+        std::lock_guard<std::mutex> lock(sftpMutex_);
+        std::string cmd;
+        if (archivePath.size() >= 4 && archivePath.substr(archivePath.size() - 4) == ".zip") {
+            cmd = "unzip -oq '" + escapeShell(archivePath) + "' -d '" + escapeShell(targetDir) +
+                  "' || python3 -m zipfile -e '" + escapeShell(archivePath) + "' '" + escapeShell(targetDir) + "'";
+        } else {
+            cmd = "tar -xf '" + escapeShell(archivePath) + "' -C '" + escapeShell(targetDir) + "'";
+        }
+        std::string output;
+        bool ok = executeCommand(cmd, output);
+        nlohmann::json res = {
+            {"type", "sftp-extract-res"},
+            {"id", id},
+            {"success", ok},
+            {"path", archivePath}
+        };
+        if (!ok) res["error"] = "Extraction failed on server";
+        sendMsg_(res.dump());
+    }
+
+    // SFTP Disk Usage (du)
+    void diskUsage(const std::string& path, const std::string& id) {
+        std::lock_guard<std::mutex> lock(sftpMutex_);
+        std::string output;
+        std::string cmd = "du -sh -- '" + escapeShell(path) + "' 2>/dev/null | cut -f1";
+        bool ok = executeCommand(cmd, output);
+        while (!output.empty() && (output.back() == '\n' || output.back() == '\r' || output.back() == ' ')) {
+            output.pop_back();
+        }
+        sendMsg_(nlohmann::json{
+            {"type", "sftp-du-res"},
+            {"id", id},
+            {"success", ok && !output.empty()},
+            {"path", path},
+            {"size", output.empty() ? "N/A" : output}
+        }.dump());
     }
 
 private:
